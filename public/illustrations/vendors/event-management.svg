@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 390 220">
+  <rect width="390" height="220" fill="#FAF7F2"/>
+  <rect x="2" y="2" width="386" height="216" fill="none" stroke="#C9A84C" stroke-width="1.5"/>
+  <rect x="5" y="5" width="380" height="210" fill="none" stroke="#C9A84C" stroke-width="0.4"/>
+
+  <!-- Shamiana / tent canopy -->
+  <path d="M60 130 L195 60 L330 130 Z" fill="none" stroke="#7C5C3E" stroke-width="1.2" stroke-linejoin="round"/>
+  <path d="M55 132 L335 132" stroke="#7C5C3E" stroke-width="0.8"/>
+  <!-- Tent drapes -->
+  <path d="M60 130 Q75 145 90 132" fill="none" stroke="#7C5C3E" stroke-width="0.6"/>
+  <path d="M100 130 Q115 145 130 132" fill="none" stroke="#7C5C3E" stroke-width="0.6"/>
+  <path d="M140 130 Q155 145 170 132" fill="none" stroke="#7C5C3E" stroke-width="0.6"/>
+  <path d="M180 130 Q195 145 210 132" fill="none" stroke="#7C5C3E" stroke-width="0.6"/>
+  <path d="M220 130 Q235 145 250 132" fill="none" stroke="#7C5C3E" stroke-width="0.6"/>
+  <path d="M260 130 Q275 145 290 132" fill="none" stroke="#7C5C3E" stroke-width="0.6"/>
+  <path d="M300 130 Q315 145 330 132" fill="none" stroke="#7C5C3E" stroke-width="0.6"/>
+
+  <!-- Tent poles -->
+  <line x1="60" y1="130" x2="60" y2="175" stroke="#7C5C3E" stroke-width="1"/>
+  <line x1="330" y1="130" x2="330" y2="175" stroke="#7C5C3E" stroke-width="1"/>
+  <line x1="195" y1="60" x2="195" y2="40" stroke="#7C5C3E" stroke-width="0.8"/>
+  <circle cx="195" cy="38" r="3" fill="none" stroke="#C9A84C" stroke-width="1"/>
+
+  <!-- Tables and chairs inside -->
+  <ellipse cx="140" cy="158" rx="22" ry="10" fill="none" stroke="#7C5C3E" stroke-width="0.7"/>
+  <ellipse cx="250" cy="158" rx="22" ry="10" fill="none" stroke="#7C5C3E" stroke-width="0.7"/>
+  <!-- Chair dots around tables -->
+  <circle cx="120" cy="155" r="3" fill="none" stroke="#7C5C3E" stroke-width="0.6"/>
+  <circle cx="160" cy="155" r="3" fill="none" stroke="#7C5C3E" stroke-width="0.6"/>
+  <circle cx="140" cy="148" r="3" fill="none" stroke="#7C5C3E" stroke-width="0.6"/>
+  <circle cx="140" cy="167" r="3" fill="none" stroke="#7C5C3E" stroke-width="0.6"/>
+  <circle cx="230" cy="155" r="3" fill="none" stroke="#7C5C3E" stroke-width="0.6"/>
+  <circle cx="270" cy="155" r="3" fill="none" stroke="#7C5C3E" stroke-width="0.6"/>
+  <circle cx="250" cy="148" r="3" fill="none" stroke="#7C5C3E" stroke-width="0.6"/>
+  <circle cx="250" cy="167" r="3" fill="none" stroke="#7C5C3E" stroke-width="0.6"/>
+
+  <!-- Stage at back -->
+  <rect x="155" y="138" width="80" height="14" rx="1" fill="none" stroke="#7C5C3E" stroke-width="0.8"/>
+  <line x1="160" y1="138" x2="160" y2="152" stroke="#7C5C3E" stroke-width="0.4"/>
+  <line x1="175" y1="138" x2="175" y2="152" stroke="#7C5C3E" stroke-width="0.4"/>
+  <line x1="195" y1="138" x2="195" y2="152" stroke="#7C5C3E" stroke-width="0.4"/>
+  <line x1="215" y1="138" x2="215" y2="152" stroke="#7C5C3E" stroke-width="0.4"/>
+  <line x1="230" y1="138" x2="230" y2="152" stroke="#7C5C3E" stroke-width="0.4"/>
+
+  <!-- String lights -->
+  <path d="M60 100 Q127 108 195 100 Q262 92 330 100" fill="none" stroke="#C9A84C" stroke-width="0.6" stroke-dasharray="2,4"/>
+
+  <!-- Ground line -->
+  <line x1="40" y1="175" x2="350" y2="175" stroke="#7C5C3E" stroke-width="0.6"/>
+
+  <text x="195" y="200" text-anchor="middle" font-family="Georgia, serif" font-style="italic" font-size="11" fill="#7C5C3E">Event Management · Pala, Kerala</text>
+</svg>

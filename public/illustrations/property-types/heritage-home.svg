@@ -1,0 +1,106 @@
+<svg width="358" height="180" viewBox="0 0 358 180" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="hh-sky" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#e8d4b0"/>
+      <stop offset="100%" stop-color="#c8aa80"/>
+    </linearGradient>
+    <linearGradient id="hh-ground" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#7a8854"/>
+      <stop offset="100%" stop-color="#5a6840"/>
+    </linearGradient>
+    <linearGradient id="hh-wall" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#e0c8a0"/>
+      <stop offset="100%" stop-color="#b89868"/>
+    </linearGradient>
+    <linearGradient id="hh-roof" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#7c5234"/>
+      <stop offset="100%" stop-color="#5a3a20"/>
+    </linearGradient>
+    <linearGradient id="hh-foliage" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#4a6238"/>
+      <stop offset="100%" stop-color="#2c3e20"/>
+    </linearGradient>
+    <radialGradient id="hh-vignette" cx="50%" cy="40%" r="80%">
+      <stop offset="60%" stop-color="rgba(0,0,0,0)"/>
+      <stop offset="100%" stop-color="rgba(44,26,14,0.18)"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Sky -->
+  <rect width="358" height="180" fill="url(#hh-sky)"/>
+  <!-- Distant trees -->
+  <ellipse cx="179" cy="92" rx="240" ry="38" fill="#7a8a5a" opacity="0.45"/>
+  <!-- Ground -->
+  <rect x="0" y="126" width="358" height="54" fill="url(#hh-ground)"/>
+  <ellipse cx="179" cy="144" rx="179" ry="6" fill="#000" opacity="0.18"/>
+  <!-- Low single-storey wide body -->
+  <rect x="12" y="62" width="334" height="80" fill="url(#hh-wall)"/>
+  <rect x="12" y="62" width="8" height="80" fill="#000" opacity="0.14"/>
+  <!-- 4-sided Kerala sloped roof -->
+  <polygon points="4,66 179,22 354,66 344,74 179,32 14,74" fill="url(#hh-roof)"/>
+  <polygon points="12,66 179,24 346,66" fill="#5a3a20"/>
+  <polygon points="12,66 179,24 179,66" fill="#000" opacity="0.16"/>
+  <!-- Ridge line and ornamental finial -->
+  <line x1="179" y1="22" x2="179" y2="32" stroke="#3c2814" stroke-width="1.8"/>
+  <circle cx="179" cy="20" r="3" fill="#c9a84c"/>
+  <!-- Tile suggestion lines on roof -->
+  <line x1="12" y1="72" x2="346" y2="72" stroke="#3c2814" stroke-width="0.5" opacity="0.5"/>
+  <line x1="18" y1="78" x2="340" y2="78" stroke="#3c2814" stroke-width="0.35" opacity="0.35"/>
+  <!-- Inner courtyard glimpse -->
+  <rect x="130" y="70" width="98" height="52" fill="#FAF7F2" opacity="0.35"/>
+  <rect x="130" y="70" width="98" height="52" fill="none" stroke="#5a3a20" stroke-width="0.6"/>
+  <!-- Courtyard plant -->
+  <circle cx="179" cy="90" rx="1" fill="none"/>
+  <ellipse cx="179" cy="88" rx="10" ry="9" fill="url(#hh-foliage)"/>
+  <rect x="177" y="97" width="4" height="18" fill="#5a3a20"/>
+  <!-- Front colonnade pillars -->
+  <rect x="64" y="106" width="8" height="36" fill="url(#hh-wall)"/>
+  <rect x="64" y="106" width="3" height="36" fill="#000" opacity="0.16"/>
+  <rect x="108" y="106" width="8" height="36" fill="url(#hh-wall)"/>
+  <rect x="108" y="106" width="3" height="36" fill="#000" opacity="0.16"/>
+  <rect x="242" y="106" width="8" height="36" fill="url(#hh-wall)"/>
+  <rect x="242" y="106" width="3" height="36" fill="#000" opacity="0.16"/>
+  <rect x="286" y="106" width="8" height="36" fill="url(#hh-wall)"/>
+  <rect x="286" y="106" width="3" height="36" fill="#000" opacity="0.16"/>
+  <!-- Pillar caps -->
+  <rect x="60" y="102" width="16" height="5" fill="#5a3a20"/>
+  <rect x="104" y="102" width="16" height="5" fill="#5a3a20"/>
+  <rect x="238" y="102" width="16" height="5" fill="#5a3a20"/>
+  <rect x="282" y="102" width="16" height="5" fill="#5a3a20"/>
+  <!-- Carved double doors -->
+  <rect x="152" y="108" width="28" height="34" fill="#3c2814"/>
+  <rect x="178" y="108" width="28" height="34" fill="#3c2814"/>
+  <line x1="180" y1="108" x2="180" y2="142" stroke="#5a3a20" stroke-width="1"/>
+  <!-- Carved door panels -->
+  <rect x="155" y="112" width="12" height="10" fill="#5a3a20" opacity="0.65"/>
+  <rect x="183" y="112" width="12" height="10" fill="#5a3a20" opacity="0.65"/>
+  <rect x="155" y="125" width="12" height="10" fill="#5a3a20" opacity="0.65"/>
+  <rect x="183" y="125" width="12" height="10" fill="#5a3a20" opacity="0.65"/>
+  <!-- Nilavilakku oil lamps flanking door -->
+  <rect x="132" y="124" width="3" height="12" fill="#7c5234"/>
+  <ellipse cx="133" cy="121" rx="6" ry="3" fill="#c9a84c"/>
+  <circle cx="133" cy="118" r="3" fill="#f4d4a0"/>
+  <circle cx="133" cy="118" r="5" fill="#f4d4a0" opacity="0.35"/>
+  <rect x="223" y="124" width="3" height="12" fill="#7c5234"/>
+  <ellipse cx="224" cy="121" rx="6" ry="3" fill="#c9a84c"/>
+  <circle cx="224" cy="118" r="3" fill="#f4d4a0"/>
+  <circle cx="224" cy="118" r="5" fill="#f4d4a0" opacity="0.35"/>
+  <!-- Side windows -->
+  <rect x="22" y="108" width="20" height="16" rx="1" fill="#3c4838"/>
+  <rect x="22" y="108" width="20" height="16" rx="1" fill="none" stroke="#3c2814" stroke-width="0.7"/>
+  <line x1="32" y1="108" x2="32" y2="124" stroke="#5a3a20" stroke-width="0.5"/>
+  <rect x="316" y="108" width="20" height="16" rx="1" fill="#3c4838"/>
+  <rect x="316" y="108" width="20" height="16" rx="1" fill="none" stroke="#3c2814" stroke-width="0.7"/>
+  <line x1="326" y1="108" x2="326" y2="124" stroke="#5a3a20" stroke-width="0.5"/>
+  <!-- Ground line -->
+  <rect x="12" y="142" width="334" height="2" fill="#5a3a20" opacity="0.4"/>
+  <!-- Vignette -->
+  <rect width="358" height="180" fill="url(#hh-vignette)"/>
+  <!-- Kasavu border -->
+  <rect x="4" y="4" width="350" height="172" fill="none" stroke="#C9A84C" stroke-width="2"/>
+  <rect x="8" y="8" width="342" height="164" fill="none" stroke="#C9A84C" stroke-width="0.5" opacity="0.7"/>
+  <rect x="4" y="4" width="16" height="16" fill="#C9A84C" opacity="0.2"/>
+  <rect x="338" y="4" width="16" height="16" fill="#C9A84C" opacity="0.2"/>
+  <rect x="4" y="160" width="16" height="16" fill="#C9A84C" opacity="0.2"/>
+  <rect x="338" y="160" width="16" height="16" fill="#C9A84C" opacity="0.2"/>
+</svg>

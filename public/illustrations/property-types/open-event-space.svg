@@ -1,0 +1,106 @@
+<svg width="358" height="180" viewBox="0 0 358 180" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="oes-sky" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#e8c898"/>
+      <stop offset="100%" stop-color="#b08858"/>
+    </linearGradient>
+    <linearGradient id="oes-ground" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#7a8854"/>
+      <stop offset="100%" stop-color="#5a6840"/>
+    </linearGradient>
+    <linearGradient id="oes-pillar" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#e0c8a0"/>
+      <stop offset="100%" stop-color="#b89868"/>
+    </linearGradient>
+    <linearGradient id="oes-foliage" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#4a6238"/>
+      <stop offset="100%" stop-color="#2c3e20"/>
+    </linearGradient>
+    <radialGradient id="oes-vignette" cx="50%" cy="40%" r="80%">
+      <stop offset="60%" stop-color="rgba(0,0,0,0)"/>
+      <stop offset="100%" stop-color="rgba(44,26,14,0.2)"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Dusk sky -->
+  <rect width="358" height="180" fill="url(#oes-sky)"/>
+  <!-- Distant tree silhouette -->
+  <path d="M0 106 Q60 92 120 100 Q180 88 240 96 Q300 92 358 98 L358 128 L0 128 Z" fill="#3c4828" opacity="0.55"/>
+  <!-- Ground -->
+  <rect x="0" y="120" width="358" height="60" fill="url(#oes-ground)"/>
+  <ellipse cx="179" cy="152" rx="179" ry="6" fill="#000" opacity="0.16"/>
+  <!-- Mandap beam top -->
+  <rect x="12" y="62" width="334" height="7" fill="#5a3a20"/>
+  <rect x="8" y="56" width="342" height="8" fill="#7c5234"/>
+  <!-- Scalloped awning -->
+  <path d="M12 69 Q26 80 40 69 Q54 80 68 69 Q82 80 96 69 Q110 80 124 69 Q138 80 152 69 Q166 80 180 69 Q194 80 208 69 Q222 80 236 69 Q250 80 264 69 Q278 80 292 69 Q306 80 320 69 Q334 80 346 69" fill="#a87858" stroke="#7c5234" stroke-width="0.6"/>
+  <!-- Pillars -->
+  <rect x="18" y="77" width="10" height="57" fill="url(#oes-pillar)"/>
+  <rect x="18" y="77" width="3" height="57" fill="#000" opacity="0.18"/>
+  <rect x="82" y="77" width="10" height="57" fill="url(#oes-pillar)"/>
+  <rect x="82" y="77" width="3" height="57" fill="#000" opacity="0.18"/>
+  <rect x="146" y="77" width="10" height="57" fill="url(#oes-pillar)"/>
+  <rect x="146" y="77" width="3" height="57" fill="#000" opacity="0.18"/>
+  <rect x="202" y="77" width="10" height="57" fill="url(#oes-pillar)"/>
+  <rect x="202" y="77" width="3" height="57" fill="#000" opacity="0.18"/>
+  <rect x="266" y="77" width="10" height="57" fill="url(#oes-pillar)"/>
+  <rect x="266" y="77" width="3" height="57" fill="#000" opacity="0.18"/>
+  <rect x="330" y="77" width="10" height="57" fill="url(#oes-pillar)"/>
+  <rect x="330" y="77" width="3" height="57" fill="#000" opacity="0.18"/>
+  <!-- Pillar bases -->
+  <rect x="14" y="128" width="18" height="7" rx="1" fill="#5a3a20"/>
+  <rect x="78" y="128" width="18" height="7" rx="1" fill="#5a3a20"/>
+  <rect x="142" y="128" width="18" height="7" rx="1" fill="#5a3a20"/>
+  <rect x="198" y="128" width="18" height="7" rx="1" fill="#5a3a20"/>
+  <rect x="262" y="128" width="18" height="7" rx="1" fill="#5a3a20"/>
+  <rect x="326" y="128" width="18" height="7" rx="1" fill="#5a3a20"/>
+  <!-- Floral wreath bands on pillars -->
+  <ellipse cx="23" cy="98" rx="9" ry="4" fill="#d4735e" opacity="0.9"/>
+  <ellipse cx="87" cy="98" rx="9" ry="4" fill="#d4735e" opacity="0.9"/>
+  <ellipse cx="151" cy="98" rx="9" ry="4" fill="#d4735e" opacity="0.9"/>
+  <ellipse cx="207" cy="98" rx="9" ry="4" fill="#d4735e" opacity="0.9"/>
+  <ellipse cx="271" cy="98" rx="9" ry="4" fill="#d4735e" opacity="0.9"/>
+  <ellipse cx="335" cy="98" rx="9" ry="4" fill="#d4735e" opacity="0.9"/>
+  <!-- Chair rows -->
+  <rect x="38" y="114" width="18" height="4" rx="1" fill="#a89878"/>
+  <rect x="40" y="118" width="3" height="7" fill="#7c5234"/>
+  <rect x="53" y="118" width="3" height="7" fill="#7c5234"/>
+  <rect x="100" y="114" width="18" height="4" rx="1" fill="#a89878"/>
+  <rect x="102" y="118" width="3" height="7" fill="#7c5234"/>
+  <rect x="115" y="118" width="3" height="7" fill="#7c5234"/>
+  <rect x="162" y="114" width="18" height="4" rx="1" fill="#a89878"/>
+  <rect x="164" y="118" width="3" height="7" fill="#7c5234"/>
+  <rect x="177" y="118" width="3" height="7" fill="#7c5234"/>
+  <rect x="220" y="114" width="18" height="4" rx="1" fill="#a89878"/>
+  <rect x="222" y="118" width="3" height="7" fill="#7c5234"/>
+  <rect x="235" y="118" width="3" height="7" fill="#7c5234"/>
+  <rect x="282" y="114" width="18" height="4" rx="1" fill="#a89878"/>
+  <rect x="284" y="118" width="3" height="7" fill="#7c5234"/>
+  <rect x="297" y="118" width="3" height="7" fill="#7c5234"/>
+  <!-- String lights with glow -->
+  <path d="M22 72 Q90 82 179 72 Q268 82 336 72" fill="none" stroke="#7c5234" stroke-width="0.4" opacity="0.5"/>
+  <circle cx="90" cy="79" r="3" fill="#f4d4a0" opacity="0.9"/>
+  <circle cx="90" cy="79" r="5" fill="#f4d4a0" opacity="0.3"/>
+  <circle cx="150" cy="74" r="3" fill="#f4d4a0" opacity="0.9"/>
+  <circle cx="150" cy="74" r="5" fill="#f4d4a0" opacity="0.3"/>
+  <circle cx="210" cy="74" r="3" fill="#f4d4a0" opacity="0.9"/>
+  <circle cx="210" cy="74" r="5" fill="#f4d4a0" opacity="0.3"/>
+  <circle cx="270" cy="79" r="3" fill="#f4d4a0" opacity="0.9"/>
+  <circle cx="270" cy="79" r="5" fill="#f4d4a0" opacity="0.3"/>
+  <!-- Flanking coconut palms -->
+  <rect x="2" y="68" width="6" height="72" rx="3" fill="#3c2814"/>
+  <ellipse cx="5" cy="56" rx="18" ry="16" fill="url(#oes-foliage)"/>
+  <ellipse cx="12" cy="48" rx="13" ry="12" fill="#5a8a44"/>
+  <rect x="350" y="68" width="6" height="72" rx="3" fill="#3c2814"/>
+  <ellipse cx="353" cy="56" rx="18" ry="16" fill="url(#oes-foliage)"/>
+  <ellipse cx="346" cy="48" rx="13" ry="12" fill="#5a8a44"/>
+  <!-- Vignette -->
+  <rect width="358" height="180" fill="url(#oes-vignette)"/>
+  <!-- Kasavu border -->
+  <rect x="4" y="4" width="350" height="172" fill="none" stroke="#C9A84C" stroke-width="2"/>
+  <rect x="8" y="8" width="342" height="164" fill="none" stroke="#C9A84C" stroke-width="0.5" opacity="0.7"/>
+  <rect x="4" y="4" width="16" height="16" fill="#C9A84C" opacity="0.2"/>
+  <rect x="338" y="4" width="16" height="16" fill="#C9A84C" opacity="0.2"/>
+  <rect x="4" y="160" width="16" height="16" fill="#C9A84C" opacity="0.2"/>
+  <rect x="338" y="160" width="16" height="16" fill="#C9A84C" opacity="0.2"/>
+</svg>

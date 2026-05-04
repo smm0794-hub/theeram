@@ -1,0 +1,108 @@
+<svg width="358" height="180" viewBox="0 0 358 180" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="res-sky" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#e8d4b0"/>
+      <stop offset="100%" stop-color="#c8aa80"/>
+    </linearGradient>
+    <linearGradient id="res-ground" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#7a8854"/>
+      <stop offset="100%" stop-color="#5a6840"/>
+    </linearGradient>
+    <linearGradient id="res-wall" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#e0c8a0"/>
+      <stop offset="100%" stop-color="#b89868"/>
+    </linearGradient>
+    <linearGradient id="res-wing" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#c8a878"/>
+      <stop offset="100%" stop-color="#a08050"/>
+    </linearGradient>
+    <linearGradient id="res-roof" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#7c5234"/>
+      <stop offset="100%" stop-color="#5a3a20"/>
+    </linearGradient>
+    <linearGradient id="res-pool" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#94c4d4"/>
+      <stop offset="100%" stop-color="#6a98ac"/>
+    </linearGradient>
+    <linearGradient id="res-foliage" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#4a6238"/>
+      <stop offset="100%" stop-color="#2c3e20"/>
+    </linearGradient>
+    <radialGradient id="res-vignette" cx="50%" cy="40%" r="80%">
+      <stop offset="60%" stop-color="rgba(0,0,0,0)"/>
+      <stop offset="100%" stop-color="rgba(44,26,14,0.18)"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Sky -->
+  <rect width="358" height="180" fill="url(#res-sky)"/>
+  <!-- Distant trees -->
+  <ellipse cx="179" cy="72" rx="260" ry="32" fill="#7a8a5a" opacity="0.42"/>
+  <!-- Ground -->
+  <rect x="0" y="126" width="358" height="54" fill="url(#res-ground)"/>
+  <ellipse cx="179" cy="142" rx="179" ry="6" fill="#000" opacity="0.16"/>
+  <!-- Pool foreground — the resort signal -->
+  <ellipse cx="179" cy="148" rx="90" ry="4" fill="#000" opacity="0.18"/>
+  <rect x="90" y="118" width="178" height="26" rx="4" fill="url(#res-pool)"/>
+  <rect x="90" y="118" width="178" height="26" rx="4" fill="none" stroke="#4a7080" stroke-width="0.8"/>
+  <path d="M96 128 Q130 124 168 128 Q206 132 250 128 Q262 126 266 128" fill="none" stroke="#fff" stroke-width="0.6" opacity="0.6"/>
+  <path d="M96 138 Q130 134 168 138 Q206 142 250 138 Q262 136 266 138" fill="none" stroke="#fff" stroke-width="0.4" opacity="0.4"/>
+  <!-- Pool ladder -->
+  <rect x="260" y="113" width="5" height="8" fill="#a89878"/>
+  <line x1="260" y1="115" x2="265" y2="115" stroke="#888" stroke-width="0.6"/>
+  <!-- Central reception -->
+  <rect x="114" y="54" width="130" height="66" fill="url(#res-wall)"/>
+  <rect x="114" y="54" width="7" height="66" fill="#000" opacity="0.14"/>
+  <!-- Main gabled roof -->
+  <polygon points="106,56 179,26 252,56" fill="url(#res-roof)"/>
+  <polygon points="106,56 179,26 179,56" fill="#000" opacity="0.12"/>
+  <!-- Reception door -->
+  <rect x="162" y="92" width="22" height="28" fill="#3c2814"/>
+  <line x1="173" y1="92" x2="173" y2="120" stroke="#5a3a20" stroke-width="0.8"/>
+  <!-- Reception windows -->
+  <rect x="122" y="68" width="20" height="16" rx="1" fill="#3c4838"/>
+  <rect x="122" y="68" width="20" height="16" rx="1" fill="none" stroke="#3c2814" stroke-width="0.7"/>
+  <line x1="132" y1="68" x2="132" y2="84" stroke="#5a3a20" stroke-width="0.5"/>
+  <rect x="204" y="68" width="20" height="16" rx="1" fill="#3c4838"/>
+  <rect x="204" y="68" width="20" height="16" rx="1" fill="none" stroke="#3c2814" stroke-width="0.7"/>
+  <line x1="214" y1="68" x2="214" y2="84" stroke="#5a3a20" stroke-width="0.5"/>
+  <!-- Left cottage — distinct pitched roof, smaller scale -->
+  <rect x="8" y="78" width="68" height="44" fill="url(#res-wing)"/>
+  <rect x="8" y="78" width="5" height="44" fill="#000" opacity="0.16"/>
+  <polygon points="2,80 42,58 84,80" fill="#5a3a20"/>
+  <polygon points="2,80 42,58 42,80" fill="#000" opacity="0.12"/>
+  <rect x="18" y="88" width="16" height="14" rx="1" fill="#3c4838"/>
+  <rect x="18" y="88" width="16" height="14" rx="1" fill="none" stroke="#3c2814" stroke-width="0.6"/>
+  <line x1="26" y1="88" x2="26" y2="102" stroke="#5a3a20" stroke-width="0.4"/>
+  <rect x="30" y="100" width="16" height="22" fill="#3c2814"/>
+  <!-- Right cottage -->
+  <rect x="282" y="78" width="68" height="44" fill="url(#res-wing)"/>
+  <rect x="282" y="78" width="5" height="44" fill="#000" opacity="0.16"/>
+  <polygon points="276,80 316,58 358,80" fill="#5a3a20"/>
+  <polygon points="276,80 316,58 316,80" fill="#000" opacity="0.12"/>
+  <rect x="324" y="88" width="16" height="14" rx="1" fill="#3c4838"/>
+  <rect x="324" y="88" width="16" height="14" rx="1" fill="none" stroke="#3c2814" stroke-width="0.6"/>
+  <line x1="332" y1="88" x2="332" y2="102" stroke="#5a3a20" stroke-width="0.4"/>
+  <rect x="312" y="100" width="16" height="22" fill="#3c2814"/>
+  <!-- Connecting paths to pool -->
+  <rect x="76" y="114" width="20" height="5" fill="#a89878" opacity="0.6"/>
+  <rect x="262" y="114" width="20" height="5" fill="#a89878" opacity="0.6"/>
+  <!-- Palm trees between reception and cottages -->
+  <rect x="92" y="46" width="7" height="36" rx="3" fill="#3c2814"/>
+  <ellipse cx="95" cy="36" rx="20" ry="13" fill="url(#res-foliage)"/>
+  <ellipse cx="103" cy="28" rx="14" ry="10" fill="#5a8a44"/>
+  <ellipse cx="86" cy="32" rx="12" ry="8" fill="url(#res-foliage)"/>
+  <rect x="260" y="46" width="7" height="36" rx="3" fill="#3c2814"/>
+  <ellipse cx="263" cy="36" rx="20" ry="13" fill="url(#res-foliage)"/>
+  <ellipse cx="255" cy="28" rx="14" ry="10" fill="#5a8a44"/>
+  <ellipse cx="272" cy="32" rx="12" ry="8" fill="url(#res-foliage)"/>
+  <!-- Vignette -->
+  <rect width="358" height="180" fill="url(#res-vignette)"/>
+  <!-- Kasavu border -->
+  <rect x="4" y="4" width="350" height="172" fill="none" stroke="#C9A84C" stroke-width="2"/>
+  <rect x="8" y="8" width="342" height="164" fill="none" stroke="#C9A84C" stroke-width="0.5" opacity="0.7"/>
+  <rect x="4" y="4" width="16" height="16" fill="#C9A84C" opacity="0.2"/>
+  <rect x="338" y="4" width="16" height="16" fill="#C9A84C" opacity="0.2"/>
+  <rect x="4" y="160" width="16" height="16" fill="#C9A84C" opacity="0.2"/>
+  <rect x="338" y="160" width="16" height="16" fill="#C9A84C" opacity="0.2"/>
+</svg>
