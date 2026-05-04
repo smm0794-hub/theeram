@@ -1,5 +1,6 @@
 'use client'
 
+import React from 'react'
 import { EventType, EVENT_TYPES, EVENT_TYPE_LABELS } from '@/lib/supabase'
 
 export type GuestRange = 'intimate' | 'medium' | 'large' | 'grand' | ''

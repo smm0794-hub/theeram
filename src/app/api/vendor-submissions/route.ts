@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
-import { createServiceClient, supabase } from '@/lib/supabase'
+import { createServiceClient } from '@/lib/supabase'
 
 function isAuthed(): boolean {
   try {

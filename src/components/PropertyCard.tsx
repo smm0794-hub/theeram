@@ -2,9 +2,8 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Property, PROPERTY_TYPE_LABELS, EVENT_TYPE_LABELS } from '@/lib/supabase'
+import { Property, PROPERTY_TYPE_LABELS, EVENT_TYPE_LABELS, supabase } from '@/lib/supabase'
 import GratitudeModal from './GratitudeModal'
-import { supabase } from '@/lib/supabase'
 
 interface Props {
   property: Property

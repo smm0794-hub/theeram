@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { Property, EVENT_TYPE_LABELS } from '@/lib/supabase'
 
 interface Props {
