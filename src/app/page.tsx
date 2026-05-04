@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { supabase, Property, EventType, EVENT_TYPE_LABELS } from '@/lib/supabase'
 import PropertyCard from '@/components/PropertyCard'
 import LandmarkHero from '@/components/LandmarkHero'
