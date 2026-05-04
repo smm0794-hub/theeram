@@ -8,6 +8,7 @@ interface Props {
   onClose: () => void
   property: Property
   eventType: string
+  onWhatsApp: () => void
 }
 
 const UPI_ID = 'smm0794@okhdfcbank'
@@ -15,7 +16,7 @@ const UPI_NAME = 'Theeram'
 const UPI_AMOUNT = '20'
 const UPI_NOTE = 'Theeram+coffee'
 
-export default function GratitudeModal({ isOpen, onClose, property, eventType }: Props) {
+export default function GratitudeModal({ isOpen, onClose, property, eventType, onWhatsApp }: Props) {
   if (!isOpen) return null
 
   function openWhatsApp() {
