@@ -1,4 +1,4 @@
-﻿import { createClient } from '@supabase/supabase-js'
+import { createClient } from '@supabase/supabase-js'
 
 export type PropertyType =
   | 'villa_with_pool'
@@ -161,21 +161,23 @@ export const VENDOR_CATEGORIES: VendorCategory[] = [
 ]
 
 export const VENDOR_CATEGORY_ICONS: Record<VendorCategory, string> = {
-  event_management: 'ðŸŽª',
-  photography_video: 'ðŸ“¸',
-  catering: 'ðŸ½ï¸',
-  decoration_florals: 'ðŸŒ¸',
-  beauty_styling: 'ðŸ’„',
+  event_management: '🎪',
+  photography_video: '📸',
+  catering: '🍽️',
+  decoration_florals: '🌸',
+  beauty_styling: '💄',
 }
+
+// Public client — used on landing page and detail page
+export const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
-// Service role client â€” only used in API routes (server-side)
+// Service role client — only used in API routes (server-side)
 export function createServiceClient() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 }
-
