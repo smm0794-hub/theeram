@@ -85,14 +85,14 @@ export async function GET() {
       .eq('is_active', true)
 
     // Active vendors count
-    const { count: activeVendors } = await db
-      .from('vendors')
-      .select('*', { count: 'exact', head: true })
-      .eq('is_active', true)
-      .throwOnError()
-      .maybeSingle()
-      .then(() => ({ count: 0 }))
-      .catch(() => ({ count: 0 }))
+    let activeVendors = 0
+    try {
+      const { count } = await db
+        .from('vendors')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_active', true)
+      activeVendors = count ?? 0
+    } catch {}
 
     // Pending vendor submissions
     const { count: pendingVendors } = await db
