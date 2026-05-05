@@ -216,6 +216,9 @@ export default function HomePage() {
         <Link href="/services" style={{ flex: 1, textAlign: 'center', padding: '10px 0', borderRadius: 12, border: '1px solid #D6C9B8', color: '#7C5C3E', fontSize: 13, fontWeight: 500, textDecoration: 'none' }}>
           ✨ Services
         </Link>
+        <Link href="/list" style={{ flex: 1, textAlign: 'center', padding: '10px 0', borderRadius: 12, border: '1px solid #D6C9B8', color: '#7C5C3E', fontSize: 13, fontWeight: 500, textDecoration: 'none' }}>
+          + List
+        </Link>
       </div>
     </main>
   )

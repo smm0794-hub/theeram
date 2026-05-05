@@ -41,16 +41,11 @@ export default function LandmarkHero({ properties }: Props) {
   return (
     <div
       ref={containerRef}
-      style={{ position: 'relative', width: '100%', height: 'clamp(300px, 52vw, 500px)', overflow: 'hidden', backgroundColor: '#f2ead4' }}
+      style={{ position: 'relative', width: '100%', height: 'clamp(320px, 60vw, 520px)', overflow: 'hidden', backgroundColor: '#f2ead4' }}
     >
-      {/*
-        Single SVG — image and pins share the same coordinate space.
-        preserveAspectRatio="xMidYMid slice" centres the map and fills the container.
-        Pins are placed using the same SVG_W x SVG_H coordinate system as the map.
-      */}
       <svg
         viewBox={`0 0 ${SVG_W} ${SVG_H}`}
-        preserveAspectRatio="xMidYMid slice"
+        preserveAspectRatio="xMidYMin slice"
         style={{ width: '100%', height: '100%', display: 'block' }}
         onClick={() => setTooltip(null)}
       >
@@ -60,7 +55,7 @@ export default function LandmarkHero({ properties }: Props) {
           y={0}
           width={SVG_W}
           height={SVG_H}
-          preserveAspectRatio="xMidYMid slice"
+          preserveAspectRatio="xMidYMid meet"
         />
 
         {properties.map((p) => (
