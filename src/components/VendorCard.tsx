@@ -46,7 +46,7 @@ export default function VendorCard({ vendor, index }: Props) {
     <div
       style={{
         backgroundColor: 'white',
-        borderRadius: 16,
+        borderRadius: 24,
         border: vendor.is_featured ? '1.5px solid #C9A84C' : '0.5px solid #D6C9B8',
         overflow: 'hidden',
         position: 'relative',
@@ -96,7 +96,7 @@ export default function VendorCard({ vendor, index }: Props) {
           {vendor.whatsapp && (
             <button
               onClick={handleWhatsApp}
-              style={{ flex: 1, backgroundColor: '#25D366', color: 'white', fontWeight: 700, fontSize: 13, borderRadius: 10, height: 40, border: 'none', cursor: 'pointer' }}
+              style={{ flex: 1, backgroundColor: '#25D366', color: 'white', fontWeight: 700, fontSize: 13, borderRadius: 999, height: 40, border: 'none', cursor: 'pointer' }}
             >
               WhatsApp
             </button>
@@ -106,7 +106,7 @@ export default function VendorCard({ vendor, index }: Props) {
           {vendor.phone && (
             <button
               onClick={handlePhone}
-              style={{ flex: vendor.whatsapp ? 0 : 1, backgroundColor: 'transparent', color: '#7C5C3E', fontWeight: 600, fontSize: 13, borderRadius: 10, height: 40, border: '1px solid #D6C9B8', cursor: 'pointer', padding: '0 16px' }}
+              style={{ flex: vendor.whatsapp ? 0 : 1, backgroundColor: 'transparent', color: '#7C5C3E', fontWeight: 600, fontSize: 13, borderRadius: 999, height: 40, border: '1px solid #D6C9B8', cursor: 'pointer', padding: '0 16px' }}
             >
               📞 Call
             </button>
@@ -115,7 +115,7 @@ export default function VendorCard({ vendor, index }: Props) {
           {/* Share */}
           <button
             onClick={handleShare}
-            style={{ backgroundColor: 'transparent', color: '#7C5C3E', fontWeight: 600, fontSize: 13, borderRadius: 10, height: 40, width: 40, border: '1px solid #D6C9B8', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+            style={{ backgroundColor: 'transparent', color: '#7C5C3E', fontWeight: 600, fontSize: 13, borderRadius: 999, height: 40, width: 40, border: '1px solid #D6C9B8', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
             title="Share this vendor"
           >
             {copied ? '✓' : (

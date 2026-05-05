@@ -110,10 +110,10 @@ export default function ServicesPage() {
 
       {/* Bottom nav */}
       <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, backgroundColor: '#FAF7F2', borderTop: '0.5px solid #D6C9B8', padding: '10px 16px', display: 'flex', gap: 8, zIndex: 30 }}>
-        <Link href="/" style={{ flex: 1, textAlign: 'center', padding: '10px 0', borderRadius: 12, border: '1px solid #D6C9B8', color: '#7C5C3E', fontSize: 13, fontWeight: 500, textDecoration: 'none' }}>
+        <Link href="/" style={{ flex: 1, textAlign: 'center', padding: '10px 0', borderRadius: 999, border: '1px solid #D6C9B8', color: '#7C5C3E', fontSize: 13, fontWeight: 500, textDecoration: 'none' }}>
           🏡 Spaces
         </Link>
-        <Link href="/services" style={{ flex: 1, textAlign: 'center', padding: '10px 0', borderRadius: 12, backgroundColor: '#2C1A0E', color: 'white', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
+        <Link href="/services" style={{ flex: 1, textAlign: 'center', padding: '10px 0', borderRadius: 999, backgroundColor: '#2C1A0E', color: 'white', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
           ✨ Services
         </Link>
       </div>

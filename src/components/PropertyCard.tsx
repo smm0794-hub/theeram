@@ -60,7 +60,7 @@ export default function PropertyCard({ property, index }: Props) {
 
   return (
     <>
-      <div style={{ backgroundColor: 'white', borderRadius: 16, border: (property as any).is_featured ? '1.5px solid #C9A84C' : '0.5px solid #D6C9B8', overflow: 'hidden', position: 'relative' }}>
+      <div style={{ backgroundColor: 'white', borderRadius: 24, border: (property as any).is_featured ? '1.5px solid #C9A84C' : '0.5px solid #D6C9B8', overflow: 'hidden', position: 'relative' }}>
         {(property as any).is_featured && (
           <div style={{ position: 'absolute', top: 12, right: 12, backgroundColor: '#C9A84C', color: 'white', fontSize: 9, fontWeight: 700, padding: '3px 8px', borderRadius: 999, letterSpacing: '0.05em', zIndex: 2 }}>
             EDITOR&apos;S PICK
@@ -71,7 +71,7 @@ export default function PropertyCard({ property, index }: Props) {
         <Link href={`/property/${property.slug}`} style={{ display: 'block', position: 'relative', height: 180, overflow: 'hidden' }}>
           <img src={illustrationSrc} alt={PROPERTY_TYPE_LABELS[property.property_type] ?? 'Property'} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
           {firstEvent && (
-            <span style={{ position: 'absolute', bottom: 12, left: 12, backgroundColor: '#2C1A0E', color: 'white', fontSize: 11, padding: '4px 10px', borderRadius: 999 }}>
+            <span style={{ position: 'absolute', bottom: 12, left: 12, backgroundColor: '#2C1A0E', color: 'white', fontSize: 11, padding: '4px 12px', borderRadius: 999 }}>
               {EVENT_TYPE_LABELS[firstEvent as keyof typeof EVENT_TYPE_LABELS] ?? firstEvent}
             </span>
           )}
@@ -84,34 +84,31 @@ export default function PropertyCard({ property, index }: Props) {
             <p style={{ fontSize: 13, color: '#7C5C3E', marginBottom: 14, lineHeight: 1.4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{property.tagline}</p>
           </Link>
 
-          {/* Attribute icons */}
+          {/* Attribute chips — pill style */}
           {attrs && (
-            <div style={{ display: 'flex', gap: 16, marginBottom: 12, flexWrap: 'wrap' }}>
-              {/* Guest count — most important, shown first */}
+            <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
               {attrs.max_guests_day_event > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-                  <svg viewBox="0 0 16 16" fill="none" width={16} height={16}><path d="M8 7a3 3 0 100-6 3 3 0 000 6zM2 14c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="#6B8F71" strokeWidth="1.2" strokeLinecap="round"/></svg>
-                  <span style={{ fontSize: 10, color: '#6B8F71' }}>Up to {attrs.max_guests_day_event}</span>
-                </div>
+                <span style={{ fontSize: 11, color: '#6B8F71', backgroundColor: '#f0f7f1', border: '1px solid #c8e0cc', borderRadius: 999, padding: '3px 10px' }}>
+                  👥 {attrs.max_guests_day_event}
+                </span>
               )}
               {[
-                { type: 'rooms', available: attrs.room_count > 0, label: attrs.room_count > 0 ? `${attrs.room_count}BR` : 'Rooms' },
-                { type: 'pool', available: attrs.has_pool, label: 'Pool' },
-                { type: 'hall', available: attrs.has_ac_hall, label: 'AC Hall' },
-                { type: 'lawn', available: attrs.has_open_lawn, label: 'Lawn' },
-                { type: 'alcohol', available: attrs.alcohol_allowed, label: 'Alcohol' },
-              ].map(({ type, available, label }) => (
-                <div key={type} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-                  <Icon type={type} available={available} />
-                  <span style={{ fontSize: 10, color: available ? '#6B8F71' : '#D6C9B8' }}>{label}</span>
-                </div>
+                { available: attrs.room_count > 0, label: attrs.room_count > 0 ? `${attrs.room_count} BR` : null },
+                { available: attrs.has_pool, label: 'Pool' },
+                { available: attrs.has_ac_hall, label: 'AC Hall' },
+                { available: attrs.has_open_lawn, label: 'Lawn' },
+                { available: attrs.alcohol_allowed, label: 'Alcohol' },
+              ].filter(({ available, label }) => available && label).map(({ label }) => (
+                <span key={label} style={{ fontSize: 11, color: '#6B8F71', backgroundColor: '#f0f7f1', border: '1px solid #c8e0cc', borderRadius: 999, padding: '3px 10px' }}>
+                  {label}
+                </span>
               ))}
             </div>
           )}
 
-          {/* Price */}
-          <div style={{ textAlign: 'right', marginBottom: 12 }}>
-            <span style={{ fontSize: 12, color: '#7C5C3E', fontStyle: 'italic' }}>
+          {/* Price pill */}
+          <div style={{ marginBottom: 12 }}>
+            <span style={{ fontSize: 11, color: '#7C5C3E', backgroundColor: '#FAF7F2', border: '1px solid #D6C9B8', borderRadius: 999, padding: '3px 10px', fontStyle: 'italic' }}>
               From {property.price_guide?.split('–')[0] ?? '₹12,000'} / day
             </span>
           </div>
@@ -120,13 +117,13 @@ export default function PropertyCard({ property, index }: Props) {
           <div style={{ display: 'flex', gap: 8 }}>
             <button
               onClick={handleWhatsApp}
-              style={{ flex: 1, backgroundColor: '#25D366', color: 'white', fontWeight: 700, fontSize: 14, borderRadius: 12, height: 44, border: 'none', cursor: 'pointer' }}
+              style={{ flex: 1, backgroundColor: '#25D366', color: 'white', fontWeight: 700, fontSize: 13, borderRadius: 999, height: 44, border: 'none', cursor: 'pointer' }}
             >
               Check availability on WhatsApp
             </button>
             <button
               onClick={handleShare}
-              style={{ width: 44, height: 44, borderRadius: 12, border: '1px solid #D6C9B8', backgroundColor: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#7C5C3E', flexShrink: 0 }}
+              style={{ width: 44, height: 44, borderRadius: 999, border: '1px solid #D6C9B8', backgroundColor: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#7C5C3E', flexShrink: 0 }}
               title="Share"
             >
               {copied ? '✓' : (
