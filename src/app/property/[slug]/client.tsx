@@ -46,7 +46,7 @@ export default function PropertyDetailClient({ slug }: { slug: string }) {
 
   async function handleWhatsApp() {
     if (!property) return
-    await supabase.from('inquiries').insert({ property_id: property.id, event_type: property.property_event_types?.[0]?.event_type ?? 'general' }).catch(() => {})
+    try { await supabase.from('inquiries').insert({ property_id: property.id, event_type: property.property_event_types?.[0]?.event_type ?? 'general' }) } catch {}
     setShowModal(true)
   }
 
