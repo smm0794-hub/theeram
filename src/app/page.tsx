@@ -238,7 +238,7 @@ export default function HomePage() {
       {menuOpen && (
         <div style={{ background: C.cream, borderBottom: `1px solid ${C.cream3}`, padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 18 }} onClick={() => setMenuOpen(false)}>
           {[['Spaces', '/'], ['Services', '/services'], ['About', '/about'], ['List your space', '/list'], ['List your service', '/join']].map(([label, href]) => (
-            <Link key={label} href={href} style={{ ...s.sans, fontSize: 15, color: C.text, textDecoration: 'none', fontWeight: label.startsWith('List') ? 400 : 500, color: label.startsWith('List') ? C.muted : C.text } as React.CSSProperties}>{label}</Link>
+            <Link key={label} href={href} onClick={() => setMenuOpen(false)} style={{ ...s.sans, fontSize: 15, color: label.startsWith('List') ? C.muted : C.text, textDecoration: 'none', fontWeight: label.startsWith('List') ? 400 : 500 } as React.CSSProperties}>{label}</Link>
           ))}
         </div>
       )}
