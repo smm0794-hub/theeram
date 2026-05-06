@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Property, EVENT_TYPE_LABELS } from '@/lib/supabase'
+import { Property } from '@/lib/supabase'
+import { C, sans, serif } from '@/lib/design'
 
 interface Props {
   isOpen: boolean
@@ -11,91 +12,109 @@ interface Props {
   onWhatsApp: () => void
 }
 
-const UPI_ID = 'smm0794@okhdfcbank'
-const UPI_NAME = 'Theeram'
-const UPI_AMOUNT = '20'
-const UPI_NOTE = 'Theeram+coffee'
+const STORAGE_KEY = 'theeram_coffee_done'
+const RESET_DAYS = 30
+
+function hasPaidOrSkipped(): boolean {
+  if (typeof window === 'undefined') return false
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return false
+    const { ts } = JSON.parse(raw)
+    return (Date.now() - ts) / (1000 * 60 * 60 * 24) < RESET_DAYS
+  } catch { return false }
+}
+
+function markDone() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ ts: Date.now() })) } catch {}
+}
+
+function QRToggle() {
+  const [show, setShow] = useState(false)
+  return (
+    <div style={{ textAlign: 'center' }}>
+      <button onClick={() => setShow(v => !v)} style={{ ...sans, fontSize: 11, color: C.muted, background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>
+        {show ? 'Hide QR' : 'or scan QR instead'}
+      </button>
+      {show && (
+        <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+          <div style={{ width: 88, height: 88, border: `1px solid ${C.cream3}`, overflow: 'hidden' }}>
+            <img src="/upi-qr.png" alt="UPI QR" style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
+          </div>
+          <p style={{ ...sans, fontSize: 11, color: C.muted }}>GPay · PhonePe · any UPI app</p>
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function GratitudeModal({ isOpen, onClose, property, eventType, onWhatsApp }: Props) {
-  if (!isOpen) return null
+  const [skip, setSkip] = useState(false)
+  const [thanked, setThanked] = useState(false)
 
-  function openWhatsApp() {
-    const eventLabel = EVENT_TYPE_LABELS[eventType as keyof typeof EVENT_TYPE_LABELS] ?? eventType
-    const message = encodeURIComponent(
-      `Hi! I found ${property.name} on Theeram and I'm interested in booking for a ${eventLabel}. Could you share availability and pricing? Thank you!`
-    )
-    window.open(`https://wa.me/${property.owner_whatsapp}?text=${message}`, '_blank')
-    onClose()
+  useEffect(() => {
+    if (isOpen) {
+      const done = hasPaidOrSkipped()
+      setSkip(done)
+      if (done) { onWhatsApp(); onClose() }
+    }
+  }, [isOpen])
+
+  if (!isOpen || skip) return null
+
+  function handleUPI() {
+    window.location.href = `upi://pay?pa=smm0794@okhdfcbank&pn=Theeram&am=20&cu=INR&tn=Theeram+coffee`
+    markDone()
+    setTimeout(() => setThanked(true), 800)
   }
 
-  function openUPI() {
-    const upiUrl = `upi://pay?pa=${UPI_ID}&pn=${UPI_NAME}&am=${UPI_AMOUNT}&cu=INR&tn=${UPI_NOTE}`
-    window.location.href = upiUrl
-  }
+  function proceed() { markDone(); onWhatsApp(); onClose() }
+
+  if (thanked) return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(22,48,35,.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }} onClick={proceed}>
+      <div style={{ background: 'white', width: 300, padding: '32px 24px', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+        <div style={{ ...serif, fontSize: 32, color: C.gold, marginBottom: 12 }}>🪔</div>
+        <h2 style={{ ...serif, fontSize: 20, color: C.text, fontWeight: 400, marginBottom: 10, lineHeight: 1.3 }}>Thank you for supporting Theeram.</h2>
+        <p style={{ ...sans, fontSize: 13, color: C.muted, lineHeight: 1.7, marginBottom: 24 }}>You're helping keep this little corner of Kerala independent and free.</p>
+        <button onClick={proceed} style={{ ...sans, width: '100%', background: C.wa, color: 'white', fontSize: 11, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', padding: '13px 0', border: 'none', cursor: 'pointer' }}>Continue to WhatsApp</button>
+      </div>
+    </div>
+  )
 
   return (
-    <div
-      style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, backgroundColor: 'rgba(44,26,14,0.65)' }}
-      onClick={onClose}
-    >
-      <div
-        style={{ backgroundColor: 'white', borderRadius: 20, width: 300, padding: 24, textAlign: 'center' }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Top label */}
-        <p style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#7C5C3E', marginBottom: 12 }}>
-          You found your space
-        </p>
-
-        {/* Headline */}
-        <p style={{ fontFamily: 'Georgia, serif', fontSize: 16, color: '#2C1A0E', lineHeight: 1.4, marginBottom: 20 }}>
-          Connecting you to {property.name} on WhatsApp
-        </p>
-
-        {/* QR code — for scanning on desktop */}
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
-          <div style={{ width: 88, height: 88, borderRadius: 10, border: '1px solid #D6C9B8', overflow: 'hidden' }}>
-            <img src="/upi-qr.png" alt="UPI QR Code" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          </div>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(22,48,35,.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }} onClick={onClose}>
+      <div style={{ background: 'white', width: 300, padding: '28px 22px', display: 'flex', flexDirection: 'column', gap: 14 }} onClick={e => e.stopPropagation()}>
+        {/* Gold top rule */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ flex: 1, height: 1, background: C.cream3 }}/>
+          <span style={{ ...sans, fontSize: 9, color: C.terra, letterSpacing: '.1em', textTransform: 'uppercase' }}>You found your space</span>
+          <div style={{ flex: 1, height: 1, background: C.cream3 }}/>
         </div>
 
-        <p style={{ fontSize: 13, color: '#7C5C3E', marginBottom: 4 }}>Buy Theeram a coffee · ₹20</p>
-        <p style={{ fontSize: 11, color: '#B4A898', marginBottom: 16 }}>Scan with any UPI app · or tap below</p>
+        <h2 style={{ ...serif, fontSize: 17, color: C.text, fontWeight: 400, lineHeight: 1.4, textAlign: 'center' }}>
+          Buy Theeram a coffee<br/>
+          <span style={{ ...sans, fontSize: 12, color: C.muted, fontWeight: 300 }}>Keep this directory free · ₹20</span>
+        </h2>
 
-        {/* UPI deep link — opens UPI app directly on phone */}
-        <button
-          onClick={openUPI}
-          style={{ width: '100%', backgroundColor: '#FAF7F2', color: '#2C1A0E', fontWeight: 600, fontSize: 14, borderRadius: 12, height: 44, border: '1px solid #D6C9B8', cursor: 'pointer', marginBottom: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
-        >
-          <svg viewBox="0 0 24 24" width={18} height={18} fill="none">
-            <rect width="24" height="24" rx="4" fill="#5F259F"/>
-            <path d="M12 5L7 12h4v2l5-7h-4V5z" fill="white"/>
-          </svg>
+        {/* UPI pay button */}
+        <button onClick={handleUPI} style={{ ...sans, width: '100%', background: 'linear-gradient(135deg,#5F259F,#8B3FC8)', color: 'white', fontSize: 13, fontWeight: 700, padding: '13px 0', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+          <svg viewBox="0 0 20 20" fill="none" width={16} height={16}><rect width="20" height="20" rx="3" fill="rgba(255,255,255,.2)"/><path d="M10 3L5 12h4v2l7-9h-5V3z" fill="white"/></svg>
           Pay ₹20 with UPI
         </button>
 
-        <p style={{ fontSize: 10, color: '#B4A898', marginBottom: 16 }}>Opens GPay, PhonePe, Paytm or any UPI app</p>
+        <QRToggle/>
 
-        {/* Divider */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-          <div style={{ flex: 1, height: 1, backgroundColor: '#D6C9B8' }} />
-          <span style={{ fontSize: 11, color: '#B4A898' }}>then</span>
-          <div style={{ flex: 1, height: 1, backgroundColor: '#D6C9B8' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ flex: 1, height: 1, background: C.cream3 }}/>
+          <span style={{ ...sans, fontSize: 10, color: C.muted }}>then</span>
+          <div style={{ flex: 1, height: 1, background: C.cream3 }}/>
         </div>
 
-        {/* WhatsApp CTA — primary action */}
-        <button
-          onClick={openWhatsApp}
-          style={{ width: '100%', backgroundColor: '#25D366', color: 'white', fontWeight: 700, fontSize: 14, borderRadius: 12, height: 48, border: 'none', cursor: 'pointer', marginBottom: 12 }}
-        >
+        <button onClick={proceed} style={{ ...sans, width: '100%', background: C.wa, color: 'white', fontSize: 11, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', padding: '13px 0', border: 'none', cursor: 'pointer' }}>
           Continue to WhatsApp
         </button>
 
-        {/* Skip */}
-        <button
-          onClick={openWhatsApp}
-          style={{ fontSize: 12, color: '#B4A898', textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer' }}
-        >
+        <button onClick={proceed} style={{ ...sans, fontSize: 11, color: C.muted, textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'center' }}>
           Skip for now
         </button>
       </div>

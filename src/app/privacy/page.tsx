@@ -1,102 +1,45 @@
 import Link from 'next/link'
 import { Metadata } from 'next'
+import Header from '@/components/Header'
 
-export const metadata: Metadata = {
-  title: 'Privacy Policy | Theeram Spaces',
-  description: 'How Theeram Spaces collects, uses and protects your data.',
-}
+export const metadata: Metadata = { title:'Privacy Policy | Theeram Spaces', description:'How Theeram Spaces collects, uses and protects your data.' }
+
+const C = { green:'#1C3A2B',cream:'#F5F0E8',cream3:'#E5DFD0',terra:'#9B3D1E',text:'#1C1C1A',muted:'#6B5E4E' }
+const serif = { fontFamily:'Georgia,serif' } as const
+const sans = { fontFamily:'system-ui,sans-serif' } as const
+
+const sections = [
+  { title:'What we collect', body:`When you use Theeram Spaces, we may collect:\n\n• Inquiry data: When you tap "Talk to owner," we log the property and event type with a timestamp. We do not collect your name or phone number.\n\n• Vendor applications: Business name, category, contact details, and description submitted via /join.\n\n• Property submissions: Details submitted via /list.\n\n• Technical data: Standard server logs including IP address and pages visited, collected by our hosting provider (Vercel).` },
+  { title:'What we do not collect', body:'We do not collect your name, phone number, or WhatsApp number as a visitor. We do not collect payment card details, location data, or data from children under 18.' },
+  { title:'How we use your data', body:'Inquiry logs are used solely to understand which properties are most popular, so we can improve the directory. Vendor and property submission data is used to review and respond to listing requests.' },
+  { title:'Data sharing', body:'We do not sell, rent, or share your data with any third party for commercial purposes. Third parties who may process data: Vercel (hosting), Supabase (database), Cloudinary (image hosting). All are GDPR-compliant.' },
+  { title:'Data retention', body:'Inquiry logs are retained for 12 months then deleted. Vendor submissions are retained for 24 months. You may request deletion at any time.' },
+  { title:'Your rights', body:'Under the Indian Digital Personal Data Protection Act (DPDP) 2023, you have the right to know what data we hold, request correction or deletion, and withdraw consent at any time.' },
+  { title:'Contact', body:'For any privacy-related requests, contact us at smm0794@gmail.com. We will respond within 7 working days.' },
+]
 
 export default function PrivacyPage() {
   return (
-    <main style={{ minHeight: '100vh', backgroundColor: '#FAF7F2', padding: '0 0 60px' }}>
-      <header style={{ borderBottom: '0.5px solid #D6C9B8', padding: '12px 16px', display: 'flex', gap: 12, alignItems: 'center' }}>
-        <Link href="/" style={{ color: '#7C5C3E', display: 'flex', textDecoration: 'none' }}>
-          <svg viewBox="0 0 20 20" fill="none" width={20} height={20} stroke="currentColor" strokeWidth={2}><path d="M12 5L7 10l5 5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-        </Link>
-        <span style={{ fontFamily: 'Georgia, serif', fontSize: 18, color: '#2C1A0E' }}>Privacy Policy</span>
-      </header>
-
-      <div style={{ padding: '24px 16px', maxWidth: 640, margin: '0 auto' }}>
-        <p style={{ fontSize: 11, color: '#B4A898', marginBottom: 24 }}>Last updated: {new Date().toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-
-        <p style={{ fontSize: 14, color: '#7C5C3E', lineHeight: 1.8, marginBottom: 28 }}>
-          Theeram Spaces is a curated directory of event spaces and services in Pala, Kerala. This policy explains what data we collect, why we collect it, and how we use it. We keep this simple because we are a small independent platform, not a corporation.
+    <div style={{ background:C.cream,minHeight:'100vh',paddingBottom:48 }}>
+      <Header/>
+      <div style={{ background:C.green,padding:'32px 20px 28px' }}>
+        <h1 style={{ ...serif,fontSize:26,color:'white',fontWeight:300 }}>Privacy Policy</h1>
+      </div>
+      <div style={{ padding:'24px 16px 0',maxWidth:640,margin:'0 auto' }}>
+        <p style={{ ...sans,fontSize:11,color:C.muted,marginBottom:24 }}>Last updated: {new Date().toLocaleDateString('en-IN',{year:'numeric',month:'long',day:'numeric'})}</p>
+        <p style={{ ...sans,fontSize:14,color:C.muted,lineHeight:1.8,marginBottom:28,fontWeight:300 }}>
+          Theeram Spaces is a curated directory of event spaces and services in Pala, Kerala. This policy explains what data we collect, why, and how we use it.
         </p>
-
-        {[
-          {
-            title: 'What we collect',
-            body: `When you use Theeram Spaces, we may collect the following:
-
-• Inquiry data: When you tap "Check availability on WhatsApp," we log the property you enquired about and the event type you selected, along with a timestamp. We do not collect your name, phone number, or any personal identifier.
-
-• Vendor applications: When a vendor submits a listing request through /join, we collect the business name, category, contact details (WhatsApp, phone, email), description, and any other information voluntarily provided in the form.
-
-• UPI payment intent: When you tap the "Pay with UPI" button, we log the timestamp and the property you were viewing. We do not process, receive, or store payment details. All payments go directly to the platform operator's UPI account.
-
-• Technical data: Standard web server logs including IP address, browser type, and pages visited. This is collected automatically by our hosting provider (Vercel) and is not used by us for profiling.`
-          },
-          {
-            title: 'What we do not collect',
-            body: `We do not collect:
-• Your name, phone number, or WhatsApp number as a visitor
-• Payment card details or bank information
-• Cookies beyond what is strictly necessary for the site to function
-• Location data
-• Any data from children under 18`
-          },
-          {
-            title: 'How we use your data',
-            body: `Inquiry logs are used solely to understand which properties and event types are most popular, so we can improve the directory. This data is never shared with third parties, advertisers, or property owners.
-
-Vendor application data is used to review and respond to listing requests. Approved vendor details are published on the site as submitted.`
-          },
-          {
-            title: 'Data sharing',
-            body: `We do not sell, rent, or share your data with any third party for commercial purposes. The only third parties who may process data are:
-
-• Vercel (hosting) — processes server logs per their privacy policy
-• Supabase (database) — stores inquiry and submission data per their privacy policy
-• Cloudinary (image hosting) — stores property and vendor photos
-
-All three are GDPR-compliant processors.`
-          },
-          {
-            title: 'Data retention',
-            body: `Inquiry logs are retained for 12 months and then deleted. Vendor submissions (approved or rejected) are retained for 24 months. You may request deletion of your data at any time by contacting us.`
-          },
-          {
-            title: 'Your rights',
-            body: `Under the Indian Digital Personal Data Protection Act (DPDP) 2023 and applicable law, you have the right to:
-
-• Know what data we hold about you
-• Request correction of inaccurate data
-• Request deletion of your data
-• Withdraw consent at any time
-
-To exercise any of these rights, contact us at the email below.`
-          },
-          {
-            title: 'Vendor data',
-            body: `If you are a vendor listed on Theeram Spaces, your business name, contact details, and description are publicly visible on the site. You may request removal or update of your listing at any time by contacting us. Removal will be completed within 7 working days.`
-          },
-          {
-            title: 'Contact',
-            body: `For any privacy-related questions or requests, contact us at smm0794@gmail.com. We will respond within 7 working days.`
-          },
-        ].map(({ title, body }) => (
-          <section key={title} style={{ marginBottom: 28 }}>
-            <h2 style={{ fontFamily: 'Georgia, serif', fontSize: 16, color: '#2C1A0E', marginBottom: 10 }}>{title}</h2>
-            <p style={{ fontSize: 13, color: '#555', lineHeight: 1.8, whiteSpace: 'pre-line' }}>{body}</p>
+        {sections.map(({title,body})=>(
+          <section key={title} style={{ marginBottom:24,borderTop:`1px solid ${C.cream3}`,paddingTop:20 }}>
+            <h2 style={{ ...serif,fontSize:17,color:C.text,marginBottom:10,fontWeight:400 }}>{title}</h2>
+            <p style={{ ...sans,fontSize:13,color:C.muted,lineHeight:1.85,whiteSpace:'pre-line',fontWeight:300 }}>{body}</p>
           </section>
         ))}
-
-        <div style={{ borderTop: '0.5px solid #D6C9B8', paddingTop: 20, marginTop: 8 }}>
-          <p style={{ fontSize: 11, color: '#B4A898', lineHeight: 1.7 }}>
-            Theeram Spaces · Pala, Kerala · smm0794@gmail.com
-          </p>
+        <div style={{ borderTop:`1px solid ${C.cream3}`,paddingTop:16 }}>
+          <p style={{ ...sans,fontSize:11,color:C.muted }}>Theeram Spaces · Pala, Kerala · smm0794@gmail.com</p>
         </div>
       </div>
-    </main>
+    </div>
   )
 }

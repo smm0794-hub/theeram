@@ -2,121 +2,117 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { supabase, Vendor, VendorCategory, VENDOR_CATEGORIES, VENDOR_CATEGORY_LABELS, VENDOR_CATEGORY_ICONS } from '@/lib/supabase'
-import VendorCard from '@/components/VendorCard'
+import { supabase, Vendor, VENDOR_CATEGORY_LABELS, VENDOR_CATEGORIES, VendorCategory, VENDOR_CATEGORY_ICONS } from '@/lib/supabase'
+import { C, sans, serif } from '@/lib/design'
+import Header from '@/components/Header'
 
 export default function ServicesPage() {
   const [vendors, setVendors] = useState<Vendor[]>([])
-  const [activeCategory, setActiveCategory] = useState<VendorCategory>('event_management')
+  const [activeCategory, setActiveCategory] = useState<VendorCategory | 'all'>('all')
   const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
 
   useEffect(() => {
-    fetchVendors()
+    supabase.from('vendors').select('*').eq('is_active', true)
+      .order('is_featured', { ascending: false }).order('created_at', { ascending: false })
+      .then(({ data }) => { setVendors((data as Vendor[]) ?? []); setLoading(false) })
   }, [])
 
-  async function fetchVendors() {
-    try {
-      const { data, error } = await supabase
-        .from('vendors')
-        .select('*')
-        .eq('is_active', true)
-        .order('is_featured', { ascending: false })
-        .order('created_at', { ascending: false })
-      if (!error && data) setVendors(data as Vendor[])
-    } catch (e) { console.error(e) }
-    setLoading(false)
+  const filtered = vendors.filter(v => {
+    if (activeCategory !== 'all' && v.category !== activeCategory) return false
+    if (search.trim()) {
+      const q = search.toLowerCase()
+      return v.name.toLowerCase().includes(q) || v.tagline?.toLowerCase().includes(q)
+    }
+    return true
+  })
+
+  function handleWhatsApp(v: Vendor) {
+    const msg = encodeURIComponent(`Hi! I found ${v.name} on Theeram and I'm interested in your services.`)
+    window.open(`https://wa.me/${v.whatsapp}?text=${msg}`, '_blank')
   }
 
-  const filtered = vendors.filter((v) => v.category === activeCategory)
-
   return (
-    <main style={{ minHeight: '100vh', backgroundColor: '#FAF7F2' }}>
+    <div style={{ background: C.cream, minHeight: '100vh' }}>
+      <Header/>
 
-      {/* Header */}
-      <header style={{ position: 'sticky', top: 0, zIndex: 40, backgroundColor: '#FAF7F2', borderBottom: '0.5px solid #D6C9B8', padding: '10px 16px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-            <Link href="/" style={{ fontFamily: 'Georgia, serif', fontSize: 20, color: '#2C1A0E', textDecoration: 'none', letterSpacing: '-0.01em' }}>Theeram</Link>
-            <span style={{ color: '#C9A84C', fontSize: 14 }}>·</span>
-            <span style={{ fontSize: 11, color: '#7C5C3E', letterSpacing: '0.06em', textTransform: 'uppercase', fontWeight: 500 }}>Services</span>
-          </div>
-          <Link href="/join" style={{ fontSize: 12, color: '#D4735E', border: '1px solid #D4735E', borderRadius: 999, padding: '5px 12px', textDecoration: 'none', fontWeight: 500 }}>
-            List your service
-          </Link>
+      {/* Hero strip */}
+      <div style={{ background: C.green, padding: '36px 20px 32px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+          <div style={{ width: 16, height: 1, background: C.gold }}/>
+          <span style={{ ...sans, fontSize: 10, color: C.gold, letterSpacing: '.08em' }}>കൂട്ട്</span>
+          <div style={{ width: 16, height: 1, background: C.gold }}/>
         </div>
-      </header>
-
-      {/* Category tabs */}
-      <div style={{ backgroundColor: '#FAF7F2', paddingTop: 16, paddingBottom: 4, borderBottom: '0.5px solid #D6C9B8' }}>
-        <p style={{ padding: '0 16px', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#7C5C3E', marginBottom: 12 }}>
-          What do you need?
+        <h1 style={{ ...serif, fontSize: 28, color: 'white', fontWeight: 300, lineHeight: 1.2, marginBottom: 10 }}>
+          The people who<br/>make it happen.
+        </h1>
+        <p style={{ ...sans, fontSize: 13, color: 'rgba(255,255,255,.65)', lineHeight: 1.7, fontWeight: 300, maxWidth: 300, marginBottom: 20 }}>
+          From the photographer who has shot every wedding in your family to the cook who knows your grandmother's avial recipe.
         </p>
-        <div className="no-scrollbar" style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingLeft: 24, paddingRight: 16, paddingBottom: 12 }}>
-          {VENDOR_CATEGORIES.map((cat) => {
-            const active = activeCategory === cat
-            return (
-              <button
-                key={cat}
-                onClick={() => setActiveCategory(cat)}
-                style={{
-                  flexShrink: 0,
-                  padding: '10px 16px',
-                  borderRadius: 999,
-                  fontSize: 13,
-                  fontWeight: 500,
-                  border: active ? 'none' : '1px solid #7C5C3E',
-                  backgroundColor: active ? '#2C1A0E' : 'transparent',
-                  color: active ? 'white' : '#7C5C3E',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                }}
-              >
-                <span>{VENDOR_CATEGORY_ICONS[cat]}</span>
-                {VENDOR_CATEGORY_LABELS[cat]}
-              </button>
-            )
-          })}
-        </div>
+        <Link href="/join" style={{ ...sans, display: 'inline-block', background: 'transparent', color: C.gold, fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', padding: '10px 18px', border: `1px solid ${C.gold}`, textDecoration: 'none' }}>
+          + List your service
+        </Link>
       </div>
 
-      {/* Vendor count */}
-      <p style={{ padding: '12px 16px 4px', fontSize: 11, color: '#7C5C3E' }}>
-        {loading ? 'Loading...' : `${filtered.length} ${filtered.length === 1 ? 'vendor' : 'vendors'} in ${VENDOR_CATEGORY_LABELS[activeCategory]}`}
+      {/* Category filter */}
+      <div style={{ background: C.cream2, borderBottom: `1px solid ${C.cream3}`, padding: '0 0 0', overflowX: 'auto' }}>
+        <div style={{ display: 'flex', padding: '0 16px' }} className="no-scrollbar">
+          {[{ id: 'all', label: 'All makers' }, ...VENDOR_CATEGORIES.map(c => ({ id: c, label: VENDOR_CATEGORY_LABELS[c] }))].map(({ id, label }) => (
+            <button
+              key={id}
+              onClick={() => setActiveCategory(id as any)}
+              style={{ ...sans, flexShrink: 0, padding: '12px 14px', fontSize: 12, fontWeight: 500, background: 'none', border: 'none', cursor: 'pointer', borderBottom: activeCategory === id ? `2px solid ${C.terra}` : '2px solid transparent', color: activeCategory === id ? C.terra : C.muted, letterSpacing: '.01em', transition: 'all .15s' }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <style>{`.no-scrollbar::-webkit-scrollbar{display:none}`}</style>
+
+      {/* Search */}
+      <div style={{ padding: '12px 16px', position: 'relative' }}>
+        <svg viewBox="0 0 16 16" fill="none" width={13} height={13} stroke={C.muted} strokeWidth={1.4} strokeLinecap="round" style={{ position: 'absolute', left: 28, top: '50%', transform: 'translateY(-50%)' }}>
+          <circle cx="7" cy="7" r="5"/><path d="M11 11l2 2"/>
+        </svg>
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search makers..." style={{ width: '100%', border: `1px solid ${C.cream3}`, padding: '10px 12px 10px 34px', fontSize: 13, fontFamily: 'system-ui,sans-serif', background: 'white', outline: 'none', color: C.text, fontWeight: 300, boxSizing: 'border-box' as const }}/>
+      </div>
+
+      {/* Count */}
+      <p style={{ ...sans, fontSize: 11, color: C.muted, padding: '0 16px 8px' }}>
+        {loading ? 'Loading...' : `${filtered.length} ${filtered.length === 1 ? 'maker' : 'makers'}${activeCategory !== 'all' ? ` in ${VENDOR_CATEGORY_LABELS[activeCategory as VendorCategory]}` : ''}`}
       </p>
 
-      {/* Vendor cards */}
-      <section style={{ padding: '8px 16px 48px' }}>
-        {loading ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {[1, 2].map((i) => <div key={i} style={{ height: 320, backgroundColor: 'white', borderRadius: 16, border: '0.5px solid #D6C9B8' }} />)}
+      {/* Maker cards */}
+      <div style={{ padding: '0 16px 48px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {loading ? [1,2,3].map(i => <div key={i} style={{ height: 160, background: 'white', border: `1px solid ${C.cream3}` }}/>)
+        : filtered.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '40px 0' }}>
+            <p style={{ ...sans, fontSize: 14, color: C.muted, marginBottom: 10 }}>No makers found.</p>
+            <button onClick={() => { setActiveCategory('all'); setSearch('') }} style={{ ...sans, fontSize: 12, color: C.terra, background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>Clear filters</button>
           </div>
-        ) : filtered.length === 0 ? (
-          <div style={{ textAlign: 'center', paddingTop: 48 }}>
-            <p style={{ color: '#7C5C3E', fontSize: 14, marginBottom: 8 }}>No vendors listed yet in this category.</p>
-            <p style={{ color: '#B4A898', fontSize: 12, marginBottom: 20 }}>Know someone who should be here?</p>
-            <Link href="/join" style={{ fontSize: 13, color: '#D4735E', textDecoration: 'underline' }}>Suggest a vendor</Link>
+        ) : filtered.map(v => (
+          <div key={v.id} style={{ background: 'white', border: v.is_featured ? `1.5px solid ${C.gold}` : `1px solid ${C.cream3}`, padding: '18px 16px', position: 'relative' }}>
+            {v.is_featured && <div style={{ position: 'absolute', top: 0, left: 0, background: C.gold, padding: '3px 8px' }}><span style={{ ...sans, fontSize: 9, fontWeight: 700, color: C.text }}>Featured</span></div>}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 7 }}>
+              <div style={{ width: 8, height: 1, background: C.terra }}/>
+              <span style={{ ...sans, fontSize: 9, color: C.terra, letterSpacing: '.07em' }}>{VENDOR_CATEGORY_LABELS[v.category]}</span>
+              <div style={{ width: 8, height: 1, background: C.terra }}/>
+            </div>
+            <Link href={`/vendor/${v.slug}`} style={{ textDecoration: 'none' }}>
+              <div style={{ ...serif, fontSize: 19, fontWeight: 400, color: C.text, marginBottom: 4, lineHeight: 1.2 }}>{v.name}</div>
+              <div style={{ ...sans, fontSize: 12, color: C.muted, fontWeight: 300, lineHeight: 1.5, marginBottom: v.area_served ? 6 : 12 }}>{v.tagline}</div>
+            </Link>
+            {v.area_served && <div style={{ ...sans, fontSize: 11, color: C.muted, marginBottom: 12 }}>📍 {v.area_served}</div>}
+            {v.price_guide && <div style={{ ...sans, fontSize: 12, color: C.muted, fontStyle: 'italic', marginBottom: 12, fontWeight: 300 }}>{v.price_guide}</div>}
+            <div style={{ display: 'flex', gap: 8 }}>
+              {v.whatsapp && <button onClick={() => handleWhatsApp(v)} style={{ ...sans, flex: 1, background: C.green, color: 'white', fontSize: 10, fontWeight: 700, letterSpacing: '.09em', textTransform: 'uppercase', padding: '9px 0', border: 'none', cursor: 'pointer' }}>WhatsApp</button>}
+              {v.phone && <a href={`tel:${v.phone}`} style={{ ...sans, padding: '9px 12px', border: `1px solid ${C.cream3}`, color: C.text, fontSize: 10, fontWeight: 500, textDecoration: 'none', display: 'flex', alignItems: 'center' }}>📞 Call</a>}
+              <Link href={`/vendor/${v.slug}`} style={{ ...sans, padding: '9px 12px', border: `1px solid ${C.cream3}`, color: C.muted, fontSize: 10, fontWeight: 400, textDecoration: 'none', display: 'flex', alignItems: 'center' }}>More →</Link>
+            </div>
           </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {filtered.map((vendor, index) => (
-              <VendorCard key={vendor.id} vendor={vendor} index={index} />
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* Bottom nav */}
-      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, backgroundColor: '#FAF7F2', borderTop: '0.5px solid #D6C9B8', padding: '10px 16px', display: 'flex', gap: 8, zIndex: 30 }}>
-        <Link href="/" style={{ flex: 1, textAlign: 'center', padding: '10px 0', borderRadius: 999, border: '1px solid #D6C9B8', color: '#7C5C3E', fontSize: 13, fontWeight: 500, textDecoration: 'none' }}>
-          🏡 Spaces
-        </Link>
-        <Link href="/services" style={{ flex: 1, textAlign: 'center', padding: '10px 0', borderRadius: 999, backgroundColor: '#2C1A0E', color: 'white', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
-          ✨ Services
-        </Link>
+        ))}
       </div>
-    </main>
+    </div>
   )
 }
