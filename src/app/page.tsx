@@ -173,7 +173,7 @@ export default function HomePage() {
   }
 
   async function handleWhatsApp(p: Property) {
-    await supabase.from('inquiries').insert({ property_id: p.id, event_type: p.property_event_types?.[0]?.event_type ?? 'general' }).catch(() => {})
+    try { await supabase.from('inquiries').insert({ property_id: p.id, event_type: p.property_event_types?.[0]?.event_type ?? 'general' }) } catch {}
     const msg = encodeURIComponent(`Hi! I found ${p.name} on Theeram and I'm interested in booking. Could you share availability and pricing?`)
     window.open(`https://wa.me/${p.owner_whatsapp}?text=${msg}`, '_blank')
   }
