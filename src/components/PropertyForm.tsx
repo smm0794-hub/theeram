@@ -325,36 +325,9 @@ export default function PropertyForm({ initial }: Props) {
           )}
         </div>
 
-        {/* 8 — Map pin */}
+        {/* 8 — Status */}
         <div style={section}>
-          <p style={sectionTitle}>8 — Map pin</p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
-            <Field label="Pin X"><input type="number" value={pinX} onChange={(e) => setPinX(parseInt(e.target.value) || 0)} style={{ ...inputStyle, textAlign: 'center' }} /></Field>
-            <Field label="Pin Y"><input type="number" value={pinY} onChange={(e) => setPinY(parseInt(e.target.value) || 0)} style={{ ...inputStyle, textAlign: 'center' }} /></Field>
-          </div>
-          <div style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid #D6C9B8', touchAction: 'none' }}>
-            <svg
-              ref={mapRef}
-              viewBox="0 0 390 530"
-              style={{ width: '100%', cursor: 'crosshair', display: 'block' }}
-              onMouseDown={() => setDragging(true)}
-              onMouseUp={() => setDragging(false)}
-              onMouseLeave={() => setDragging(false)}
-              onMouseMove={handleMapMove}
-              onTouchStart={() => setDragging(true)}
-              onTouchEnd={() => setDragging(false)}
-              onTouchMove={handleMapMove}
-            >
-              <image href="/illustrations/landmarks/pala.svg" x={0} y={0} width={390} height={530} />
-              <circle cx={pinX} cy={pinY} r={10} fill="#D4735E" stroke="white" strokeWidth={2.5} />
-            </svg>
-          </div>
-          <p style={{ fontSize: 11, color: '#7C5C3E', marginTop: 6 }}>Drag the pin to set approximate location</p>
-        </div>
-
-        {/* 9 — Status */}
-        <div style={section}>
-          <p style={sectionTitle}>9 — Status</p>
+          <p style={sectionTitle}>8 — Status</p>
           <div style={{ backgroundColor: 'white', borderRadius: 12, border: '1px solid #D6C9B8', padding: '0 16px' }}>
             <Toggle
               label={isActive ? '🟢 Live — visible on site' : '⚪ Draft — hidden from public'}
