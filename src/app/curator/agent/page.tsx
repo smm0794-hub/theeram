@@ -78,38 +78,6 @@ INSERT INTO public.property_event_types (property_id,event_type)
 SELECT id,unnest(ARRAY[${types}]) FROM ins;`
 }
 
-const SYSTEM_PROMPT = `You are a venue discovery agent for Theeram Spaces — a curated event venue directory for Pala, Kerala.
-
-Search the web and find event spaces, party halls, villas, homestays, convention centres, and heritage homes in and around Pala, Kottayam district, Kerala. Also cover: Ettumanoor, Erattupetta, Kanjirappally, Changanassery, Bharananganam, Ramapuram.
-
-Return ONLY a valid JSON array. No preamble, no markdown fences. Raw JSON only.
-
-Each object must have exactly these fields:
-{
-  "name": string,
-  "type": "villa_with_pool|villa_without_pool|heritage_home|open_event_space|auditorium|river_frontage|lodging|resort",
-  "tagline": "one warm compelling sentence",
-  "description": "3-5 sentences, warm editorial tone as if written by a local who visited",
-  "phone": "with country code e.g. 919447000000",
-  "whatsapp": "same format, empty string if unknown",
-  "price_guide": "e.g. Contact owner for pricing",
-  "location": "area, Pala or nearby town",
-  "instagram": "full URL or empty string",
-  "maps_url": "Google Maps URL or empty string",
-  "room_count": 0, "bathroom_count": 0, "max_overnight": 0, "max_day": 0,
-  "has_pool": false, "has_ac_hall": false, "has_open_lawn": false,
-  "has_kitchen": false, "has_parking": false, "has_generator": false,
-  "alcohol_allowed": false, "outside_catering": false,
-  "ac_hall_capacity": 0, "parking_count": 0,
-  "event_types": ["staycation","family_gathering","wedding","corporate","birthday","retreat"],
-  "confidence": "high|medium|low",
-  "source": "URL or source name"
-}
-
-confidence: high = official website or multiple reliable sources with full details. medium = Justdial/Quickerala/Facebook with partial details. low = single mention, minimal details.
-
-Only include venues suitable for private events. No government buildings, schools, hospitals.`
-
 export default function AgentPage() {
   const [query, setQuery] = useState('event spaces party halls villas in Pala Kerala')
   const [scanning, setScanning] = useState(false)
@@ -131,25 +99,15 @@ export default function AgentPage() {
     addLog(`Scanning for: "${query}"`)
     addLog('Calling agent with web search enabled...')
     try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
+      const res = await fetch('/api/agent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 8000,
-          system: SYSTEM_PROMPT,
-          tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-          messages: [{ role: 'user', content: `Find all event venues for: "${query}". Search Google Maps, Justdial, Quickerala, Facebook, booking sites, local directories. Find as many as possible. Return only the JSON array.` }],
-        }),
+        body: JSON.stringify({ query }),
       })
-      if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message ?? `API ${res.status}`) }
       const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? `Error ${res.status}`)
       addLog('Agent completed. Parsing results...')
-      const text = data.content.map((b: any) => b.type === 'text' ? b.text : '').join('\n')
-      const clean = text.replace(/```json|```/g, '').trim()
-      const s = clean.indexOf('['), e2 = clean.lastIndexOf(']')
-      if (s === -1) throw new Error('No JSON array returned')
-      const parsed: any[] = JSON.parse(clean.slice(s, e2 + 1))
+      const parsed: any[] = data.venues
       addLog(`Found ${parsed.length} venues. Generating SQL...`)
       const processed: Venue[] = parsed.map((v, i) => {
         const venue: Venue = {
