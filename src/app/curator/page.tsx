@@ -186,8 +186,9 @@ export default function CuratorPage() {
       </div>
 
       {/* Quick links */}
-      <div style={{ padding: '12px 16px', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+      <div style={{ padding: '12px 16px', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8 }}>
         {[
+          { label: '🤖 Agent', href: '/curator/agent' },
           { label: '✨ Makers', href: '/curator/vendors' },
           { label: '📊 Analytics', href: '/curator/analytics' },
           { label: '📬 Submissions', href: '/curator/submissions' },
