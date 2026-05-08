@@ -13,10 +13,9 @@ export default function Header({ sticky = true }: Props) {
 
   return (
     <>
-      {/* Top announcement bar */}
-      <div style={{ background: C.green, padding: '6px 16px', display: 'flex', justifyContent: 'space-between' }}>
+      {/* Top bar — theeram wordmark only; town pages render their own dynamic top bar */}
+      <div style={{ background: C.green, padding: '6px 16px' }}>
         <span style={{ ...sans, fontSize: 10, color: 'rgba(255,255,255,.5)', letterSpacing: '.06em' }}>തീരം · theeram</span>
-        <span style={{ ...sans, fontSize: 10, color: 'rgba(255,255,255,.4)', letterSpacing: '.04em' }}>Pala · Meenachilar · Kottayam</span>
       </div>
 
       {/* Main header */}

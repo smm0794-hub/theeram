@@ -17,15 +17,18 @@ export default function AnalyticsPage() {
   const [selectedTown, setSelectedTown] = useState<string>('all')
   const [loading, setLoading] = useState(true)
   const [allInquiries, setAllInquiries] = useState<InquiryRow[]>([])
+  const [allViews, setAllViews] = useState<any[]>([])
 
   useEffect(() => {
     async function load() {
-      const [tr, ir] = await Promise.all([
+      const [tr, ir, vr] = await Promise.all([
         supabase.from('towns').select('id,name,slug,hero_bg_color').eq('is_active', true).order('sort_order'),
         supabase.from('inquiries').select('created_at,property_id,event_type,properties(name,slug,town_id,towns(name))').order('created_at', { ascending: false }),
+        supabase.from('property_views').select('property_id,viewed_at,properties(name,slug,town_id,towns(name))').order('viewed_at', { ascending: false }),
       ])
       if (!tr.error && tr.data) setTowns(tr.data as Town[])
       if (!ir.error && ir.data) setAllInquiries(ir.data as any)
+      if (!vr.error && vr.data) setAllViews(vr.data as any)
       setLoading(false)
     }
     load()
@@ -36,6 +39,11 @@ export default function AnalyticsPage() {
   const oneMonth = 30 * 24 * 60 * 60 * 1000
 
   // Filter inquiries by selected town
+  const filteredViews = allViews.filter(v => {
+    if (selectedTown === 'all') return true
+    return (v.properties as any)?.town_id === selectedTown
+  })
+
   const filtered = allInquiries.filter(i => {
     if (selectedTown === 'all') return true
     return (i.properties as any)?.town_id === selectedTown
@@ -45,16 +53,23 @@ export default function AnalyticsPage() {
   const monthTotal = filtered.filter(i => now - new Date(i.created_at).getTime() < oneMonth).length
   const allTime = filtered.length
 
-  // Top properties
-  const propCounts: Record<string, { name: string; slug: string; count: number; town_name: string }> = {}
+  // Top properties — enquiries + views
+  const propCounts: Record<string, { name: string; slug: string; enquiries: number; views: number; town_name: string }> = {}
   filtered.forEach(i => {
     const p = i.properties as any
     if (!p) return
     const key = i.property_id
-    if (!propCounts[key]) propCounts[key] = { name: p.name, slug: p.slug, count: 0, town_name: p.towns?.name ?? '' }
-    propCounts[key].count++
+    if (!propCounts[key]) propCounts[key] = { name: p.name, slug: p.slug, enquiries: 0, views: 0, town_name: p.towns?.name ?? '' }
+    propCounts[key].enquiries++
   })
-  const topProps = Object.values(propCounts).sort((a,b) => b.count - a.count).slice(0,10)
+  filteredViews.forEach(v => {
+    const p = v.properties as any
+    if (!p) return
+    const key = v.property_id
+    if (!propCounts[key]) propCounts[key] = { name: p.name, slug: p.slug, enquiries: 0, views: 0, town_name: p.towns?.name ?? '' }
+    propCounts[key].views++
+  })
+  const topProps = Object.values(propCounts).sort((a,b) => (b.enquiries + b.views) - (a.enquiries + a.views)).slice(0,10)
 
   // Event type breakdown
   const etCounts: Record<string, number> = {}
@@ -128,10 +143,18 @@ export default function AnalyticsPage() {
             </div>
 
             {/* Key stats */}
-            <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8,marginBottom:20 }}>
-              {[['This week',weekTotal],['This month',monthTotal],['All time',allTime]].map(([label,val]) => (
+            <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:12 }}>
+              {[['Enquiries (week)',weekTotal],['Enquiries (all)',allTime]].map(([label,val]) => (
                 <div key={label as string} style={{ background:'white',border:`1px solid ${C.cream3}`,padding:'14px 10px',textAlign:'center' }}>
                   <div style={{ fontFamily:'Georgia,serif',fontSize:26,color:C.terra,fontWeight:300,marginBottom:3 }}>{val}</div>
+                  <div style={{ ...sans,fontSize:9,color:C.muted,letterSpacing:'.06em' }}>{(label as string).toUpperCase()}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:20 }}>
+              {[['Page views (week)',filteredViews.filter(v=>now-new Date(v.viewed_at).getTime()<oneWeek).length],['Page views (all)',filteredViews.length]].map(([label,val]) => (
+                <div key={label as string} style={{ background:'white',border:`1px solid ${C.cream3}`,padding:'14px 10px',textAlign:'center' }}>
+                  <div style={{ fontFamily:'Georgia,serif',fontSize:26,color:'#2D7A4F',fontWeight:300,marginBottom:3 }}>{val}</div>
                   <div style={{ ...sans,fontSize:9,color:C.muted,letterSpacing:'.06em' }}>{(label as string).toUpperCase()}</div>
                 </div>
               ))}
@@ -172,16 +195,28 @@ export default function AnalyticsPage() {
               <div style={{ background:'white',border:`1px solid ${C.cream3}`,padding:'14px',marginBottom:16 }}>
                 <div style={{ ...sans,fontSize:10,color:C.muted,letterSpacing:'.07em',marginBottom:12 }}>TOP SPACES BY ENQUIRIES</div>
                 {topProps.map((p,i) => (
-                  <div key={p.slug} style={{ display:'flex',alignItems:'center',gap:10,marginBottom:10 }}>
-                    <div style={{ ...sans,fontSize:12,color:C.muted,width:16,textAlign:'right' as const }}>{i+1}</div>
-                    <div style={{ flex:1 }}>
-                      <div style={{ ...sans,fontSize:12,color:C.text,fontWeight:500 }}>{p.name}</div>
+                  <div key={p.slug} style={{ marginBottom:14 }}>
+                    <div style={{ display:'flex',alignItems:'center',gap:8,marginBottom:4 }}>
+                      <div style={{ ...sans,fontSize:11,color:C.muted,width:16,textAlign:'right' as const }}>{i+1}</div>
+                      <div style={{ ...sans,fontSize:12,color:C.text,fontWeight:500,flex:1 }}>{p.name}</div>
                       {selectedTown === 'all' && p.town_name && <div style={{ ...sans,fontSize:10,color:C.muted }}>{p.town_name}</div>}
                     </div>
-                    <div style={{ flex:2,background:C.cream2,borderRadius:2,overflow:'hidden' }}>
-                      <div style={{ height:6,background:C.terra,width:`${(p.count/topProps[0].count)*100}%`,transition:'width .3s' }}/>
+                    <div style={{ paddingLeft:24,display:'flex',gap:8 }}>
+                      <div style={{ flex:1 }}>
+                        <div style={{ ...sans,fontSize:9,color:C.muted,marginBottom:2 }}>VIEWS</div>
+                        <div style={{ background:C.cream2,borderRadius:2,overflow:'hidden',marginBottom:2 }}>
+                          <div style={{ height:5,background:'#2D7A4F',width:`${topProps[0].views>0?(p.views/topProps[0].views)*100:0}%`,transition:'width .3s' }}/>
+                        </div>
+                        <div style={{ ...sans,fontSize:11,fontWeight:600,color:'#2D7A4F' }}>{p.views}</div>
+                      </div>
+                      <div style={{ flex:1 }}>
+                        <div style={{ ...sans,fontSize:9,color:C.muted,marginBottom:2 }}>ENQUIRIES</div>
+                        <div style={{ background:C.cream2,borderRadius:2,overflow:'hidden',marginBottom:2 }}>
+                          <div style={{ height:5,background:C.terra,width:`${topProps[0].enquiries>0?(p.enquiries/topProps[0].enquiries)*100:0}%`,transition:'width .3s' }}/>
+                        </div>
+                        <div style={{ ...sans,fontSize:11,fontWeight:600,color:C.terra }}>{p.enquiries}</div>
+                      </div>
                     </div>
-                    <div style={{ ...sans,fontSize:12,fontWeight:600,color:C.text,minWidth:24,textAlign:'right' as const }}>{p.count}</div>
                   </div>
                 ))}
               </div>

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { supabase, Vendor, VendorSubmission, VENDOR_CATEGORY_LABELS, VENDOR_CATEGORIES, VENDOR_CATEGORY_ICONS, VendorCategory } from '@/lib/supabase'
+import { supabase, Vendor, VendorSubmission, VENDOR_CATEGORY_LABELS, VENDOR_CATEGORIES, VENDOR_CATEGORY_ICONS, VendorCategory, Town } from '@/lib/supabase'
 import Link from 'next/link'
 
 const C = { green:'#1C3A2B',cream:'#F5F0E8',cream2:'#EDE8DC',cream3:'#E5DFD0',gold:'#C9A84C',terra:'#9B3D1E',text:'#1C1C1A',muted:'#6B5E4E' }
@@ -10,13 +10,13 @@ const serif = { fontFamily:'Georgia,serif' } as const
 const inp: React.CSSProperties = { ...sans,width:'100%',border:`1px solid ${C.cream3}`,padding:'10px 12px',fontSize:13,background:C.cream,outline:'none',color:C.text,fontWeight:300,boxSizing:'border-box',marginBottom:10 }
 
 type Mode = 'list' | 'edit'
-type MainTab = 'makers' | 'submissions'
 
 function slug(s: string) { return s.toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'') }
 
 export default function CuratorVendorsPage() {
-  const [mainTab, setMainTab] = useState<MainTab>('makers')
   const [mode, setMode] = useState<Mode>('list')
+  const [townFilter, setTownFilter] = useState<string>('all')
+  const [towns, setTowns] = useState<Town[]>([])
   const [editing, setEditing] = useState<Partial<Vendor> | null>(null)
   const [vendors, setVendors] = useState<Vendor[]>([])
   const [submissions, setSubmissions] = useState<VendorSubmission[]>([])
@@ -28,12 +28,12 @@ export default function CuratorVendorsPage() {
 
   async function loadAll() {
     setLoading(true)
-    const [vr, sr] = await Promise.all([
+    const [vr, tr] = await Promise.all([
       supabase.from('vendors').select('*').order('is_featured', { ascending: false }).order('created_at', { ascending: false }),
-      supabase.from('vendor_submissions').select('*').order('created_at', { ascending: false }),
+      supabase.from('towns').select('*').eq('is_active', true).order('sort_order'),
     ])
     if (!vr.error) setVendors((vr.data ?? []) as Vendor[])
-    if (!sr.error) setSubmissions((sr.data ?? []) as VendorSubmission[])
+    if (!tr.error) setTowns((tr.data ?? []) as Town[])
     setLoading(false)
   }
 
@@ -181,24 +181,22 @@ export default function CuratorVendorsPage() {
         <div style={{ display:'flex',alignItems:'center',gap:10 }}>
           <Link href="/curator" style={{ ...sans,fontSize:12,color:C.muted,textDecoration:'none' }}>← Curator</Link>
           <span style={{ fontFamily:'Georgia,serif',fontSize:18,color:C.text }}>Makers</span>
-          {pending.length > 0 && <span style={{ ...sans,fontSize:10,background:C.terra,color:'white',padding:'2px 7px',fontWeight:600 }}>{pending.length} pending</span>}
-        </div>
+            </div>
         <button onClick={newVendor} style={{ ...sans,background:C.green,color:'white',fontSize:10,fontWeight:700,letterSpacing:'.1em',textTransform:'uppercase' as const,padding:'7px 14px',border:'none',cursor:'pointer' }}>+ Add</button>
       </div>
 
-      {/* Tab switcher */}
-      <div style={{ display:'flex',background:C.cream2,borderBottom:`1px solid ${C.cream3}` }}>
-        {[['makers','Makers'],['submissions','Submissions']].map(([t,l]) => (
-          <button key={t} onClick={() => setMainTab(t as MainTab)} style={{ ...sans,flex:1,padding:'11px 0',fontSize:12,fontWeight:500,background:'none',border:'none',cursor:'pointer',borderBottom:`2px solid ${mainTab===t?C.terra:'transparent'}`,color:mainTab===t?C.terra:C.muted }}>
-            {l}{t==='submissions'&&pending.length>0?` (${pending.length})`:''}
-          </button>
-        ))}
+      {/* Town filter */}
+      <div style={{ padding:'10px 16px 0',overflowX:'auto' }}>
+        <div style={{ display:'flex',gap:6,paddingBottom:8 }} className="no-scrollbar">
+          <button onClick={() => setTownFilter('all')} style={{ ...sans,flexShrink:0,padding:'5px 12px',border:`1px solid ${townFilter==='all'?C.green:C.cream3}`,background:townFilter==='all'?C.green:'white',color:townFilter==='all'?'white':C.muted,fontSize:10,cursor:'pointer' }}>All</button>
+          {towns.map(t => (
+            <button key={t.id} onClick={() => setTownFilter(t.id)} style={{ ...sans,flexShrink:0,padding:'5px 12px',border:`1px solid ${townFilter===t.id?t.hero_bg_color:C.cream3}`,background:townFilter===t.id?t.hero_bg_color:'white',color:townFilter===t.id?'white':C.muted,fontSize:10,cursor:'pointer' }}>{t.name}</button>
+          ))}
+        </div>
       </div>
 
-      {/* Makers tab */}
-      {mainTab === 'makers' && (
-        <div style={{ padding:'14px 16px',display:'flex',flexDirection:'column',gap:10 }}>
-          {loading ? [1,2,3].map(i => <div key={i} style={{ height:100,background:'white',border:`1px solid ${C.cream3}` }}/>) : vendors.map(v => (
+      <div style={{ padding:'8px 16px',display:'flex',flexDirection:'column',gap:10 }}>
+        {loading ? [1,2,3].map(i => <div key={i} style={{ height:100,background:'white',border:`1px solid ${C.cream3}` }}/>) : vendors.map(v => (
             <div key={v.id} style={{ background:'white',border:v.is_featured?`1.5px solid ${C.gold}`:`1px solid ${C.cream3}`,padding:14 }}>
               <div style={{ display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:8 }}>
                 <div>
@@ -221,41 +219,10 @@ export default function CuratorVendorsPage() {
               </div>
             </div>
           ))}
-        </div>
-      )}
-
-      {/* Submissions tab */}
-      {mainTab === 'submissions' && (
-        <div style={{ padding:'14px 16px',display:'flex',flexDirection:'column',gap:10 }}>
-          {loading ? [1,2].map(i => <div key={i} style={{ height:120,background:'white',border:`1px solid ${C.cream3}` }}/>) : submissions.length === 0 ? (
-            <p style={{ ...sans,fontSize:14,color:C.muted,textAlign:'center',padding:'40px 0' }}>No submissions yet.</p>
-          ) : submissions.map(s => (
-            <div key={s.id} style={{ background:'white',border:`1px solid ${C.cream3}`,padding:14 }}>
-              <div style={{ display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:8 }}>
-                <div>
-                  <div style={{ ...sans,fontSize:10,color:C.muted,marginBottom:2 }}>{VENDOR_CATEGORY_LABELS[s.category as VendorCategory]}</div>
-                  <div style={{ fontFamily:'Georgia,serif',fontSize:16,color:C.text,marginBottom:2 }}>{s.name}</div>
-                  {s.whatsapp && <div style={{ ...sans,fontSize:11,color:C.muted }}>📞 {s.whatsapp}</div>}
-                </div>
-                <span style={{ ...sans,fontSize:10,fontWeight:600,padding:'3px 8px',
-                  background:s.status==='pending'?'#fff9eb':s.status==='approved'?'#f0faf4':'#faf0eb',
-                  color:s.status==='pending'?'#8A7040':s.status==='approved'?'#2D7A4F':C.terra }}>
-                  {s.status}
-                </span>
-              </div>
-              {s.tagline && <div style={{ ...sans,fontSize:12,color:C.muted,marginBottom:10,fontWeight:300 }}>{s.tagline}</div>}
-              {s.status === 'pending' && (
-                <div style={{ display:'flex',gap:8 }}>
-                  <button onClick={() => approveSubmission(s)} style={{ ...sans,flex:1,background:C.green,color:'white',fontSize:11,fontWeight:700,padding:'8px 0',border:'none',cursor:'pointer' }}>✓ Approve & list</button>
-                  <button onClick={() => rejectSubmission(s.id)} style={{ ...sans,padding:'8px 14px',border:`1px solid ${C.terra}`,color:C.terra,fontSize:11,background:'none',cursor:'pointer' }}>Reject</button>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
+      </div>
 
       {toast && <div style={{ position:'fixed',bottom:24,left:'50%',transform:'translateX(-50%)',background:C.green,color:'white',...sans,fontSize:12,padding:'10px 20px',zIndex:50,whiteSpace:'nowrap' as const }}>{toast}</div>}
+      <style>{`.no-scrollbar::-webkit-scrollbar{display:none}`}</style>
     </div>
   )
 }
