@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import { supabase, Town } from '@/lib/supabase'
@@ -10,9 +10,9 @@ const PALA_FALLBACK: Town = {
   tagline: 'Where the Meenachilar bends and the tharavadu stands',
   description: '',
   hero_headline: 'Where the <em>Meenachilar</em> bends and the <em>tharavadu</em> stands.',
-  hero_subtext: 'A hand-curated home for Pala\'s most beloved venues — heritage tharavadus, riverside lawns, rubber-estate bungalows. Talk to the owners, the way it has always been done here.',
+  hero_subtext: 'A hand-curated home for Pala\'s most beloved venues - heritage tharavadus, riverside lawns, rubber-estate bungalows. Talk to the owners, the way it has always been done here.',
   why_here_heading: 'Why Pala?',
-  why_here_text: 'Pala has always been a place of gathering — of weddings under coconut palms, of sadhya served on banana leaves, of evenings that drift into conversations and meen curry shared from a single plate. Our spaces don\'t just host events. They carry the warmth of how Pala has always celebrated.',
+  why_here_text: 'Pala has always been a place of gathering - of weddings under coconut palms, of sadhya served on banana leaves, of evenings that drift into conversations and meen curry shared from a single plate.',
   stat_1_value: '45 min', stat_1_label: 'FROM KOTTAYAM',
   stat_2_value: '90 min', stat_2_label: 'FROM KOCHI',
   stat_3_value: '200+', stat_3_label: 'YEARS OF TRADITION',
@@ -39,17 +39,11 @@ export default function HomePage() {
   }, [])
 
   if (loading) return (
-    <div style={{ minHeight: '100vh', background: C.cream, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ width: 32, height: 32, border: `2px solid ${C.terra}`, borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin .8s linear infinite' }}/>
+    <div style={{ minHeight: '100vh', background: '#F5F0E8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ width: 32, height: 32, border: '2px solid #9B3D1E', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin .8s linear infinite' }}/>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   )
 
   return <TownPage town={town} allTowns={allTowns}/>
 }
-
-// ── Tokens ──────────────────────────────────────────────────────────────────
-const C = {
-  green:   '#1C3A2B',
-  green2:  '#163023',
-  cream:   '#F5F0E8',
