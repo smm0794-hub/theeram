@@ -144,7 +144,6 @@ export default function CuratorVendorsPage() {
         {field('Description', 'description', true)}
         {field('WhatsApp (with country code)', 'whatsapp')}
         {field('Phone', 'phone')}
-        {field('Email', 'email')}
         {field('Instagram URL', 'instagram_url')}
         {field('Price guide', 'price_guide')}
         {field('Area served', 'area_served')}
