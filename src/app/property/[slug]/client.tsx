@@ -99,6 +99,27 @@ export default function PropertyDetailClient({ slug }: { slug: string }) {
   return (
     <div style={{ background: C.cream, minHeight: '100vh', paddingBottom: 90 }}>
       <Header/>
+      {/* JSON-LD structured data */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'LocalBusiness',
+        name: property.name,
+        description: property.description ?? property.tagline,
+        url: `https://www.theeramspaces.in/property/${property.slug}`,
+        telephone: property.owner_whatsapp ? `+${property.owner_whatsapp}` : undefined,
+        image: property.photos?.[0],
+        priceRange: property.price_guide ?? '₹₹₹',
+        address: { '@type': 'PostalAddress', addressRegion: 'Kerala', addressCountry: 'IN' },
+        amenityFeature: [
+          property.property_attributes?.has_pool && { '@type': 'LocationFeatureSpecification', name: 'Swimming Pool', value: true },
+          property.property_attributes?.has_ac_hall && { '@type': 'LocationFeatureSpecification', name: 'AC Hall', value: true },
+          property.property_attributes?.has_open_lawn && { '@type': 'LocationFeatureSpecification', name: 'Open Lawn', value: true },
+          property.property_attributes?.has_kitchen && { '@type': 'LocationFeatureSpecification', name: 'Kitchen', value: true },
+          property.property_attributes?.has_parking && { '@type': 'LocationFeatureSpecification', name: 'Parking', value: true },
+          property.property_attributes?.has_generator && { '@type': 'LocationFeatureSpecification', name: 'Generator', value: true },
+        ].filter(Boolean),
+      }) }}/>
+
 
       {/* Hero — coloured illustration zone */}
       <div style={{ background: heroBg, height: 240, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
