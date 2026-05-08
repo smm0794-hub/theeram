@@ -185,19 +185,45 @@ export default function CuratorPage() {
         <Link href="/curator/new" style={{ ...sans, background: C.green, color: 'white', fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', padding: '8px 14px', textDecoration: 'none' }}>+ Add</Link>
       </div>
 
-      {/* Quick links */}
-      <div style={{ padding: '12px 16px', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr', gap: 8 }}>
-        {[
-          { label: '🤖 Agent', href: '/curator/agent' },
-          { label: '🗺️ Towns', href: '/curator/towns' },
-          { label: '✨ Makers', href: '/curator/vendors' },
-          { label: '📊 Analytics', href: '/curator/analytics' },
-          { label: '📬 Submissions', href: '/curator/submissions' },
-        ].map(({ label, href }) => (
-          <Link key={href} href={href} style={{ ...sans, textAlign: 'center', padding: '9px 0', border: `1px solid ${C.cream3}`, color: C.muted, fontSize: 11, fontWeight: 500, textDecoration: 'none', background: 'white' }}>
-            {label}
+      {/* Quick links — organised into 4 logical tiles */}
+      <div style={{ padding: '14px 16px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
+
+        {/* Agents */}
+        <div style={{ background: C.green, padding: '12px 14px' }}>
+          <div style={{ ...sans, fontSize: 9, color: C.gold, letterSpacing: '.08em', marginBottom: 8 }}>AGENTS</div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Link href="/curator/agent" style={{ ...sans, flex: 1, textAlign: 'center', padding: '9px 0', background: 'rgba(255,255,255,.12)', color: 'white', fontSize: 11, fontWeight: 500, textDecoration: 'none' }}>🤖 Venue agent</Link>
+            <Link href="/curator/towns" style={{ ...sans, flex: 1, textAlign: 'center', padding: '9px 0', background: 'rgba(255,255,255,.12)', color: 'white', fontSize: 11, fontWeight: 500, textDecoration: 'none' }}>🗺️ Town agent</Link>
+          </div>
+        </div>
+
+        {/* Spaces & Makers */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          <Link href="/curator" style={{ ...sans, background: 'white', border: `1px solid ${C.cream3}`, padding: '12px 14px', textDecoration: 'none', display: 'block' }}>
+            <div style={{ fontSize: 18, marginBottom: 4 }}>🏡</div>
+            <div style={{ ...sans, fontSize: 12, fontWeight: 600, color: C.text, marginBottom: 2 }}>Spaces</div>
+            <div style={{ ...sans, fontSize: 10, color: C.muted }}>Manage listings</div>
           </Link>
-        ))}
+          <Link href="/curator/vendors" style={{ ...sans, background: 'white', border: `1px solid ${C.cream3}`, padding: '12px 14px', textDecoration: 'none', display: 'block' }}>
+            <div style={{ fontSize: 18, marginBottom: 4 }}>✨</div>
+            <div style={{ ...sans, fontSize: 12, fontWeight: 600, color: C.text, marginBottom: 2 }}>Makers</div>
+            <div style={{ ...sans, fontSize: 10, color: C.muted }}>Add, edit, approve</div>
+          </Link>
+        </div>
+
+        {/* Analytics & Submissions */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
+          <Link href="/curator/analytics" style={{ ...sans, background: 'white', border: `1px solid ${C.cream3}`, padding: '12px 14px', textDecoration: 'none', display: 'block' }}>
+            <div style={{ fontSize: 18, marginBottom: 4 }}>📊</div>
+            <div style={{ ...sans, fontSize: 12, fontWeight: 600, color: C.text, marginBottom: 2 }}>Analytics</div>
+            <div style={{ ...sans, fontSize: 10, color: C.muted }}>By town & property</div>
+          </Link>
+          <Link href="/curator/submissions" style={{ ...sans, background: 'white', border: `1px solid ${C.cream3}`, padding: '12px 14px', textDecoration: 'none', display: 'block' }}>
+            <div style={{ fontSize: 18, marginBottom: 4 }}>📬</div>
+            <div style={{ ...sans, fontSize: 12, fontWeight: 600, color: C.text, marginBottom: 2 }}>Submissions</div>
+            <div style={{ ...sans, fontSize: 10, color: C.muted }}>Spaces & makers</div>
+          </Link>
+        </div>
       </div>
 
       {/* Property list */}

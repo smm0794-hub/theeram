@@ -1,215 +1,262 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { supabase, Vendor, VendorSubmission, VENDOR_CATEGORY_LABELS, VENDOR_CATEGORIES, VENDOR_CATEGORY_ICONS, VendorCategory } from '@/lib/supabase'
 import Link from 'next/link'
-import { Vendor, VendorSubmission, VENDOR_CATEGORY_LABELS, VENDOR_CATEGORIES, VENDOR_CATEGORY_ICONS, VendorCategory } from '@/lib/supabase'
 
-type Tab = 'pending' | 'active'
+const C = { green:'#1C3A2B',cream:'#F5F0E8',cream2:'#EDE8DC',cream3:'#E5DFD0',gold:'#C9A84C',terra:'#9B3D1E',text:'#1C1C1A',muted:'#6B5E4E' }
+const sans = { fontFamily:'system-ui,sans-serif' } as const
+const serif = { fontFamily:'Georgia,serif' } as const
+const inp: React.CSSProperties = { ...sans,width:'100%',border:`1px solid ${C.cream3}`,padding:'10px 12px',fontSize:13,background:C.cream,outline:'none',color:C.text,fontWeight:300,boxSizing:'border-box',marginBottom:10 }
 
-function slugify(s: string) {
-  return s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
-}
+type Mode = 'list' | 'edit'
+type MainTab = 'makers' | 'submissions'
+
+function slug(s: string) { return s.toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'') }
 
 export default function CuratorVendorsPage() {
-  const [tab, setTab] = useState<Tab>('pending')
-  const [submissions, setSubmissions] = useState<VendorSubmission[]>([])
+  const [mainTab, setMainTab] = useState<MainTab>('makers')
+  const [mode, setMode] = useState<Mode>('list')
+  const [editing, setEditing] = useState<Partial<Vendor> | null>(null)
   const [vendors, setVendors] = useState<Vendor[]>([])
+  const [submissions, setSubmissions] = useState<VendorSubmission[]>([])
   const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState('')
 
   useEffect(() => { loadAll() }, [])
 
   async function loadAll() {
     setLoading(true)
-    const [subRes, venRes] = await Promise.all([
-      fetch('/api/vendor-submissions?status=pending'),
-      fetch('/api/vendors?all=1'),
+    const [vr, sr] = await Promise.all([
+      supabase.from('vendors').select('*').order('is_featured', { ascending: false }).order('created_at', { ascending: false }),
+      supabase.from('vendor_submissions').select('*').order('created_at', { ascending: false }),
     ])
-    if (subRes.ok) { const { data } = await subRes.json(); setSubmissions(data ?? []) }
-    if (venRes.ok) { const { data } = await venRes.json(); setVendors(data ?? []) }
+    if (!vr.error) setVendors((vr.data ?? []) as Vendor[])
+    if (!sr.error) setSubmissions((sr.data ?? []) as VendorSubmission[])
     setLoading(false)
   }
 
-  async function approveSubmission(sub: VendorSubmission) {
-    const vendorData = {
-      name: sub.name,
-      slug: slugify(sub.name),
-      category: sub.category,
-      tagline: sub.tagline,
-      description: sub.description,
-      whatsapp: sub.whatsapp,
-      phone: sub.phone,
-      instagram_url: sub.instagram_url,
-      price_guide: sub.price_guide,
-      area_served: sub.area_served,
-      photos: [],
-      is_active: true,
-      is_featured: false,
-    }
-    const r = await fetch('/api/vendor-submissions', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: sub.id, action: 'approve', vendorData }),
-    })
-    if (r.ok) {
-      setSubmissions((prev) => prev.filter((s) => s.id !== sub.id))
-      showToast('Approved and listed!')
-      loadAll()
-    }
+  function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(''), 3000) }
+
+  function newVendor() {
+    setEditing({ is_active: false, is_featured: false, category: 'photography_video' })
+    setMode('edit')
   }
 
-  async function rejectSubmission(id: string) {
-    if (!confirm('Reject this application?')) return
-    await fetch('/api/vendor-submissions', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, action: 'reject' }),
-    })
-    setSubmissions((prev) => prev.filter((s) => s.id !== id))
-    showToast('Application rejected')
+  function editVendor(v: Vendor) { setEditing({ ...v }); setMode('edit') }
+
+  async function saveVendor() {
+    if (!editing?.name || !editing?.category) { showToast('Name and category are required'); return }
+    setSaving(true)
+    const isNew = !editing.id
+    const payload: any = { ...editing }
+    if (!payload.slug) payload.slug = slug(payload.name)
+    if (isNew) delete payload.id
+    const q = isNew
+      ? supabase.from('vendors').insert(payload).select().single()
+      : supabase.from('vendors').update(payload).eq('id', editing.id!).select().single()
+    const { error } = await q
+    if (error) { showToast('Save failed: ' + error.message); setSaving(false); return }
+    showToast(isNew ? 'Maker added!' : 'Saved')
+    await loadAll()
+    setMode('list'); setEditing(null); setSaving(false)
   }
 
-  async function toggleVendor(id: string, current: boolean) {
-    await fetch('/api/vendors', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, is_active: !current }),
-    })
-    setVendors((prev) => prev.map((v) => v.id === id ? { ...v, is_active: !current } : v))
+  async function toggleVendorActive(id: string, current: boolean) {
+    await supabase.from('vendors').update({ is_active: !current }).eq('id', id)
+    setVendors(prev => prev.map(v => v.id === id ? { ...v, is_active: !current } : v))
     showToast(current ? 'Hidden' : 'Now live!')
   }
 
   async function toggleFeatured(id: string, current: boolean) {
-    await fetch('/api/vendors', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, is_featured: !current }),
-    })
-    setVendors((prev) => prev.map((v) => v.id === id ? { ...v, is_featured: !current } : v))
-    showToast(current ? 'Unfeatured' : '⭐ Featured!')
+    await supabase.from('vendors').update({ is_featured: !current }).eq('id', id)
+    setVendors(prev => prev.map(v => v.id === id ? { ...v, is_featured: !current } : v))
+    showToast(current ? 'Unfeatured' : 'Featured!')
   }
 
   async function deleteVendor(id: string, name: string) {
-    if (!confirm(`Delete "${name}"? This cannot be undone.`)) return
-    await fetch(`/api/vendors?id=${id}`, { method: 'DELETE' })
-    setVendors((prev) => prev.filter((v) => v.id !== id))
+    if (!confirm(`Delete "${name}"?`)) return
+    await supabase.from('vendors').delete().eq('id', id)
+    setVendors(prev => prev.filter(v => v.id !== id))
     showToast('Deleted')
   }
 
-  function showToast(msg: string) {
-    setToast(msg)
-    setTimeout(() => setToast(''), 3000)
+  async function approveSubmission(s: VendorSubmission) {
+    const vendorPayload = {
+      name: s.name, slug: slug(s.name), category: s.category,
+      tagline: s.tagline, description: s.description,
+      whatsapp: s.whatsapp, phone: s.phone, email: s.email,
+      instagram_url: s.instagram_url, price_guide: s.price_guide,
+      area_served: s.area_served, is_active: true, is_featured: false,
+    }
+    const { error } = await supabase.from('vendors').insert(vendorPayload)
+    if (error) { showToast('Error: ' + error.message); return }
+    await supabase.from('vendor_submissions').update({ status: 'approved' }).eq('id', s.id)
+    await loadAll()
+    showToast(`${s.name} approved and listed!`)
   }
 
-  return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#FAF7F2' }}>
-      <header style={{ position: 'sticky', top: 0, zIndex: 20, backgroundColor: '#FAF7F2', borderBottom: '0.5px solid #D6C9B8', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <Link href="/curator" style={{ color: '#7C5C3E', display: 'flex' }}>
-            <svg viewBox="0 0 20 20" fill="none" width={20} height={20} stroke="currentColor" strokeWidth={2}><path d="M12 5L7 10l5 5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-          </Link>
-          <span style={{ fontFamily: 'Georgia, serif', fontSize: 18, color: '#2C1A0E' }}>Vendors</span>
-        </div>
-        <Link href="/services" style={{ fontSize: 12, color: '#7C5C3E', textDecoration: 'underline' }}>View page</Link>
-      </header>
+  async function rejectSubmission(id: string) {
+    await supabase.from('vendor_submissions').update({ status: 'rejected' }).eq('id', id)
+    setSubmissions(prev => prev.map(s => s.id === id ? { ...s, status: 'rejected' } : s))
+    showToast('Rejected')
+  }
 
-      {/* Tabs */}
-      <div style={{ display: 'flex', borderBottom: '0.5px solid #D6C9B8' }}>
-        {(['pending', 'active'] as Tab[]).map((t) => (
-          <button key={t} onClick={() => setTab(t)}
-            style={{ flex: 1, padding: '12px 0', fontSize: 13, fontWeight: tab === t ? 600 : 400, color: tab === t ? '#2C1A0E' : '#7C5C3E', backgroundColor: 'transparent', border: 'none', borderBottom: tab === t ? '2px solid #2C1A0E' : '2px solid transparent', cursor: 'pointer', textTransform: 'capitalize' }}>
-            {t === 'pending' ? `Pending ${submissions.length > 0 ? `(${submissions.length})` : ''}` : `Active (${vendors.filter(v => v.is_active).length})`}
+  function field(label: string, key: keyof Vendor, multiline?: boolean) {
+    if (!editing) return null
+    return (
+      <div key={key}>
+        <label style={{ ...sans,fontSize:9,color:C.terra,letterSpacing:'.07em',display:'block',marginBottom:4 }}>{label.toUpperCase()}</label>
+        {multiline
+          ? <textarea value={(editing[key] as string) ?? ''} onChange={e => setEditing(p => ({...p!, [key]: e.target.value}))} rows={3} style={{ ...inp,resize:'vertical' as const }}/>
+          : <input value={(editing[key] as string) ?? ''} onChange={e => setEditing(p => ({...p!, [key]: e.target.value}))} style={inp}/>
+        }
+      </div>
+    )
+  }
+
+  const pending = submissions.filter(s => s.status === 'pending')
+
+  // ── Edit mode ─────────────────────────────────────────────────────────────
+  if (mode === 'edit' && editing) return (
+    <div style={{ minHeight:'100vh',background:C.cream,paddingBottom:80 }}>
+      <div style={{ background:C.green,padding:'6px 16px' }}><span style={{ ...sans,fontSize:10,color:'rgba(255,255,255,.5)' }}>theeram</span></div>
+      <div style={{ background:C.cream,borderBottom:`1px solid ${C.cream3}`,padding:'13px 16px',display:'flex',gap:10,alignItems:'center',position:'sticky',top:0,zIndex:40 }}>
+        <button onClick={() => { setMode('list'); setEditing(null) }} style={{ ...sans,fontSize:12,color:C.muted,background:'none',border:'none',cursor:'pointer' }}>← Makers</button>
+        <span style={{ fontFamily:'Georgia,serif',fontSize:18,color:C.text }}>{editing.id ? `Edit ${editing.name}` : 'New maker'}</span>
+      </div>
+      <div style={{ padding:'20px 16px 0',display:'flex',flexDirection:'column',gap:4 }}>
+
+        <label style={{ ...sans,fontSize:9,color:C.terra,letterSpacing:'.07em',display:'block',marginBottom:6 }}>CATEGORY</label>
+        <div style={{ display:'flex',flexDirection:'column',gap:6,marginBottom:12 }}>
+          {VENDOR_CATEGORIES.map(cat => (
+            <button key={cat} onClick={() => setEditing(p => ({...p!, category: cat}))} style={{ ...sans,padding:'10px 14px',border:`1px solid ${editing.category===cat?C.terra:C.cream3}`,background:editing.category===cat?'#fdf0eb':'white',color:editing.category===cat?C.terra:C.muted,fontSize:13,cursor:'pointer',textAlign:'left' as const,display:'flex',alignItems:'center',gap:10 }}>
+              <span style={{ fontSize:16 }}>{VENDOR_CATEGORY_ICONS[cat]}</span>
+              {VENDOR_CATEGORY_LABELS[cat]}
+            </button>
+          ))}
+        </div>
+
+        {field('Name', 'name')}
+        {field('Slug', 'slug')}
+        {field('Tagline', 'tagline')}
+        {field('Description', 'description', true)}
+        {field('WhatsApp (with country code)', 'whatsapp')}
+        {field('Phone', 'phone')}
+        {field('Email', 'email')}
+        {field('Instagram URL', 'instagram_url')}
+        {field('Price guide', 'price_guide')}
+        {field('Area served', 'area_served')}
+
+        <label style={{ ...sans,fontSize:9,color:C.terra,letterSpacing:'.07em',display:'block',marginBottom:6 }}>STATUS</label>
+        <div style={{ display:'flex',gap:8,marginBottom:8 }}>
+          {[false,true].map(val => (
+            <button key={String(val)} onClick={() => setEditing(p => ({...p!,is_active:val}))} style={{ ...sans,flex:1,padding:'9px',border:`1px solid ${editing.is_active===val?C.green:C.cream3}`,background:editing.is_active===val?'#f0faf4':'white',color:editing.is_active===val?C.green:C.muted,fontSize:12,cursor:'pointer' }}>
+              {val ? '🟢 Live' : '⚪ Draft'}
+            </button>
+          ))}
+        </div>
+
+        <div style={{ display:'flex',gap:8,marginBottom:16 }}>
+          {[false,true].map(val => (
+            <button key={String(val)} onClick={() => setEditing(p => ({...p!,is_featured:val}))} style={{ ...sans,flex:1,padding:'9px',border:`1px solid ${editing.is_featured===val?C.gold:C.cream3}`,background:editing.is_featured===val?'#fffbf0':'white',color:editing.is_featured===val?'#8A7040':C.muted,fontSize:12,cursor:'pointer' }}>
+              {val ? '⭐ Featured' : 'Not featured'}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div style={{ position:'fixed',bottom:0,left:0,right:0,background:C.cream,borderTop:`1px solid ${C.cream3}`,padding:'12px 16px',zIndex:30 }}>
+        <button onClick={saveVendor} disabled={saving} style={{ ...sans,width:'100%',background:saving?C.muted:C.green,color:'white',fontSize:11,fontWeight:700,letterSpacing:'.1em',textTransform:'uppercase' as const,padding:'13px 0',border:'none',cursor:saving?'not-allowed':'pointer' }}>
+          {saving ? 'Saving...' : 'Save maker'}
+        </button>
+      </div>
+    </div>
+  )
+
+  // ── List mode ─────────────────────────────────────────────────────────────
+  return (
+    <div style={{ minHeight:'100vh',background:C.cream,paddingBottom:60 }}>
+      <div style={{ background:C.green,padding:'6px 16px' }}><span style={{ ...sans,fontSize:10,color:'rgba(255,255,255,.5)' }}>theeram</span></div>
+      <div style={{ background:C.cream,borderBottom:`1px solid ${C.cream3}`,padding:'13px 16px',display:'flex',justifyContent:'space-between',alignItems:'center',position:'sticky',top:0,zIndex:40 }}>
+        <div style={{ display:'flex',alignItems:'center',gap:10 }}>
+          <Link href="/curator" style={{ ...sans,fontSize:12,color:C.muted,textDecoration:'none' }}>← Curator</Link>
+          <span style={{ fontFamily:'Georgia,serif',fontSize:18,color:C.text }}>Makers</span>
+          {pending.length > 0 && <span style={{ ...sans,fontSize:10,background:C.terra,color:'white',padding:'2px 7px',fontWeight:600 }}>{pending.length} pending</span>}
+        </div>
+        <button onClick={newVendor} style={{ ...sans,background:C.green,color:'white',fontSize:10,fontWeight:700,letterSpacing:'.1em',textTransform:'uppercase' as const,padding:'7px 14px',border:'none',cursor:'pointer' }}>+ Add</button>
+      </div>
+
+      {/* Tab switcher */}
+      <div style={{ display:'flex',background:C.cream2,borderBottom:`1px solid ${C.cream3}` }}>
+        {[['makers','Makers'],['submissions','Submissions']].map(([t,l]) => (
+          <button key={t} onClick={() => setMainTab(t as MainTab)} style={{ ...sans,flex:1,padding:'11px 0',fontSize:12,fontWeight:500,background:'none',border:'none',cursor:'pointer',borderBottom:`2px solid ${mainTab===t?C.terra:'transparent'}`,color:mainTab===t?C.terra:C.muted }}>
+            {l}{t==='submissions'&&pending.length>0?` (${pending.length})`:''}
           </button>
         ))}
       </div>
 
-      <div style={{ padding: 16 }}>
-        {loading ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {[1, 2].map((i) => <div key={i} style={{ height: 120, backgroundColor: 'white', borderRadius: 12, border: '1px solid #D6C9B8' }} />)}
-          </div>
-        ) : tab === 'pending' ? (
-          submissions.length === 0 ? (
-            <p style={{ textAlign: 'center', color: '#7C5C3E', fontSize: 14, paddingTop: 48 }}>No pending applications.</p>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {submissions.map((sub) => (
-                <div key={sub.id} style={{ backgroundColor: 'white', borderRadius: 12, border: '1px solid #D6C9B8', padding: 16 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                    <div>
-                      <p style={{ fontFamily: 'Georgia, serif', fontSize: 16, color: '#2C1A0E' }}>{sub.name}</p>
-                      <p style={{ fontSize: 12, color: '#7C5C3E', marginTop: 2 }}>
-                        {VENDOR_CATEGORY_ICONS[sub.category as VendorCategory]} {VENDOR_CATEGORY_LABELS[sub.category as VendorCategory]}
-                      </p>
-                    </div>
-                    <span style={{ fontSize: 10, color: '#B4A898' }}>{new Date(sub.created_at).toLocaleDateString('en-IN')}</span>
+      {/* Makers tab */}
+      {mainTab === 'makers' && (
+        <div style={{ padding:'14px 16px',display:'flex',flexDirection:'column',gap:10 }}>
+          {loading ? [1,2,3].map(i => <div key={i} style={{ height:100,background:'white',border:`1px solid ${C.cream3}` }}/>) : vendors.map(v => (
+            <div key={v.id} style={{ background:'white',border:v.is_featured?`1.5px solid ${C.gold}`:`1px solid ${C.cream3}`,padding:14 }}>
+              <div style={{ display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:8 }}>
+                <div>
+                  <div style={{ display:'flex',alignItems:'center',gap:7,marginBottom:2 }}>
+                    <span style={{ fontSize:14 }}>{VENDOR_CATEGORY_ICONS[v.category as VendorCategory]}</span>
+                    <span style={{ ...sans,fontSize:10,color:C.muted }}>{VENDOR_CATEGORY_LABELS[v.category as VendorCategory]}</span>
+                    {v.is_featured && <span style={{ ...sans,fontSize:9,background:C.gold,color:C.text,padding:'1px 5px',fontWeight:700 }}>FEATURED</span>}
                   </div>
-                  {sub.tagline && <p style={{ fontSize: 13, color: '#7C5C3E', marginBottom: 6, fontStyle: 'italic' }}>{sub.tagline}</p>}
-                  {sub.description && <p style={{ fontSize: 12, color: '#333', marginBottom: 8, lineHeight: 1.5 }}>{sub.description.slice(0, 150)}{sub.description.length > 150 ? '...' : ''}</p>}
-                  <div style={{ display: 'flex', gap: 6, fontSize: 11, color: '#7C5C3E', marginBottom: 12, flexWrap: 'wrap' }}>
-                    {sub.whatsapp && <span>📱 {sub.whatsapp}</span>}
-                    {sub.phone && <span>📞 {sub.phone}</span>}
-                    {sub.email && <span>✉ {sub.email}</span>}
-                    {sub.price_guide && <span>₹ {sub.price_guide}</span>}
-                    {sub.area_served && <span>📍 {sub.area_served}</span>}
-                  </div>
-                  {sub.message && <p style={{ fontSize: 12, color: '#B4A898', marginBottom: 12, fontStyle: 'italic' }}>"{sub.message}"</p>}
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button onClick={() => approveSubmission(sub)} style={{ flex: 1, backgroundColor: '#6B8F71', color: 'white', fontWeight: 600, fontSize: 13, borderRadius: 8, height: 36, border: 'none', cursor: 'pointer' }}>
-                      ✓ Approve &amp; list
-                    </button>
-                    <button onClick={() => rejectSubmission(sub.id)} style={{ flex: 1, backgroundColor: 'transparent', color: '#D4735E', fontWeight: 600, fontSize: 13, borderRadius: 8, height: 36, border: '1px solid #D4735E', cursor: 'pointer' }}>
-                      Reject
-                    </button>
-                  </div>
+                  <div style={{ fontFamily:'Georgia,serif',fontSize:16,color:C.text }}>{v.name}</div>
                 </div>
-              ))}
+                <span style={{ ...sans,fontSize:10,fontWeight:600,padding:'3px 8px',background:v.is_active?'#f0faf4':'#faf0eb',color:v.is_active?'#2D7A4F':C.muted }}>
+                  {v.is_active?'Live':'Draft'}
+                </span>
+              </div>
+              <div style={{ display:'flex',gap:6,flexWrap:'wrap' as const }}>
+                <button onClick={() => editVendor(v)} style={{ ...sans,fontSize:11,border:`1px solid ${C.green}`,color:C.green,padding:'5px 11px',background:'none',cursor:'pointer' }}>Edit</button>
+                <button onClick={() => toggleVendorActive(v.id, v.is_active)} style={{ ...sans,fontSize:11,border:`1px solid ${C.cream3}`,color:C.muted,padding:'5px 11px',background:'none',cursor:'pointer' }}>{v.is_active?'Hide':'Show'}</button>
+                <button onClick={() => toggleFeatured(v.id, v.is_featured)} style={{ ...sans,fontSize:11,border:`1px solid ${v.is_featured?C.gold:C.cream3}`,color:v.is_featured?'#8A7040':C.muted,padding:'5px 11px',background:'none',cursor:'pointer' }}>{v.is_featured?'Unfeature':'Feature'}</button>
+                <button onClick={() => deleteVendor(v.id, v.name)} style={{ ...sans,fontSize:11,border:`1px solid ${C.terra}`,color:C.terra,padding:'5px 11px',background:'none',cursor:'pointer' }}>Delete</button>
+              </div>
             </div>
-          )
-        ) : (
-          vendors.length === 0 ? (
-            <p style={{ textAlign: 'center', color: '#7C5C3E', fontSize: 14, paddingTop: 48 }}>No vendors listed yet.</p>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {vendors.map((v) => (
-                <div key={v.id} style={{ backgroundColor: 'white', borderRadius: 12, border: `1px solid ${v.is_featured ? '#C9A84C' : '#D6C9B8'}`, padding: 16 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-                    <div>
-                      <p style={{ fontFamily: 'Georgia, serif', fontSize: 16, color: '#2C1A0E' }}>{v.name}</p>
-                      <p style={{ fontSize: 11, color: '#7C5C3E', marginTop: 2 }}>
-                        {VENDOR_CATEGORY_ICONS[v.category]} {VENDOR_CATEGORY_LABELS[v.category]}
-                      </p>
-                    </div>
-                    <div style={{ display: 'flex', gap: 6, flexDirection: 'column', alignItems: 'flex-end' }}>
-                      <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 999, backgroundColor: v.is_active ? '#f0f7f1' : '#f5f0eb', color: v.is_active ? '#6B8F71' : '#7C5C3E' }}>
-                        {v.is_active ? 'Live' : 'Hidden'}
-                      </span>
-                      {v.is_featured && <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 999, backgroundColor: '#C9A84C', color: 'white' }}>⭐ Featured</span>}
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    <button onClick={() => toggleVendor(v.id, v.is_active)} style={{ fontSize: 12, border: '1px solid #7C5C3E', color: '#7C5C3E', borderRadius: 7, padding: '6px 12px', backgroundColor: 'transparent', cursor: 'pointer' }}>
-                      {v.is_active ? 'Hide' : 'Show'}
-                    </button>
-                    <button onClick={() => toggleFeatured(v.id, v.is_featured)} style={{ fontSize: 12, border: `1px solid ${v.is_featured ? '#C9A84C' : '#D6C9B8'}`, color: v.is_featured ? '#C9A84C' : '#B4A898', borderRadius: 7, padding: '6px 12px', backgroundColor: 'transparent', cursor: 'pointer' }}>
-                      {v.is_featured ? '⭐ Unfeature' : '☆ Feature'}
-                    </button>
-                    <button onClick={() => deleteVendor(v.id, v.name)} style={{ fontSize: 12, border: '1px solid #D4735E', color: '#D4735E', borderRadius: 7, padding: '6px 12px', backgroundColor: 'transparent', cursor: 'pointer' }}>
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )
-        )}
-      </div>
-
-      {toast && (
-        <div style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', backgroundColor: '#2C1A0E', color: 'white', fontSize: 13, padding: '10px 20px', borderRadius: 999, zIndex: 50, whiteSpace: 'nowrap' }}>
-          {toast}
+          ))}
         </div>
       )}
+
+      {/* Submissions tab */}
+      {mainTab === 'submissions' && (
+        <div style={{ padding:'14px 16px',display:'flex',flexDirection:'column',gap:10 }}>
+          {loading ? [1,2].map(i => <div key={i} style={{ height:120,background:'white',border:`1px solid ${C.cream3}` }}/>) : submissions.length === 0 ? (
+            <p style={{ ...sans,fontSize:14,color:C.muted,textAlign:'center',padding:'40px 0' }}>No submissions yet.</p>
+          ) : submissions.map(s => (
+            <div key={s.id} style={{ background:'white',border:`1px solid ${C.cream3}`,padding:14 }}>
+              <div style={{ display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:8 }}>
+                <div>
+                  <div style={{ ...sans,fontSize:10,color:C.muted,marginBottom:2 }}>{VENDOR_CATEGORY_LABELS[s.category as VendorCategory]}</div>
+                  <div style={{ fontFamily:'Georgia,serif',fontSize:16,color:C.text,marginBottom:2 }}>{s.name}</div>
+                  {s.whatsapp && <div style={{ ...sans,fontSize:11,color:C.muted }}>📞 {s.whatsapp}</div>}
+                </div>
+                <span style={{ ...sans,fontSize:10,fontWeight:600,padding:'3px 8px',
+                  background:s.status==='pending'?'#fff9eb':s.status==='approved'?'#f0faf4':'#faf0eb',
+                  color:s.status==='pending'?'#8A7040':s.status==='approved'?'#2D7A4F':C.terra }}>
+                  {s.status}
+                </span>
+              </div>
+              {s.tagline && <div style={{ ...sans,fontSize:12,color:C.muted,marginBottom:10,fontWeight:300 }}>{s.tagline}</div>}
+              {s.status === 'pending' && (
+                <div style={{ display:'flex',gap:8 }}>
+                  <button onClick={() => approveSubmission(s)} style={{ ...sans,flex:1,background:C.green,color:'white',fontSize:11,fontWeight:700,padding:'8px 0',border:'none',cursor:'pointer' }}>✓ Approve & list</button>
+                  <button onClick={() => rejectSubmission(s.id)} style={{ ...sans,padding:'8px 14px',border:`1px solid ${C.terra}`,color:C.terra,fontSize:11,background:'none',cursor:'pointer' }}>Reject</button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {toast && <div style={{ position:'fixed',bottom:24,left:'50%',transform:'translateX(-50%)',background:C.green,color:'white',...sans,fontSize:12,padding:'10px 20px',zIndex:50,whiteSpace:'nowrap' as const }}>{toast}</div>}
     </div>
   )
 }

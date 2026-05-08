@@ -11,8 +11,9 @@ const CARD_BG: Record<string, string> = {
   villa_with_pool: '#1C3A2B', villa_without_pool: '#2E5C4E',
   heritage_home: '#8A7040', open_event_space: '#4A6741',
   auditorium: '#2E5C4E', river_frontage: '#7B3B2A',
-  lodging: '#1C3A2B', resort: '#2E5C4E',
+  lodging: '#4A3E6A', resort: '#2E5C4E',
 }
+
 const TYPE_LABEL: Record<string, string> = {
   villa_with_pool: 'Villa with pool', villa_without_pool: 'Villa',
   heritage_home: 'Tharavadu', open_event_space: 'Event lawn',
@@ -20,15 +21,86 @@ const TYPE_LABEL: Record<string, string> = {
   lodging: 'Lodging', resort: 'Resort',
 }
 
+// ── Property type SVG illustrations ─────────────────────────────────────────
+function PropIllustration({ type, photos }: { type: string; photos: string[] }) {
+  // If photos exist, show first photo
+  if (photos && photos.length > 0) {
+    return <img src={photos[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', position: 'absolute', inset: 0 }}/>
+  }
+  // Otherwise show SVG illustration per type
+  const stroke = 'rgba(255,255,255,0.45)'
+  const sw = 1
+  if (type === 'heritage_home') return (
+    <svg viewBox="0 0 70 56" fill="none" width={70} height={56} stroke={stroke} strokeWidth={sw}>
+      <path d="M8 30L35 12L62 30V52H8Z"/><rect x="24" y="36" width="22" height="16"/><line x1="12" y1="30" x2="58" y2="30"/>
+      <line x1="35" y1="12" x2="35" y2="30"/><rect x="29" y="36" width="12" height="16" opacity=".5"/>
+    </svg>
+  )
+  if (type === 'river_frontage') return (
+    <svg viewBox="0 0 70 56" fill="none" width={70} height={56} stroke={stroke} strokeWidth={sw}>
+      <circle cx="25" cy="16" r="7"/><circle cx="44" cy="12" r="6"/>
+      <path d="M5 38Q14 32 25 38Q36 44 45 38Q56 32 66 38"/>
+      <path d="M5 48Q14 42 25 48Q36 54 45 48Q56 42 66 48"/>
+      <line x1="35" y1="14" x2="35" y2="32"/>
+    </svg>
+  )
+  if (type === 'villa_with_pool') return (
+    <svg viewBox="0 0 70 56" fill="none" width={70} height={56} stroke={stroke} strokeWidth={sw}>
+      <path d="M8 28L35 10L62 28V50H8Z"/><rect x="26" y="34" width="18" height="16"/>
+      <ellipse cx="50" cy="45" rx="10" ry="5" strokeDasharray="2 1"/>
+      <line x1="12" y1="28" x2="58" y2="28"/>
+    </svg>
+  )
+  if (type === 'villa_without_pool') return (
+    <svg viewBox="0 0 70 56" fill="none" width={70} height={56} stroke={stroke} strokeWidth={sw}>
+      <path d="M8 28L35 10L62 28V50H8Z"/><rect x="26" y="34" width="18" height="16"/>
+      <line x1="12" y1="28" x2="58" y2="28"/>
+      <rect x="14" y="30" width="8" height="8" opacity=".5"/><rect x="48" y="30" width="8" height="8" opacity=".5"/>
+    </svg>
+  )
+  if (type === 'auditorium') return (
+    <svg viewBox="0 0 70 56" fill="none" width={70} height={56} stroke={stroke} strokeWidth={sw}>
+      <rect x="10" y="20" width="50" height="30"/><path d="M10 20L35 8L60 20"/>
+      <line x1="22" y1="50" x2="22" y2="34"/><line x1="35" y1="50" x2="35" y2="34"/><line x1="48" y1="50" x2="48" y2="34"/>
+      <line x1="10" y1="30" x2="60" y2="30"/>
+    </svg>
+  )
+  if (type === 'open_event_space') return (
+    <svg viewBox="0 0 70 56" fill="none" width={70} height={56} stroke={stroke} strokeWidth={sw}>
+      <rect x="5" y="25" width="60" height="25"/>
+      <path d="M5 25L35 8L65 25"/>
+      <line x1="5" y1="38" x2="65" y2="38"/>
+      <circle cx="20" cy="32" r="3"/><circle cx="50" cy="32" r="3"/>
+    </svg>
+  )
+  if (type === 'lodging') return (
+    <svg viewBox="0 0 70 56" fill="none" width={70} height={56} stroke={stroke} strokeWidth={sw}>
+      <rect x="10" y="18" width="50" height="34"/>
+      <path d="M10 18L35 6L60 18"/>
+      <rect x="20" y="30" width="10" height="10"/><rect x="40" y="30" width="10" height="10"/>
+      <rect x="28" y="36" width="14" height="16"/>
+      <line x1="35" y1="6" x2="35" y2="18"/>
+    </svg>
+  )
+  // default / resort
+  return (
+    <svg viewBox="0 0 70 56" fill="none" width={70} height={56} stroke={stroke} strokeWidth={sw}>
+      <path d="M8 28L35 10L62 28V50H8Z"/><rect x="26" y="34" width="18" height="16"/><line x1="12" y1="28" x2="58" y2="28"/>
+    </svg>
+  )
+}
+
 // ── Space feel filters ────────────────────────────────────────────────────────
 const FEEL_FILTERS = [
   { id: 'all', ml: 'എല്ലാം', en: 'All spaces', desc: 'Browse everything' },
   { id: 'heritage_home', ml: 'താവഴി', en: 'Tharavadu', desc: 'Heritage ancestral homes' },
   { id: 'river_frontage', ml: 'പുഴയോരം', en: 'Riverside', desc: 'River views and lawns' },
-  { id: 'villa_with_pool', ml: 'വില്ല', en: 'Villa', desc: 'Private pool villas' },
+  { id: 'villa', ml: 'വില്ല', en: 'Villa', desc: 'Private villas — pool or garden' },
   { id: 'auditorium', ml: 'വിശാലം', en: 'Grand halls', desc: 'For 200+ guests' },
-  { id: 'open_event_space', ml: 'ശാന്തം', en: 'Quiet retreat', desc: 'Away from it all' },
+  { id: 'open_event_space', ml: 'ഇടം', en: 'Event lawn', desc: 'Open air celebrations' },
+  { id: 'lodging', ml: 'താമസം', en: 'Lodging', desc: 'Homestays & stays' },
 ]
+
 const MAKER_FILTERS = [
   { id: 'all', ml: 'എല്ലാം', en: 'Everyone', desc: 'Browse all makers' },
   { id: 'photography_video', ml: 'ഫോട്ടോ', en: 'Photography', desc: '& Video' },
@@ -37,6 +109,13 @@ const MAKER_FILTERS = [
   { id: 'event_management', ml: 'ഇവന്റ്', en: 'Event Mgmt', desc: 'Planning & coordination' },
   { id: 'beauty_styling', ml: 'ഭംഗി', en: 'Beauty', desc: 'Bridal & styling' },
 ]
+
+// Filter matching — 'villa' matches both villa_with_pool and villa_without_pool
+function matchesFilter(propertyType: string, filter: string): boolean {
+  if (filter === 'all') return true
+  if (filter === 'villa') return propertyType === 'villa_with_pool' || propertyType === 'villa_without_pool'
+  return propertyType === filter
+}
 
 function FilterRow({ filters, active, onSelect }: { filters: typeof FEEL_FILTERS; active: string; onSelect: (id: string) => void }) {
   const ref = useRef<HTMLDivElement>(null)
@@ -48,7 +127,7 @@ function FilterRow({ filters, active, onSelect }: { filters: typeof FEEL_FILTERS
         className="no-scrollbar">
         {filters.map(f => (
           <div key={f.id} onClick={() => onSelect(f.id)}
-            style={{ minWidth: 148, flexShrink: 0, background: 'white', border: active === f.id ? `1.5px solid ${C.terra}` : `1px solid ${C.cream3}`, padding: '14px 12px', cursor: 'pointer', scrollSnapAlign: 'start' }}>
+            style={{ minWidth: 148, flexShrink: 0, background: active === f.id ? '#fdf0eb' : 'white', border: active === f.id ? `1.5px solid ${C.terra}` : `1px solid ${C.cream3}`, padding: '14px 12px', cursor: 'pointer', scrollSnapAlign: 'start', transition: 'all .15s' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 5 }}>
               <div style={{ width: 8, height: 1, background: C.terra }}/>
               <span style={{ ...sans, fontSize: 9, color: C.terra, letterSpacing: '.06em' }}>{f.ml}</span>
@@ -75,6 +154,10 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
   const [makerFilter, setMakerFilter] = useState('all')
   const [search, setSearch] = useState('')
   const heroBg = town.hero_bg_color || C.green
+  const otherTowns = allTowns.filter(t => t.slug !== town.slug)
+
+  // Dynamic top bar text based on town
+  const topBarText = `${town.name} · ${town.district} · Kerala`
 
   useEffect(() => {
     async function load() {
@@ -104,7 +187,7 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
   }
 
   const filteredProps = properties.filter(p => {
-    if (spaceFilter !== 'all' && p.property_type !== spaceFilter) return false
+    if (!matchesFilter(p.property_type, spaceFilter)) return false
     if (search.trim()) return p.name.toLowerCase().includes(search.toLowerCase()) || p.tagline?.toLowerCase().includes(search.toLowerCase())
     return true
   })
@@ -115,16 +198,20 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
     return true
   })
 
-  const otherTowns = allTowns.filter(t => t.slug !== town.slug)
-
   return (
     <div style={{ background: C.cream, minHeight: '100vh', overflowX: 'hidden' }}>
       <style>{`.no-scrollbar::-webkit-scrollbar{display:none}`}</style>
+
+      {/* ── Top bar — dynamic per town ──────────────────────────── */}
+      <div style={{ background: heroBg, padding: '6px 16px', display: 'flex', justifyContent: 'space-between' }}>
+        <span style={{ ...sans, fontSize: 10, color: 'rgba(255,255,255,.5)', letterSpacing: '.06em' }}>തീരം · theeram</span>
+        <span style={{ ...sans, fontSize: 10, color: 'rgba(255,255,255,.4)', letterSpacing: '.04em' }}>{topBarText}</span>
+      </div>
+
       <Header/>
 
       {/* ── Hero ───────────────────────────────────────────────── */}
       <section style={{ background: heroBg, padding: '50px 20px 48px', position: 'relative', overflow: 'hidden' }}>
-        {/* Subtle bg pattern */}
         <div style={{ position: 'absolute', right: -20, top: -20, opacity: .06, pointerEvents: 'none' }}>
           <svg viewBox="0 0 200 200" fill="none" width={220} height={220}>
             <circle cx="100" cy="100" r="90" stroke="white" strokeWidth={1}/>
@@ -134,23 +221,15 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
             <line x1="100" y1="10" x2="100" y2="190" stroke="white" strokeWidth={1}/>
           </svg>
         </div>
-
-        {/* District badge */}
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, marginBottom: 18, background: 'rgba(255,255,255,.1)', padding: '4px 12px' }}>
-          <span style={{ ...sans, fontSize: 10, color: 'rgba(255,255,255,.7)', letterSpacing: '.08em' }}>
-            {town.district} District · Kerala
-          </span>
+          <span style={{ ...sans, fontSize: 10, color: 'rgba(255,255,255,.7)', letterSpacing: '.08em' }}>{town.district} District · Kerala</span>
         </div>
-
         <h1 style={{ ...serif, fontSize: 34, lineHeight: 1.18, color: 'white', marginBottom: 16, fontWeight: 300 }}
           dangerouslySetInnerHTML={{ __html: town.hero_headline || `Event spaces in <em style="color:${C.gold}">${town.name}</em>` }}/>
-
         <div style={{ width: 34, height: 2, background: C.gold, marginBottom: 18 }}/>
-
         <p style={{ ...sans, fontSize: 13, color: 'rgba(255,255,255,.68)', lineHeight: 1.75, maxWidth: 300, marginBottom: 30, fontWeight: 300 }}>
-          {town.hero_subtext || `A curated directory of event spaces and venues in ${town.name}, ${town.district} district, Kerala.`}
+          {town.hero_subtext}
         </p>
-
         <div style={{ display: 'flex', gap: 12 }}>
           <button onClick={() => document.getElementById('main-listing')?.scrollIntoView({ behavior: 'smooth' })}
             style={{ ...sans, background: C.gold, color: C.text, fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', padding: '12px 22px', border: 'none', cursor: 'pointer' }}>
@@ -173,8 +252,32 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
         ))}
       </div>
 
+      {/* ── Other towns — moved here, just below trust bar ─────── */}
+      {otherTowns.length > 0 && (
+        <section style={{ background: C.cream, padding: '22px 0 4px', borderBottom: `1px solid ${C.cream3}` }}>
+          <div style={{ padding: '0 16px', marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ width: 14, height: 1, background: C.terra }}/>
+              <span style={{ ...sans, fontSize: 10, color: C.terra, letterSpacing: '.08em' }}>മറ്റ് ഇടങ്ങൾ</span>
+              <div style={{ flex: 1, height: 1, background: C.cream3 }}/>
+              <span style={{ ...sans, fontSize: 10, color: C.muted }}>Browse other towns →</span>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, overflowX: 'auto', padding: '0 16px 16px' }} className="no-scrollbar">
+            {otherTowns.map(t => (
+              <Link key={t.slug} href={`/${t.slug}`} style={{ textDecoration: 'none', flexShrink: 0 }}>
+                <div style={{ background: t.hero_bg_color || C.green, padding: '12px 14px', minWidth: 130 }}>
+                  <div style={{ ...sans, fontSize: 9, color: C.gold, letterSpacing: '.07em', marginBottom: 4 }}>{t.district}</div>
+                  <div style={{ ...serif, fontSize: 15, color: 'white', lineHeight: 1.2 }}>{t.name}</div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* ── Context-aware filter ────────────────────────────────── */}
-      <section style={{ background: C.cream, paddingTop: 28 }}>
+      <section style={{ background: C.cream, paddingTop: 24 }}>
         <div style={{ padding: '0 16px', marginBottom: 14 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 10 }}>
             <div style={{ width: 14, height: 1, background: C.terra }}/>
@@ -218,10 +321,10 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
           </svg>
           <input value={search} onChange={e => setSearch(e.target.value)}
             placeholder={tab === 'spaces' ? `Search spaces in ${town.name}...` : 'Search makers...'}
-            style={{ width: '100%', border: `1px solid rgba(0,0,0,.12)`, padding: '10px 12px 10px 34px', fontSize: 13, fontFamily: 'system-ui,sans-serif', background: 'rgba(255,255,255,.65)', outline: 'none', color: C.text, fontWeight: 300, boxSizing: 'border-box' }}/>
+            style={{ width: '100%', border: `1px solid rgba(0,0,0,.12)`, padding: '10px 12px 10px 34px', fontSize: 13, fontFamily: 'system-ui,sans-serif', background: 'rgba(255,255,255,.65)', outline: 'none', color: C.text, fontWeight: 300, boxSizing: 'border-box' as const }}/>
         </div>
 
-        {/* Spaces panel */}
+        {/* ── SPACES PANEL ─────────────────────────────────────── */}
         {tab === 'spaces' && (
           <div style={{ padding: '8px 16px 40px', display: 'flex', flexDirection: 'column', gap: 14 }}>
             {loading ? [1,2,3].map(i => <div key={i} style={{ height: 340, background: 'rgba(255,255,255,.4)', border: `1px solid ${C.cream3}` }}/>)
@@ -231,32 +334,39 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
                   {properties.length === 0 ? `No spaces listed in ${town.name} yet.` : 'No spaces match your filter.'}
                 </p>
                 {properties.length === 0
-                  ? <Link href="/list" style={{ ...sans, fontSize: 13, color: C.terra, textDecoration: 'underline' }}>Be the first to list your space →</Link>
+                  ? <Link href="/list" style={{ ...sans, fontSize: 13, color: C.terra, textDecoration: 'underline' }}>Be the first to list →</Link>
                   : <button onClick={() => { setSpaceFilter('all'); setSearch('') }} style={{ ...sans, fontSize: 12, color: C.terra, background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>Clear filters</button>
                 }
               </div>
             ) : filteredProps.map(p => {
               const attrs = p.property_attributes
-              const chips = [attrs?.has_pool && 'Pool', attrs?.has_open_lawn && 'Open lawn', attrs?.has_ac_hall && 'AC hall', attrs?.max_guests_day_event ? `Up to ${attrs.max_guests_day_event}` : null].filter(Boolean) as string[]
+              const photos = p.photos ?? []
+              const chips = [
+                attrs?.has_pool && 'Pool',
+                attrs?.has_open_lawn && 'Open lawn',
+                attrs?.has_ac_hall && 'AC hall',
+                attrs?.max_guests_day_event ? `Up to ${attrs.max_guests_day_event}` : null,
+              ].filter(Boolean) as string[]
               return (
                 <div key={p.id} style={{ background: 'white', border: `1px solid ${C.cream3}`, overflow: 'hidden', position: 'relative' }}>
                   {(p as any).is_featured && <div style={{ position: 'absolute', top: 0, left: 0, background: C.gold, padding: '4px 10px', zIndex: 2 }}><span style={{ ...sans, fontSize: 9, fontWeight: 700, color: C.text }}>Theeram pick</span></div>}
-                  <Link href={`/property/${p.slug}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 158, background: CARD_BG[p.property_type] ?? C.green, textDecoration: 'none' }}>
-                    <svg viewBox="0 0 70 56" fill="none" width={70} height={56} stroke="rgba(255,255,255,.4)" strokeWidth={1}>
-                      <path d="M8 28L35 10L62 28V50H8Z"/><rect x="26" y="34" width="18" height="16"/><line x1="12" y1="28" x2="58" y2="28"/>
-                    </svg>
+                  {/* Photo / illustration zone */}
+                  <Link href={`/property/${p.slug}`} style={{ display: 'block', height: 180, background: CARD_BG[p.property_type] ?? C.green, textDecoration: 'none', position: 'relative', overflow: 'hidden', flexShrink: 0 }}>
+                    <PropIllustration type={p.property_type} photos={photos}/>
+                    {/* Gradient overlay for text readability when photo exists */}
+                    {photos.length > 0 && <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,.3) 0%, transparent 60%)' }}/>}
+                    {/* Property type badge on image */}
+                    <div style={{ position: 'absolute', bottom: 10, left: 12, display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <div style={{ width: 8, height: 1, background: C.gold }}/>
+                      <span style={{ ...serif, fontSize: 11, color: C.gold, fontStyle: 'italic' }}>{TYPE_LABEL[p.property_type] ?? p.property_type}</span>
+                    </div>
                   </Link>
                   <div style={{ padding: '14px 14px 12px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 7 }}>
-                      <div style={{ width: 10, height: 1, background: C.terra }}/>
-                      <span style={{ ...serif, fontSize: 11, color: C.terra, fontStyle: 'italic' }}>{TYPE_LABEL[p.property_type] ?? p.property_type} —</span>
-                      <div style={{ width: 10, height: 1, background: C.terra }}/>
-                    </div>
                     <Link href={`/property/${p.slug}`} style={{ textDecoration: 'none' }}>
                       <div style={{ ...serif, fontSize: 20, color: C.text, marginBottom: 3, lineHeight: 1.15 }}>{p.name}</div>
                       <div style={{ ...sans, fontSize: 11, color: C.muted, marginBottom: 9, fontWeight: 300 }}>{town.name} · {p.tagline?.split('—')[0]?.trim()}</div>
                     </Link>
-                    {chips.length > 0 && <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 10 }}>
+                    {chips.length > 0 && <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' as const, marginBottom: 10 }}>
                       {chips.slice(0,4).map(ch => <span key={ch} style={{ ...sans, fontSize: 10, color: C.muted, background: '#F0EBE0', padding: '3px 9px', border: `1px solid ${C.cream3}`, fontWeight: 300 }}>{ch}</span>)}
                     </div>}
                     <div style={{ width: '100%', height: 1, background: C.cream3, marginBottom: 10 }}/>
@@ -266,7 +376,7 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
                         <button onClick={() => share(p.slug, p.name)} style={{ width: 32, height: 32, border: `1px solid ${C.cream3}`, background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.muted }}>
                           <svg viewBox="0 0 14 14" fill="none" width={12} height={12} stroke="currentColor" strokeWidth={1.3} strokeLinecap="round"><circle cx="11" cy="2.5" r="1.5"/><circle cx="3" cy="7" r="1.5"/><circle cx="11" cy="11.5" r="1.5"/><path d="M4.5 6.3l5-3.2M4.5 7.7l5 3.2"/></svg>
                         </button>
-                        <button onClick={() => handleWhatsApp(p)} style={{ ...sans, background: C.green, color: 'white', fontSize: 10, fontWeight: 700, letterSpacing: '.09em', textTransform: 'uppercase', padding: '9px 13px', border: 'none', cursor: 'pointer' }}>Talk to owner</button>
+                        <button onClick={() => handleWhatsApp(p)} style={{ ...sans, background: C.green, color: 'white', fontSize: 10, fontWeight: 700, letterSpacing: '.09em', textTransform: 'uppercase' as const, padding: '9px 13px', border: 'none', cursor: 'pointer' }}>Talk to owner</button>
                       </div>
                     </div>
                   </div>
@@ -276,7 +386,7 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
           </div>
         )}
 
-        {/* Makers panel */}
+        {/* ── MAKERS PANEL ─────────────────────────────────────── */}
         {tab === 'makers' && (
           <div style={{ padding: '8px 16px 40px', display: 'flex', flexDirection: 'column', gap: 12 }}>
             {loading ? [1,2,3].map(i => <div key={i} style={{ height: 160, background: 'rgba(255,255,255,.4)', border: `1px solid ${C.cream3}` }}/>)
@@ -295,7 +405,7 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
                 <div style={{ ...serif, fontSize: 18, color: C.text, marginBottom: 4 }}>{v.name}</div>
                 <div style={{ ...sans, fontSize: 12, color: C.muted, fontWeight: 300, marginBottom: 12 }}>{v.tagline}</div>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  {v.whatsapp && <button onClick={() => { const msg = encodeURIComponent(`Hi! I found ${v.name} on Theeram.`); window.open(`https://wa.me/${v.whatsapp}?text=${msg}`, '_blank') }} style={{ ...sans, flex: 1, background: C.green, color: 'white', fontSize: 10, fontWeight: 700, letterSpacing: '.09em', textTransform: 'uppercase', padding: '9px 0', border: 'none', cursor: 'pointer' }}>WhatsApp</button>}
+                  {v.whatsapp && <button onClick={() => { const msg = encodeURIComponent(`Hi! I found ${v.name} on Theeram.`); window.open(`https://wa.me/${v.whatsapp}?text=${msg}`, '_blank') }} style={{ ...sans, flex: 1, background: C.green, color: 'white', fontSize: 10, fontWeight: 700, letterSpacing: '.09em', textTransform: 'uppercase' as const, padding: '9px 0', border: 'none', cursor: 'pointer' }}>WhatsApp</button>}
                   {v.phone && <a href={`tel:${v.phone}`} style={{ ...sans, padding: '9px 12px', border: `1px solid ${C.cream3}`, color: C.text, fontSize: 10, textDecoration: 'none' }}>📞 Call</a>}
                 </div>
               </div>
@@ -328,41 +438,13 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
         </div>
       </section>
 
-      {/* ── Other towns ─────────────────────────────────────────── */}
-      {otherTowns.length > 0 && (
-        <section style={{ background: C.cream, padding: '36px 0 40px' }}>
-          <div style={{ padding: '0 16px', marginBottom: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 10 }}>
-              <div style={{ width: 14, height: 1, background: C.terra }}/>
-              <span style={{ ...sans, fontSize: 10, color: C.terra, letterSpacing: '.08em' }}>മറ്റ് ഇടങ്ങൾ</span>
-              <div style={{ flex: 1, height: 1, background: C.cream3 }}/>
-            </div>
-            <div style={{ ...serif, fontSize: 20, color: C.text }}>Browse other towns</div>
-          </div>
-          <div style={{ display: 'flex', gap: 10, overflowX: 'auto', padding: '0 16px 4px' }} className="no-scrollbar">
-            {otherTowns.map(t => (
-              <Link key={t.slug} href={`/${t.slug}`} style={{ textDecoration: 'none', flexShrink: 0 }}>
-                <div style={{ width: 160, background: t.hero_bg_color || C.green, padding: '18px 14px 16px' }}>
-                  <div style={{ ...sans, fontSize: 9, color: C.gold, letterSpacing: '.07em', marginBottom: 8 }}>{t.district} District</div>
-                  <div style={{ ...serif, fontSize: 17, color: 'white', marginBottom: 6, lineHeight: 1.2 }}>{t.name}</div>
-                  <div style={{ ...sans, fontSize: 11, color: 'rgba(255,255,255,.6)', lineHeight: 1.5, fontWeight: 300 }}>{t.tagline?.split('—')[0]?.trim() ?? t.tagline}</div>
-                  <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <span style={{ ...sans, fontSize: 10, color: C.gold }}>Explore →</span>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
-
       {/* ── Footer ─────────────────────────────────────────────── */}
       <footer style={{ background: C.dark, padding: '40px 16px 32px', textAlign: 'center' }}>
         <div style={{ ...serif, fontSize: 19, color: C.gold, marginBottom: 5, fontWeight: 300 }}>തീരം · theeram</div>
         <div style={{ ...sans, fontSize: 10, color: 'rgba(255,255,255,.4)', letterSpacing: '.08em', marginBottom: 20 }}>Spaces for every occasion · Kerala</div>
         <div style={{ width: 38, height: 1, background: 'rgba(255,255,255,.1)', margin: '0 auto 18px' }}/>
-        <div style={{ display: 'flex', justifyContent: 'center', gap: 20, marginBottom: 14, flexWrap: 'wrap' }}>
-          {[['Pala', '/pala'], ['Thodupuzha', '/thodupuzha'], ['Kanjirappally', '/kanjirappally'], ['About', '/about'], ['Privacy', '/privacy']].map(([label, href]) => (
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 20, marginBottom: 14, flexWrap: 'wrap' as const }}>
+          {[['Pala', '/pala'], ['Thodupuzha', '/thodupuzha'], ['Kanjirappally', '/kanjirappally'], ['Theekoy', '/theekoy'], ['About', '/about'], ['Privacy', '/privacy']].map(([label, href]) => (
             <Link key={label} href={href} style={{ ...sans, fontSize: 10, color: 'rgba(255,255,255,.38)', textDecoration: 'none', letterSpacing: '.04em' }}>{label}</Link>
           ))}
         </div>

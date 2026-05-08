@@ -2,223 +2,214 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { supabase } from '@/lib/supabase'
 
-interface PropertySubmission {
-  id: string
-  name: string
-  owner_name: string
-  whatsapp: string
-  phone: string
-  email: string
-  tagline: string
-  description: string
-  price_guide: string
-  area: string
-  capacity: string
-  facilities: string
-  message: string
-  status: string
-  created_at: string
-}
+const C = { green:'#1C3A2B',cream:'#F5F0E8',cream2:'#EDE8DC',cream3:'#E5DFD0',gold:'#C9A84C',terra:'#9B3D1E',text:'#1C1C1A',muted:'#6B5E4E' }
+const sans = { fontFamily:'system-ui,sans-serif' } as const
+const serif = { fontFamily:'Georgia,serif' } as const
 
-type Tab = 'properties' | 'vendors'
+interface Town { id: string; name: string; slug: string; hero_bg_color: string }
+interface PropertyStat { name: string; slug: string; count: number; town_name: string }
+interface InquiryRow { created_at: string; property_id: string; event_type: string; properties: { name: string; slug: string; town_id: string; towns: { name: string } | null } | null }
 
-export default function CuratorSubmissionsPage() {
-  const [tab, setTab] = useState<Tab>('properties')
-  const [submissions, setSubmissions] = useState<PropertySubmission[]>([])
+export default function AnalyticsPage() {
+  const [towns, setTowns] = useState<Town[]>([])
+  const [selectedTown, setSelectedTown] = useState<string>('all')
   const [loading, setLoading] = useState(true)
-  const [toast, setToast] = useState('')
+  const [allInquiries, setAllInquiries] = useState<InquiryRow[]>([])
 
-  useEffect(() => { loadSubmissions() }, [])
+  useEffect(() => {
+    async function load() {
+      const [tr, ir] = await Promise.all([
+        supabase.from('towns').select('id,name,slug,hero_bg_color').eq('is_active', true).order('sort_order'),
+        supabase.from('inquiries').select('created_at,property_id,event_type,properties(name,slug,town_id,towns(name))').order('created_at', { ascending: false }),
+      ])
+      if (!tr.error && tr.data) setTowns(tr.data as Town[])
+      if (!ir.error && ir.data) setAllInquiries(ir.data as any)
+      setLoading(false)
+    }
+    load()
+  }, [])
 
-  async function loadSubmissions() {
-    setLoading(true)
-    try {
-      const r = await fetch('/api/property-submissions')
-      if (r.ok) {
-        const { data } = await r.json()
-        setSubmissions(data ?? [])
-      }
-    } catch {}
-    setLoading(false)
+  const now = Date.now()
+  const oneWeek = 7 * 24 * 60 * 60 * 1000
+  const oneMonth = 30 * 24 * 60 * 60 * 1000
+
+  // Filter inquiries by selected town
+  const filtered = allInquiries.filter(i => {
+    if (selectedTown === 'all') return true
+    return (i.properties as any)?.town_id === selectedTown
+  })
+
+  const weekTotal = filtered.filter(i => now - new Date(i.created_at).getTime() < oneWeek).length
+  const monthTotal = filtered.filter(i => now - new Date(i.created_at).getTime() < oneMonth).length
+  const allTime = filtered.length
+
+  // Top properties
+  const propCounts: Record<string, { name: string; slug: string; count: number; town_name: string }> = {}
+  filtered.forEach(i => {
+    const p = i.properties as any
+    if (!p) return
+    const key = i.property_id
+    if (!propCounts[key]) propCounts[key] = { name: p.name, slug: p.slug, count: 0, town_name: p.towns?.name ?? '' }
+    propCounts[key].count++
+  })
+  const topProps = Object.values(propCounts).sort((a,b) => b.count - a.count).slice(0,10)
+
+  // Event type breakdown
+  const etCounts: Record<string, number> = {}
+  filtered.forEach(i => { etCounts[i.event_type] = (etCounts[i.event_type] || 0) + 1 })
+  const topEvents = Object.entries(etCounts).sort((a,b) => b[1]-a[1])
+
+  // By town (for all view)
+  const townCounts: Record<string, { name: string; color: string; count: number }> = {}
+  allInquiries.forEach(i => {
+    const p = i.properties as any
+    const tid = p?.town_id ?? 'unknown'
+    const tname = p?.towns?.name ?? 'Unknown'
+    const town = towns.find(t => t.id === tid)
+    if (!townCounts[tid]) townCounts[tid] = { name: tname, color: town?.hero_bg_color ?? C.muted, count: 0 }
+    townCounts[tid].count++
+  })
+  const townBreakdown = Object.values(townCounts).sort((a,b) => b.count - a.count)
+
+  // Daily trend last 14 days
+  const days: { label: string; count: number }[] = []
+  for (let d = 13; d >= 0; d--) {
+    const date = new Date(now - d * 24 * 60 * 60 * 1000)
+    const label = date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+    const count = filtered.filter(i => {
+      const id = new Date(i.created_at)
+      return id.toDateString() === date.toDateString()
+    }).length
+    days.push({ label, count })
   }
+  const maxDay = Math.max(...days.map(d => d.count), 1)
 
-  async function updateStatus(id: string, status: string) {
-    await fetch('/api/property-submissions', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, status }),
-    })
-    setSubmissions((prev) => prev.map((s) => s.id === id ? { ...s, status } : s))
-    showToast(status === 'reviewed' ? 'Marked as reviewed' : 'Marked as rejected')
-  }
-
-  function showToast(msg: string) {
-    setToast(msg)
-    setTimeout(() => setToast(''), 3000)
-  }
-
-  const pending = submissions.filter((s) => s.status === 'pending')
-  const reviewed = submissions.filter((s) => s.status !== 'pending')
+  const selectedTownObj = towns.find(t => t.id === selectedTown)
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#FAF7F2' }}>
-      <header style={{ position: 'sticky', top: 0, zIndex: 20, backgroundColor: '#FAF7F2', borderBottom: '0.5px solid #D6C9B8', padding: '12px 16px', display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <Link href="/curator" style={{ color: '#7C5C3E', display: 'flex' }}>
-            <svg viewBox="0 0 20 20" fill="none" width={20} height={20} stroke="currentColor" strokeWidth={2}><path d="M12 5L7 10l5 5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-          </Link>
-          <span style={{ fontFamily: 'Georgia, serif', fontSize: 18, color: '#2C1A0E' }}>Submissions</span>
+    <div style={{ minHeight:'100vh',background:C.cream,paddingBottom:48 }}>
+      <div style={{ background:C.green,padding:'6px 16px' }}><span style={{ ...sans,fontSize:10,color:'rgba(255,255,255,.5)' }}>theeram</span></div>
+      <div style={{ background:C.cream,borderBottom:`1px solid ${C.cream3}`,padding:'13px 16px',display:'flex',justifyContent:'space-between',alignItems:'center',position:'sticky',top:0,zIndex:40 }}>
+        <div style={{ display:'flex',alignItems:'center',gap:10 }}>
+          <Link href="/curator" style={{ ...sans,fontSize:12,color:C.muted,textDecoration:'none' }}>← Curator</Link>
+          <span style={{ fontFamily:'Georgia,serif',fontSize:18,color:C.text }}>Analytics</span>
         </div>
-      </header>
-
-      {/* Tabs */}
-      <div style={{ display: 'flex', borderBottom: '0.5px solid #D6C9B8' }}>
-        {(['properties', 'vendors'] as Tab[]).map((t) => (
-          <button key={t} onClick={() => setTab(t)}
-            style={{ flex: 1, padding: '12px 0', fontSize: 13, fontWeight: tab === t ? 600 : 400, color: tab === t ? '#2C1A0E' : '#7C5C3E', backgroundColor: 'transparent', border: 'none', borderBottom: tab === t ? '2px solid #2C1A0E' : '2px solid transparent', cursor: 'pointer', textTransform: 'capitalize' }}>
-            {t === 'properties' ? `Properties ${pending.length > 0 ? `(${pending.length} new)` : ''}` : 'Vendors'}
-          </button>
-        ))}
       </div>
 
-      {tab === 'vendors' ? (
-        <div style={{ padding: 16 }}>
-          <p style={{ fontSize: 13, color: '#7C5C3E', marginBottom: 16, lineHeight: 1.6 }}>
-            Vendor applications are managed separately. Tap below to review and approve pending vendor applications, or to assign featured status to paid vendors.
-          </p>
-          <Link href="/curator/vendors" style={{ display: 'block', textAlign: 'center', backgroundColor: '#2C1A0E', color: 'white', fontWeight: 600, fontSize: 14, borderRadius: 12, padding: '14px 0', textDecoration: 'none', marginBottom: 12 }}>
-            Review vendor applications
-          </Link>
-          <div style={{ backgroundColor: 'white', borderRadius: 14, border: '1px solid #D6C9B8', padding: 16 }}>
-            <p style={{ fontSize: 12, fontWeight: 600, color: '#2C1A0E', marginBottom: 8 }}>How to assign featured status</p>
-            <ol style={{ fontSize: 13, color: '#7C5C3E', lineHeight: 1.8, paddingLeft: 16 }}>
-              <li>Go to <strong>Manage Vendors</strong> above</li>
-              <li>Switch to the <strong>Active</strong> tab</li>
-              <li>Find the vendor you want to feature</li>
-              <li>Tap the <strong>☆ Feature</strong> button on their card</li>
-              <li>Their card will show a gold kasavu border and appear first in their category</li>
-            </ol>
-            <p style={{ fontSize: 11, color: '#B4A898', marginTop: 10, lineHeight: 1.6 }}>
-              Featured status is how you reward paid vendors. Toggle it on when they pay, off when their period expires. No backend needed — it's just a switch you control.
-            </p>
+      <div style={{ padding:'16px 16px 0' }}>
+
+        {/* Town filter */}
+        <div style={{ marginBottom:18 }}>
+          <div style={{ ...sans,fontSize:9,color:C.terra,letterSpacing:'.08em',marginBottom:8 }}>FILTER BY TOWN</div>
+          <div style={{ display:'flex',gap:6,overflowX:'auto',paddingBottom:4 }} className="no-scrollbar">
+            <button onClick={() => setSelectedTown('all')} style={{ ...sans,flexShrink:0,padding:'7px 14px',border:`1px solid ${selectedTown==='all'?C.green:C.cream3}`,background:selectedTown==='all'?C.green:'white',color:selectedTown==='all'?'white':C.muted,fontSize:11,cursor:'pointer',fontWeight:selectedTown==='all'?600:400 }}>
+              All towns
+            </button>
+            {towns.map(t => (
+              <button key={t.id} onClick={() => setSelectedTown(t.id)} style={{ ...sans,flexShrink:0,padding:'7px 14px',border:`1px solid ${selectedTown===t.id?t.hero_bg_color:C.cream3}`,background:selectedTown===t.id?t.hero_bg_color:'white',color:selectedTown===t.id?'white':C.muted,fontSize:11,cursor:'pointer',fontWeight:selectedTown===t.id?600:400 }}>
+                {t.name}
+              </button>
+            ))}
           </div>
         </div>
-      ) : (
-        <div style={{ padding: 16 }}>
-          {loading ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {[1, 2].map((i) => <div key={i} style={{ height: 120, backgroundColor: 'white', borderRadius: 12, border: '1px solid #D6C9B8' }} />)}
+
+        {loading ? (
+          <div style={{ textAlign:'center',padding:'40px 0' }}>
+            <div style={{ width:28,height:28,border:`2px solid ${C.terra}`,borderTopColor:'transparent',borderRadius:'50%',animation:'spin .8s linear infinite',margin:'0 auto' }}/>
+            <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+          </div>
+        ) : (
+          <>
+            {/* Context header */}
+            <div style={{ ...serif,fontSize:16,color:C.text,marginBottom:16 }}>
+              {selectedTown === 'all' ? 'All towns combined' : `${selectedTownObj?.name ?? ''}`}
             </div>
-          ) : submissions.length === 0 ? (
-            <p style={{ textAlign: 'center', color: '#7C5C3E', fontSize: 14, paddingTop: 48 }}>No property submissions yet.</p>
-          ) : (
-            <>
-              {pending.length > 0 && (
-                <div style={{ marginBottom: 24 }}>
-                  <p style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#D4735E', marginBottom: 12, fontWeight: 600 }}>
-                    New — needs review ({pending.length})
-                  </p>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    {pending.map((s) => (
-                      <SubmissionCard key={s.id} submission={s} onUpdate={updateStatus} />
-                    ))}
-                  </div>
+
+            {/* Key stats */}
+            <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8,marginBottom:20 }}>
+              {[['This week',weekTotal],['This month',monthTotal],['All time',allTime]].map(([label,val]) => (
+                <div key={label as string} style={{ background:'white',border:`1px solid ${C.cream3}`,padding:'14px 10px',textAlign:'center' }}>
+                  <div style={{ fontFamily:'Georgia,serif',fontSize:26,color:C.terra,fontWeight:300,marginBottom:3 }}>{val}</div>
+                  <div style={{ ...sans,fontSize:9,color:C.muted,letterSpacing:'.06em' }}>{(label as string).toUpperCase()}</div>
                 </div>
-              )}
-              {reviewed.length > 0 && (
-                <div>
-                  <p style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#B4A898', marginBottom: 12, fontWeight: 600 }}>
-                    Already reviewed ({reviewed.length})
-                  </p>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    {reviewed.map((s) => (
-                      <SubmissionCard key={s.id} submission={s} onUpdate={updateStatus} />
-                    ))}
+              ))}
+            </div>
+
+            {/* 14-day trend chart */}
+            <div style={{ background:'white',border:`1px solid ${C.cream3}`,padding:'16px 14px',marginBottom:16 }}>
+              <div style={{ ...sans,fontSize:10,color:C.muted,letterSpacing:'.07em',marginBottom:12 }}>LAST 14 DAYS</div>
+              <div style={{ display:'flex',alignItems:'flex-end',gap:3,height:60 }}>
+                {days.map((d,i) => (
+                  <div key={i} style={{ flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:3 }}>
+                    <div style={{ width:'100%',background:d.count>0?C.terra:C.cream3,borderRadius:2,height:`${Math.max((d.count/maxDay)*52,d.count>0?4:2)}px`,transition:'height .3s' }}/>
+                    {i % 3 === 0 && <div style={{ ...sans,fontSize:8,color:C.muted,whiteSpace:'nowrap' as const,transform:'rotate(-30deg)',transformOrigin:'top left',marginTop:4 }}>{d.label}</div>}
                   </div>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      )}
+                ))}
+              </div>
+            </div>
 
-      {toast && (
-        <div style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', backgroundColor: '#2C1A0E', color: 'white', fontSize: 13, padding: '10px 20px', borderRadius: 999, zIndex: 50, whiteSpace: 'nowrap' }}>
-          {toast}
-        </div>
-      )}
-    </div>
-  )
-}
+            {/* Town breakdown — only show when all towns selected */}
+            {selectedTown === 'all' && townBreakdown.length > 0 && (
+              <div style={{ background:'white',border:`1px solid ${C.cream3}`,padding:'14px',marginBottom:16 }}>
+                <div style={{ ...sans,fontSize:10,color:C.muted,letterSpacing:'.07em',marginBottom:12 }}>BY TOWN</div>
+                {townBreakdown.map(t => (
+                  <div key={t.name} style={{ display:'flex',alignItems:'center',gap:10,marginBottom:10 }}>
+                    <div style={{ width:10,height:10,background:t.color,flexShrink:0 }}/>
+                    <div style={{ ...sans,fontSize:12,color:C.text,flex:1 }}>{t.name}</div>
+                    <div style={{ flex:2,background:C.cream2,borderRadius:2,overflow:'hidden' }}>
+                      <div style={{ height:6,background:t.color,width:`${(t.count/allTime)*100}%`,transition:'width .3s' }}/>
+                    </div>
+                    <div style={{ ...sans,fontSize:12,fontWeight:600,color:C.text,minWidth:24,textAlign:'right' as const }}>{t.count}</div>
+                  </div>
+                ))}
+              </div>
+            )}
 
-function SubmissionCard({ submission: s, onUpdate }: { submission: PropertySubmission; onUpdate: (id: string, status: string) => void }) {
-  const [expanded, setExpanded] = useState(false)
+            {/* Top properties */}
+            {topProps.length > 0 && (
+              <div style={{ background:'white',border:`1px solid ${C.cream3}`,padding:'14px',marginBottom:16 }}>
+                <div style={{ ...sans,fontSize:10,color:C.muted,letterSpacing:'.07em',marginBottom:12 }}>TOP SPACES BY ENQUIRIES</div>
+                {topProps.map((p,i) => (
+                  <div key={p.slug} style={{ display:'flex',alignItems:'center',gap:10,marginBottom:10 }}>
+                    <div style={{ ...sans,fontSize:12,color:C.muted,width:16,textAlign:'right' as const }}>{i+1}</div>
+                    <div style={{ flex:1 }}>
+                      <div style={{ ...sans,fontSize:12,color:C.text,fontWeight:500 }}>{p.name}</div>
+                      {selectedTown === 'all' && p.town_name && <div style={{ ...sans,fontSize:10,color:C.muted }}>{p.town_name}</div>}
+                    </div>
+                    <div style={{ flex:2,background:C.cream2,borderRadius:2,overflow:'hidden' }}>
+                      <div style={{ height:6,background:C.terra,width:`${(p.count/topProps[0].count)*100}%`,transition:'width .3s' }}/>
+                    </div>
+                    <div style={{ ...sans,fontSize:12,fontWeight:600,color:C.text,minWidth:24,textAlign:'right' as const }}>{p.count}</div>
+                  </div>
+                ))}
+              </div>
+            )}
 
-  return (
-    <div style={{ backgroundColor: 'white', borderRadius: 12, border: `1px solid ${s.status === 'pending' ? '#D4735E' : '#D6C9B8'}`, padding: 16 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-        <div style={{ flex: 1 }}>
-          <p style={{ fontFamily: 'Georgia, serif', fontSize: 16, color: '#2C1A0E' }}>{s.name}</p>
-          {s.owner_name && <p style={{ fontSize: 12, color: '#7C5C3E', marginTop: 2 }}>{s.owner_name}</p>}
-        </div>
-        <span style={{ fontSize: 10, fontWeight: 600, padding: '3px 8px', borderRadius: 999, backgroundColor: s.status === 'pending' ? '#fdf3f1' : s.status === 'reviewed' ? '#f0f7f1' : '#f5f0eb', color: s.status === 'pending' ? '#D4735E' : s.status === 'reviewed' ? '#6B8F71' : '#7C5C3E', marginLeft: 8 }}>
-          {s.status}
-        </span>
-      </div>
+            {/* Event type breakdown */}
+            {topEvents.length > 0 && (
+              <div style={{ background:'white',border:`1px solid ${C.cream3}`,padding:'14px',marginBottom:16 }}>
+                <div style={{ ...sans,fontSize:10,color:C.muted,letterSpacing:'.07em',marginBottom:12 }}>BY EVENT TYPE</div>
+                {topEvents.map(([et, count]) => (
+                  <div key={et} style={{ display:'flex',alignItems:'center',gap:10,marginBottom:8 }}>
+                    <div style={{ ...sans,fontSize:12,color:C.text,flex:1,textTransform:'capitalize' as const }}>{et.replace(/_/g,' ')}</div>
+                    <div style={{ flex:2,background:C.cream2,borderRadius:2,overflow:'hidden' }}>
+                      <div style={{ height:6,background:C.gold,width:`${(count/topEvents[0][1])*100}%` }}/>
+                    </div>
+                    <div style={{ ...sans,fontSize:12,fontWeight:600,color:C.text,minWidth:24,textAlign:'right' as const }}>{count}</div>
+                  </div>
+                ))}
+              </div>
+            )}
 
-      {/* Contact info */}
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
-        {s.whatsapp && (
-          <a href={`https://wa.me/${s.whatsapp}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: '#25D366', textDecoration: 'none', fontWeight: 500 }}>
-            💬 {s.whatsapp}
-          </a>
+            {allTime === 0 && (
+              <p style={{ ...sans,fontSize:14,color:C.muted,textAlign:'center',padding:'20px 0' }}>No enquiries yet{selectedTown !== 'all' ? ` for ${selectedTownObj?.name}` : ''}.</p>
+            )}
+          </>
         )}
-        {s.phone && <span style={{ fontSize: 12, color: '#7C5C3E' }}>📞 {s.phone}</span>}
-        {s.email && <span style={{ fontSize: 12, color: '#7C5C3E' }}>✉ {s.email}</span>}
       </div>
-
-      {/* Key details */}
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
-        {s.price_guide && <span style={{ fontSize: 11, backgroundColor: '#FAF7F2', border: '1px solid #D6C9B8', borderRadius: 999, padding: '2px 8px', color: '#7C5C3E' }}>₹ {s.price_guide}</span>}
-        {s.area && <span style={{ fontSize: 11, backgroundColor: '#FAF7F2', border: '1px solid #D6C9B8', borderRadius: 999, padding: '2px 8px', color: '#7C5C3E' }}>📍 {s.area}</span>}
-        {s.capacity && <span style={{ fontSize: 11, backgroundColor: '#FAF7F2', border: '1px solid #D6C9B8', borderRadius: 999, padding: '2px 8px', color: '#7C5C3E' }}>👥 {s.capacity}</span>}
-      </div>
-
-      {/* Expand for full details */}
-      <button onClick={() => setExpanded(!expanded)} style={{ fontSize: 12, color: '#7C5C3E', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', marginBottom: expanded ? 10 : 0, padding: 0 }}>
-        {expanded ? 'Show less' : 'Show full details'}
-      </button>
-
-      {expanded && (
-        <div style={{ marginBottom: 12 }}>
-          {s.tagline && <p style={{ fontSize: 13, color: '#2C1A0E', fontStyle: 'italic', marginBottom: 6 }}>"{s.tagline}"</p>}
-          {s.description && <p style={{ fontSize: 13, color: '#555', lineHeight: 1.6, marginBottom: 6 }}>{s.description}</p>}
-          {s.facilities && <p style={{ fontSize: 12, color: '#7C5C3E', marginBottom: 6 }}>Facilities: {s.facilities}</p>}
-          {s.message && <p style={{ fontSize: 12, color: '#B4A898', fontStyle: 'italic' }}>"{s.message}"</p>}
-          <p style={{ fontSize: 10, color: '#B4A898', marginTop: 6 }}>Submitted {new Date(s.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
-        </div>
-      )}
-
-      {/* Action buttons */}
-      {s.status === 'pending' && (
-        <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-          <a
-            href={`https://wa.me/${s.whatsapp}?text=${encodeURIComponent(`Hi ${s.owner_name || ''}! I'm from Theeram Spaces. I'd like to visit your property "${s.name}" to discuss listing it on our directory. When would be a good time?`)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ flex: 1, textAlign: 'center', backgroundColor: '#25D366', color: 'white', fontWeight: 600, fontSize: 13, borderRadius: 8, padding: '8px 0', textDecoration: 'none' }}
-          >
-            💬 Contact to visit
-          </a>
-          <button onClick={() => onUpdate(s.id, 'reviewed')} style={{ flex: 1, backgroundColor: '#6B8F71', color: 'white', fontWeight: 600, fontSize: 13, borderRadius: 8, padding: '8px 0', border: 'none', cursor: 'pointer' }}>
-            ✓ Mark reviewed
-          </button>
-          <button onClick={() => onUpdate(s.id, 'rejected')} style={{ border: '1px solid #D4735E', color: '#D4735E', fontSize: 13, borderRadius: 8, padding: '8px 12px', backgroundColor: 'transparent', cursor: 'pointer' }}>
-            ✕
-          </button>
-        </div>
-      )}
+      <style>{`.no-scrollbar::-webkit-scrollbar{display:none}`}</style>
     </div>
   )
 }
