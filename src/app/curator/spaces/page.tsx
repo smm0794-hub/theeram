@@ -31,7 +31,7 @@ export default function CuratorSpacesPage() {
         .order('sort_order', { ascending: false }).order('created_at', { ascending: false }),
       supabase.from('towns').select('*').eq('is_active', true).order('sort_order'),
     ])
-    if (!pr.error && pr.data) setProperties(pr.data as PropertySummary[])
+    if (!pr.error && pr.data) setProperties(pr.data as unknown as PropertySummary[])
     if (!tr.error && tr.data) setTowns(tr.data as Town[])
     setLoading(false)
   }
