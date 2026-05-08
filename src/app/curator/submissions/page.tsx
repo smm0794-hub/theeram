@@ -26,6 +26,7 @@ interface PropertySubmission {
 }
 
 // submissions page — spaces only
+type Tab = 'properties' | 'vendors'
 
 export default function CuratorSubmissionsPage() {
   const [tab, setTab] = useState<Tab>('properties')
