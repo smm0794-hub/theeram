@@ -61,13 +61,15 @@ function slug(name: string) {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 }
 
-function buildSQL(v: Venue): string {
+function buildSQL(v: Venue, townId?: string | null): string {
   const wa = v.whatsapp || v.phone.replace(/\D/g, '')
   const esc = (s: string) => s.replace(/'/g, "''")
   const types = v.event_types.map(e => `'${e}'`).join(',')
+  const townCol = townId ? `,town_id` : ''
+  const townVal = townId ? `,'${townId}'` : ''
   return `WITH ins AS (
-  INSERT INTO public.properties (name,slug,tagline,description,owner_whatsapp,owner_name,price_guide,photos,is_active,is_featured,sort_order,instagram_url,maps_url,property_type)
-  VALUES ('${esc(v.name)}','${v.slug}','${esc(v.tagline)}','${esc(v.description)}','${wa}','${esc(v.name)}','${esc(v.price_guide)}','{}',false,false,0,'${v.instagram}','${v.maps_url}','${v.type}')
+  INSERT INTO public.properties (name,slug,tagline,description,owner_whatsapp,owner_name,price_guide,photos,is_active,is_featured,sort_order,instagram_url,maps_url,property_type${townCol})
+  VALUES ('${esc(v.name)}','${v.slug}','${esc(v.tagline)}','${esc(v.description)}','${wa}','${esc(v.name)}','${esc(v.price_guide)}','{}',false,false,0,'${v.instagram}','${v.maps_url}','${v.type}'${townVal})
   RETURNING id
 ),
 attrs AS (
@@ -80,8 +82,17 @@ SELECT id,unnest(ARRAY[${types}]) FROM ins;`
 
 export default function AgentPage() {
   const [query, setQuery] = useState('event spaces party halls villas in Pala Kerala')
+  const [townId, setTownId] = useState<string | null>(null)
+  const [townName, setTownName] = useState('')
   const [scanning, setScanning] = useState(false)
   const [venues, setVenues] = useState<Venue[]>([])
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const tn = params.get('town'); const tid = params.get('townId')
+    if (tn) { setTownName(tn); setQuery(`event spaces party halls villas in ${tn} Kerala`) }
+    if (tid) setTownId(tid)
+  }, [])
   const [log, setLog] = useState<string[]>([])
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [copied, setCopied] = useState('')
@@ -102,12 +113,13 @@ export default function AgentPage() {
       const res = await fetch('/api/agent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query }),
+        body: JSON.stringify({ query, townId }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? `Error ${res.status}`)
       addLog('Agent completed. Parsing results...')
       const parsed: any[] = data.venues
+      const resolvedTownId = data.townId ?? townId
       addLog(`Found ${parsed.length} venues. Generating SQL...`)
       const processed: Venue[] = parsed.map((v, i) => {
         const venue: Venue = {
@@ -116,7 +128,7 @@ export default function AgentPage() {
           selected: v.confidence !== 'low',
           sql: '',
         }
-        venue.sql = buildSQL(venue)
+        venue.sql = buildSQL(venue, resolvedTownId)
         return venue
       })
       setVenues(processed)
@@ -133,7 +145,7 @@ export default function AgentPage() {
       if (v.id !== id) return v
       const u = { ...v, [field]: val }
       if (field === 'name') u.slug = slug(val)
-      u.sql = buildSQL(u)
+      u.sql = buildSQL(u, townId)
       return u
     }))
   }

@@ -181,3 +181,25 @@ export function createServiceClient() {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 }
+
+// Town type
+export type Town = {
+  id: string
+  name: string
+  slug: string
+  district: string
+  tagline: string
+  description: string
+  hero_headline: string
+  hero_subtext: string
+  why_here_heading: string
+  why_here_text: string
+  stat_1_value: string; stat_1_label: string
+  stat_2_value: string; stat_2_label: string
+  stat_3_value: string; stat_3_label: string
+  hero_bg_color: string
+  is_active: boolean
+  sort_order: number
+  created_at: string
+  property_count?: number
+}

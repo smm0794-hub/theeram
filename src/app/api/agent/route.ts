@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(req: NextRequest) {
   try {
-    const { query } = await req.json()
+    const { query, townId } = await req.json()
     if (!query) return NextResponse.json({ error: 'Query required' }, { status: 400 })
 
     const SYSTEM_PROMPT = `You are a venue discovery agent for Theeram Spaces — a curated event venue directory for Pala, Kerala.
@@ -67,7 +67,7 @@ Only include venues suitable for private events. No government buildings, school
     const s = clean.indexOf('['), e = clean.lastIndexOf(']')
     if (s === -1 || e === -1) return NextResponse.json({ error: 'Agent did not return a valid venue list. Try again.' }, { status: 500 })
     const venues = JSON.parse(clean.slice(s, e + 1))
-    return NextResponse.json({ venues })
+    return NextResponse.json({ venues, townId: townId ?? null })
 
   } catch (err: any) {
     return NextResponse.json({ error: err.message ?? 'Server error' }, { status: 500 })
