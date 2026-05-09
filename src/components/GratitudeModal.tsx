@@ -14,7 +14,7 @@ interface Props {
 
 const STORAGE_KEY = 'theeram_coffee_done'
 const RESET_DAYS = 7
-const GOOGLE_REVIEW_URL = 'https://g.page/r/theeramspaces/review'
+const GOOGLE_REVIEW_URL = 'https://g.page/r/Cav0otb1aGpEEBM/review'
 
 function hasPaidOrSkipped(): boolean {
   if (typeof window === 'undefined') return false
