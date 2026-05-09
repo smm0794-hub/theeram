@@ -1,4 +1,4 @@
-import Link from 'next/link'
+﻿import Link from 'next/link'
 import { Metadata } from 'next'
 import Header from '@/components/Header'
 
@@ -9,7 +9,7 @@ const serif = { fontFamily:'Georgia,serif' } as const
 const sans = { fontFamily:'system-ui,sans-serif' } as const
 
 const sections = [
-  { title:'What we collect', body:`When you use Theeram Spaces, we may collect:\n\n• Page view data: When you view a property listing, we record the property ID and a timestamp. We do not collect your name, phone number, or device identifier. IP addresses are used only for rate limiting (one count per property per 30 minutes) and are not stored.\n\n• Inquiry data: When you tap "Talk to owner," we log the property and event type with a timestamp. We do not collect your name or phone number.\n\n• Vendor applications: Business name, category, contact details, and description submitted via /join.\n\n• Property submissions: Details submitted via /list.\n\n• Technical data: Standard server logs including IP address and pages visited, collected by our hosting provider (Vercel).` },
+  { title:'What we collect', body:`When you use Theeram Spaces, we may collect:\n\nâ€¢ Page view data: When you view a property listing, we record the property ID and a timestamp. We do not collect your name, phone number, or device identifier. IP addresses are used only for rate limiting (one count per property per 30 minutes) and are not stored.\n\nâ€¢ Inquiry data: When you tap "Talk to owner," we log the property and event type with a timestamp. We do not collect your name or phone number.\n\nâ€¢ Vendor applications: Business name, category, contact details, and description submitted via /join.\n\nâ€¢ Property submissions: Details submitted via /list.\n\nâ€¢ Technical data: Standard server logs including IP address and pages visited, collected by our hosting provider (Vercel).` },
   { title:'What we do not collect', body:'We do not collect your name, phone number, or WhatsApp number as a visitor. We do not collect payment card details, location data, or data from children under 18.' },
   { title:'How we use your data', body:'Inquiry logs are used solely to understand which properties are most popular, so we can improve the directory. Vendor and property submission data is used to review and respond to listing requests.' },
   { title:'Data sharing', body:'We do not sell, rent, or share your data with any third party for commercial purposes. Third parties who may process data: Vercel (hosting), Supabase (database), Cloudinary (image hosting). All are GDPR-compliant.' },
@@ -37,7 +37,7 @@ export default function PrivacyPage() {
           </section>
         ))}
         <div style={{ borderTop:`1px solid ${C.cream3}`,paddingTop:16 }}>
-          <p style={{ ...sans,fontSize:11,color:C.muted }}>Theeram Spaces · Pala, Kerala · smm0794@gmail.com</p>
+          <p style={{ ...sans,fontSize:11,color:C.muted }}>Theeram Spaces Â· Pala, Kerala Â· smm0794@gmail.com</p>
         </div>
       </div>
     </div>
