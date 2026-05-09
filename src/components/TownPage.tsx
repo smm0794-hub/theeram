@@ -257,7 +257,7 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
 
       {/* ── Trust bar ──────────────────────────────────────────── */}
       <div style={{ background: C.cream2, borderBottom: `1px solid ${C.cream3}`, padding: '18px 16px', display: 'flex' }}>
-        {[['No fees', 'Speak to the owner'], ['Personally visited', 'Every space, by us'], ['WhatsApp first', 'The Kerala way']].map(([title, sub], i) => (
+        {[['No fees', 'Speak to the owner'], ['Individually reviewed', 'Every listing, by us'], ['WhatsApp first', 'The Kerala way']].map(([title, sub], i) => (
           <div key={title} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 4, padding: '0 6px', borderLeft: i > 0 ? `1px solid ${C.cream3}` : 'none' }}>
             <div style={{ width: 7, height: 7, background: C.terra, transform: 'rotate(45deg)', marginBottom: 4 }}/>
             <div style={{ ...sans, fontSize: 11, fontWeight: 500, color: C.text }}>{title}</div>
@@ -457,9 +457,20 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
         <div style={{ ...serif, fontSize: 19, color: C.gold, marginBottom: 5, fontWeight: 300 }}>തീരം · theeram</div>
         <div style={{ ...sans, fontSize: 10, color: 'rgba(255,255,255,.4)', letterSpacing: '.08em', marginBottom: 20 }}>Spaces for every occasion · Kerala</div>
         <div style={{ width: 38, height: 1, background: 'rgba(255,255,255,.1)', margin: '0 auto 18px' }}/>
+        {/* Towns row */}
+        <div style={{ marginBottom: 10 }}>
+          <div style={{ ...sans, fontSize: 9, color: 'rgba(255,255,255,.25)', letterSpacing: '.1em', marginBottom: 8 }}>LOCATIONS</div>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 16, flexWrap: 'wrap' as const }}>
+            {[['Pala', '/pala'], ['Thodupuzha', '/thodupuzha'], ['Kanjirappally', '/kanjirappally'], ['Theekoy', '/theekoy']].map(([label, href]) => (
+              <Link key={label} href={href} style={{ ...sans, fontSize: 10, color: 'rgba(255,255,255,.45)', textDecoration: 'none', letterSpacing: '.04em' }}>{label}</Link>
+            ))}
+          </div>
+        </div>
+        <div style={{ width: 38, height: 1, background: 'rgba(255,255,255,.08)', margin: '12px auto' }}/>
+        {/* Site links row */}
         <div style={{ display: 'flex', justifyContent: 'center', gap: 20, marginBottom: 14, flexWrap: 'wrap' as const }}>
-          {[['Pala', '/pala'], ['Thodupuzha', '/thodupuzha'], ['Kanjirappally', '/kanjirappally'], ['Theekoy', '/theekoy'], ['About', '/about'], ['Privacy', '/privacy'], ['Terms', '/terms']].map(([label, href]) => (
-            <Link key={label} href={href} style={{ ...sans, fontSize: 10, color: 'rgba(255,255,255,.38)', textDecoration: 'none', letterSpacing: '.04em' }}>{label}</Link>
+          {[['About', '/about'], ['Privacy', '/privacy'], ['Terms', '/terms']].map(([label, href]) => (
+            <Link key={label} href={href} style={{ ...sans, fontSize: 10, color: 'rgba(255,255,255,.28)', textDecoration: 'none', letterSpacing: '.04em' }}>{label}</Link>
           ))}
         </div>
         <a href={`https://wa.me/919447000000?text=${encodeURIComponent('Hi! I need help finding the right event space.')}`} target="_blank" rel="noopener noreferrer"

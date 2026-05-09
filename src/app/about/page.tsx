@@ -78,7 +78,7 @@ export default function AboutPage() {
           Theeram is a hand-curated directory of event spaces, villas, and venues across Kerala. Whether you are planning a wedding, a family gathering, a corporate offsite, a birthday celebration, or a quiet retreat — Theeram connects you directly with the right space and the right people.
         </p>
         <p style={{ ...sans,fontSize:14,color:C.muted,lineHeight:1.85,marginBottom:14,fontWeight:300 }}>
-          Every listing is personally visited and verified. No auto-populated directories, no unverified listings, no spaces we would not recommend to someone we know. We cover private villas, heritage homes, open lawns, AC banquet halls, riverside properties, and auditoriums — from intimate gatherings to receptions of 1,200 guests.
+          Every listing is individually reviewed and curated. No auto-populated directories, no unverified listings, no spaces we would not recommend to someone we know. We cover private villas, heritage homes, open lawns, AC banquet halls, riverside properties, and auditoriums — from intimate gatherings to receptions of 1,200 guests.
         </p>
         <p style={{ ...sans,fontSize:14,color:C.muted,lineHeight:1.85,marginBottom:28,fontWeight:300 }}>
           Alongside venues, Theeram also connects you with trusted local makers — photographers, caterers, decorators, florists, and bridal stylists — who know these towns and the families that celebrate in them. No booking fees. No middlemen. Every enquiry goes directly to the owner on WhatsApp.
@@ -134,7 +134,7 @@ export default function AboutPage() {
           </div>
           <h2 style={{ ...serif,fontSize:20,fontWeight:400,color:C.text,marginBottom:12 }}>The curation promise</h2>
           <p style={{ ...sans,fontSize:14,color:C.muted,lineHeight:1.85,fontWeight:300 }}>
-            Every space on Theeram has been personally visited by our team. We verify the facilities, photograph the property, confirm the owner's contact details, and check that the space is genuinely available for private events. If we would not recommend it to a family member planning their wedding, it does not go on Theeram.
+            Every space on Theeram is individually reviewed and curated by our team. We verify the facilities, confirm the owner's contact details, and check that the space is genuinely available for private events. If we would not recommend it to a family member planning their wedding, it does not go on Theeram.
           </p>
         </div>
 

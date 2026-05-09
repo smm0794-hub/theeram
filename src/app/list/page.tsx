@@ -39,7 +39,7 @@ export default function ListPage() {
       <Header/>
       <div style={{ ...serif,fontSize:40,color:C.gold,marginBottom:16 }}>🪔</div>
       <h1 style={{ ...serif,fontSize:22,color:C.text,marginBottom:12,fontWeight:400 }}>Thank you, {ownerName.split(' ')[0]||'there'}.</h1>
-      <p style={{ ...sans,fontSize:14,color:C.muted,lineHeight:1.7,maxWidth:280,marginBottom:24,fontWeight:300 }}>Your listing request has been received. We personally visit and verify every property before it goes live.</p>
+      <p style={{ ...sans,fontSize:14,color:C.muted,lineHeight:1.7,maxWidth:280,marginBottom:24,fontWeight:300 }}>Your listing request has been received. We individually review and verify every property before it goes live.</p>
       <a href="https://wa.me/919447000000" style={{ ...sans,fontSize:14,color:C.wa,fontWeight:600,textDecoration:'none',marginBottom:20 }}>💬 +91 94470 00000</a>
       <Link href="/" style={{ ...sans,fontSize:12,color:C.terra,textDecoration:'underline' }}>Browse listings →</Link>
     </div>
@@ -50,7 +50,7 @@ export default function ListPage() {
       <Header/>
       <div style={{ background:C.green,padding:'32px 20px 28px' }}>
         <h1 style={{ ...serif,fontSize:26,color:'white',fontWeight:300,marginBottom:8 }}>List your space</h1>
-        <p style={{ ...sans,fontSize:13,color:'rgba(255,255,255,.65)',lineHeight:1.7,fontWeight:300 }}>Theeram personally visits every property before listing. Fill in your details and we will be in touch.</p>
+        <p style={{ ...sans,fontSize:13,color:'rgba(255,255,255,.65)',lineHeight:1.7,fontWeight:300 }}>Theeram individually reviews and curates every listing. Fill in your details and we will be in touch.</p>
       </div>
       <div style={{ padding:'24px 16px 0' }}>
         <label style={label}>Property name *</label>
