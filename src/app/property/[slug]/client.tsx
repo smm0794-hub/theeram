@@ -40,6 +40,10 @@ export default function PropertyDetailClient({ slug }: { slug: string }) {
         .single()
       setProperty(data as Property)
       setLoading(false)
+      // Track view
+      if (data?.id) {
+        fetch('/api/track-view', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ property_id: data.id }) }).catch(() => {})
+      }
     }
     load()
   }, [slug])
@@ -241,6 +245,9 @@ export default function PropertyDetailClient({ slug }: { slug: string }) {
         {/* Price */}
         <div style={{ borderTop: `1px solid ${C.cream3}`, paddingTop: 16 }}>
           <p style={{ ...sans, fontSize: 13, color: C.muted, fontStyle: 'italic', fontWeight: 300 }}>{property.price_guide} · Contact owner for full details</p>
+          <p style={{ ...sans, fontSize: 11, color: C.muted, lineHeight: 1.6, marginTop: 10, fontWeight: 300, borderTop: `1px solid ${C.cream3}`, paddingTop: 10 }}>
+            Details verified at time of listing. Facilities, pricing, and availability may change — please confirm directly with the owner before booking. Theeram Spaces is a discovery directory and is not party to any booking arrangement.
+          </p>
         </div>
 
         {/* Links */}

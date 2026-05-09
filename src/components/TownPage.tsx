@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { supabase, Property, Vendor, Town, VENDOR_CATEGORY_LABELS, VendorCategory } from '@/lib/supabase'
 import { C, sans, serif } from '@/lib/design'
 import Header from '@/components/Header'
+import GratitudeModal from '@/components/GratitudeModal'
 
 // ── Card bg by property type ─────────────────────────────────────────────────
 const CARD_BG: Record<string, string> = {
@@ -146,11 +147,19 @@ function FilterRow({ filters, active, onSelect }: { filters: typeof FEEL_FILTERS
 }
 
 export default function TownPage({ town, allTowns }: { town: Town; allTowns: Town[] }) {
-  const [tab, setTab] = useState<'spaces' | 'makers'>('spaces')
+  const [tab, setTab] = useState<'spaces' | 'makers'>(() => {
+    if (typeof window !== 'undefined') {
+      const p = new URLSearchParams(window.location.search)
+      if (p.get('tab') === 'makers') return 'makers'
+    }
+    return 'spaces'
+  })
   const [properties, setProperties] = useState<Property[]>([])
   const [vendors, setVendors] = useState<Vendor[]>([])
   const [loading, setLoading] = useState(true)
   const [spaceFilter, setSpaceFilter] = useState('all')
+  const [modalProperty, setModalProperty] = useState<Property | null>(null)
+  const [showModal, setShowModal] = useState(false)
   const [makerFilter, setMakerFilter] = useState('all')
   const [search, setSearch] = useState('')
   const heroBg = town.hero_bg_color || C.green
@@ -177,6 +186,11 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
 
   async function handleWhatsApp(p: Property) {
     try { await supabase.from('inquiries').insert({ property_id: p.id, event_type: p.property_event_types?.[0]?.event_type ?? 'general' }) } catch {}
+    setModalProperty(p)
+    setShowModal(true)
+  }
+
+  function openWhatsAppDirect(p: Property) {
     const msg = encodeURIComponent(`Hi! I found ${p.name} on Theeram and I'm interested in booking. Could you share availability and pricing?`)
     window.open(`https://wa.me/${p.owner_whatsapp}?text=${msg}`, '_blank')
   }
@@ -340,7 +354,7 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
               </div>
             ) : filteredProps.map(p => {
               const attrs = p.property_attributes
-              const photos = p.photos ?? []
+              const photos = Array.isArray(p.photos) ? p.photos : []
               const chips = [
                 attrs?.has_pool && 'Pool',
                 attrs?.has_open_lawn && 'Open lawn',
@@ -444,14 +458,25 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
         <div style={{ ...sans, fontSize: 10, color: 'rgba(255,255,255,.4)', letterSpacing: '.08em', marginBottom: 20 }}>Spaces for every occasion · Kerala</div>
         <div style={{ width: 38, height: 1, background: 'rgba(255,255,255,.1)', margin: '0 auto 18px' }}/>
         <div style={{ display: 'flex', justifyContent: 'center', gap: 20, marginBottom: 14, flexWrap: 'wrap' as const }}>
-          {[['Pala', '/pala'], ['Thodupuzha', '/thodupuzha'], ['Kanjirappally', '/kanjirappally'], ['Theekoy', '/theekoy'], ['About', '/about'], ['Privacy', '/privacy']].map(([label, href]) => (
+          {[['Pala', '/pala'], ['Thodupuzha', '/thodupuzha'], ['Kanjirappally', '/kanjirappally'], ['Theekoy', '/theekoy'], ['About', '/about'], ['Privacy', '/privacy'], ['Terms', '/terms']].map(([label, href]) => (
             <Link key={label} href={href} style={{ ...sans, fontSize: 10, color: 'rgba(255,255,255,.38)', textDecoration: 'none', letterSpacing: '.04em' }}>{label}</Link>
           ))}
         </div>
         <a href={`https://wa.me/919447000000?text=${encodeURIComponent('Hi! I need help finding the right event space.')}`} target="_blank" rel="noopener noreferrer"
           style={{ ...sans, fontSize: 11, color: 'rgba(255,255,255,.4)', display: 'block', marginBottom: 8 }}>💬 Need help? Ask us on WhatsApp</a>
+        <div style={{ ...sans, fontSize: 10, color: 'rgba(255,255,255,.14)', lineHeight: 1.6, marginBottom: 6 }}>We use anonymous page view analytics to understand which spaces are most popular. No personal data is collected.</div>
         <div style={{ ...sans, fontSize: 10, color: 'rgba(255,255,255,.18)', lineHeight: 1.6 }}>© {new Date().getFullYear()} Theeram Spaces · Kerala</div>
       </footer>
+      {/* Gratitude modal */}
+      {modalProperty && (
+        <GratitudeModal
+          isOpen={showModal}
+          onClose={() => { setShowModal(false); setModalProperty(null) }}
+          property={modalProperty}
+          eventType={modalProperty.property_event_types?.[0]?.event_type ?? 'general'}
+          onWhatsApp={() => openWhatsAppDirect(modalProperty)}
+        />
+      )}
     </div>
   )
 }

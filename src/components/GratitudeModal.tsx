@@ -13,7 +13,7 @@ interface Props {
 }
 
 const STORAGE_KEY = 'theeram_coffee_done'
-const RESET_DAYS = 30
+const RESET_DAYS = 7
 const GOOGLE_REVIEW_URL = 'https://g.page/r/theeramspaces/review'
 
 function hasPaidOrSkipped(): boolean {

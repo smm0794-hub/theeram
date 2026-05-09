@@ -13,12 +13,7 @@ export default function Header({ sticky = true }: Props) {
 
   return (
     <>
-      {/* Top bar — theeram wordmark only; town pages render their own dynamic top bar */}
-      <div style={{ background: C.green, padding: '6px 16px' }}>
-        <span style={{ ...sans, fontSize: 10, color: 'rgba(255,255,255,.5)', letterSpacing: '.06em' }}>തീരം · theeram</span>
-      </div>
-
-      {/* Main header */}
+      {/* Main header — no top bar here; TownPage renders its own dynamic top bar */}
       <header style={{ background: C.cream, borderBottom: `1px solid ${C.cream3}`, padding: '11px 16px', position: sticky ? 'sticky' : 'relative', top: 0, zIndex: 50, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 9, textDecoration: 'none' }}>
           <div style={{ width: 33, height: 33, borderRadius: '50%', background: C.green, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
