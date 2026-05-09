@@ -1,45 +1,66 @@
-﻿import Link from 'next/link'
-import { Metadata } from 'next'
-import Header from '@/components/Header'
+﻿'use client'
 
-export const metadata: Metadata = { title:'Privacy Policy | Theeram Spaces', description:'How Theeram Spaces collects, uses and protects your data.' }
+import { useEffect, useState } from 'react'
+import { supabase, Town } from '@/lib/supabase'
+import TownPage from '@/components/TownPage'
 
-const C = { green:'#1C3A2B',cream:'#F5F0E8',cream3:'#E5DFD0',terra:'#9B3D1E',text:'#1C1C1A',muted:'#6B5E4E' }
-const serif = { fontFamily:'Georgia,serif' } as const
-const sans = { fontFamily:'system-ui,sans-serif' } as const
+const PALA_FALLBACK: Town = {
+  id: '', name: 'Pala', slug: 'pala', district: 'Kottayam',
+  tagline: 'Where the Meenachilar bends and the tharavadu stands',
+  description: '',
+  hero_headline: 'Where the <em>Meenachilar</em> bends and the <em>tharavadu</em> stands.',
+  hero_subtext: 'A hand-curated home for Pala\'s most beloved venues - heritage tharavadus, riverside lawns, rubber-estate bungalows. Talk to the owners, the way it has always been done here.',
+  why_here_heading: 'Why Pala?',
+  why_here_text: 'Pala has always been a place of gathering - of weddings under coconut palms, of sadhya served on banana leaves, of evenings that drift into conversations and meen curry shared from a single plate.',
+  stat_1_value: '45 min', stat_1_label: 'FROM KOTTAYAM',
+  stat_2_value: '90 min', stat_2_label: 'FROM KOCHI',
+  stat_3_value: '200+', stat_3_label: 'YEARS OF TRADITION',
+  hero_bg_color: '#1C3A2B',
+  is_active: true, sort_order: 1, created_at: '',
+}
 
-const sections = [
-  { title:'What we collect', body:`When you use Theeram Spaces, we may collect:\n\nâ€¢ Page view data: When you view a property listing, we record the property ID and a timestamp. We do not collect your name, phone number, or device identifier. IP addresses are used only for rate limiting (one count per property per 30 minutes) and are not stored.\n\nâ€¢ Inquiry data: When you tap "Talk to owner," we log the property and event type with a timestamp. We do not collect your name or phone number.\n\nâ€¢ Vendor applications: Business name, category, contact details, and description submitted via /join.\n\nâ€¢ Property submissions: Details submitted via /list.\n\nâ€¢ Technical data: Standard server logs including IP address and pages visited, collected by our hosting provider (Vercel).` },
-  { title:'What we do not collect', body:'We do not collect your name, phone number, or WhatsApp number as a visitor. We do not collect payment card details, location data, or data from children under 18.' },
-  { title:'How we use your data', body:'Inquiry logs are used solely to understand which properties are most popular, so we can improve the directory. Vendor and property submission data is used to review and respond to listing requests.' },
-  { title:'Data sharing', body:'We do not sell, rent, or share your data with any third party for commercial purposes. Third parties who may process data: Vercel (hosting), Supabase (database), Cloudinary (image hosting). All are GDPR-compliant.' },
-  { title:'Data retention', body:'Inquiry logs are retained for 12 months then deleted. Vendor submissions are retained for 24 months. You may request deletion at any time.' },
-  { title:'Your rights', body:'Under the Indian Digital Personal Data Protection Act (DPDP) 2023, you have the right to know what data we hold, request correction or deletion, and withdraw consent at any time.' },
-  { title:'Contact', body:'For any privacy-related requests, contact us at smm0794@gmail.com. We will respond within 7 working days.' },
-]
+export default function HomePage() {
+  const [town, setTown] = useState<Town>(PALA_FALLBACK)
+  const [allTowns, setAllTowns] = useState<Town[]>([])
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
 
-export default function PrivacyPage() {
-  return (
-    <div style={{ background:C.cream,minHeight:'100vh',paddingBottom:48 }}>
-      <Header/>
-      <div style={{ background:C.green,padding:'32px 20px 28px' }}>
-        <h1 style={{ ...serif,fontSize:26,color:'white',fontWeight:300 }}>Privacy Policy</h1>
-      </div>
-      <div style={{ padding:'24px 16px 0',maxWidth:640,margin:'0 auto' }}>
-        <p style={{ ...sans,fontSize:11,color:C.muted,marginBottom:24 }}>Last updated: {new Date().toLocaleDateString('en-IN',{year:'numeric',month:'long',day:'numeric'})}</p>
-        <p style={{ ...sans,fontSize:14,color:C.muted,lineHeight:1.8,marginBottom:28,fontWeight:300 }}>
-          Theeram Spaces is a curated directory of event spaces and services in Pala, Kerala. This policy explains what data we collect, why, and how we use it.
-        </p>
-        {sections.map(({title,body})=>(
-          <section key={title} style={{ marginBottom:24,borderTop:`1px solid ${C.cream3}`,paddingTop:20 }}>
-            <h2 style={{ ...serif,fontSize:17,color:C.text,marginBottom:10,fontWeight:400 }}>{title}</h2>
-            <p style={{ ...sans,fontSize:13,color:C.muted,lineHeight:1.85,whiteSpace:'pre-line',fontWeight:300 }}>{body}</p>
-          </section>
-        ))}
-        <div style={{ borderTop:`1px solid ${C.cream3}`,paddingTop:16 }}>
-          <p style={{ ...sans,fontSize:11,color:C.muted }}>Theeram Spaces Â· Pala, Kerala Â· smm0794@gmail.com</p>
-        </div>
-      </div>
+  useEffect(() => {
+    const timeout = setTimeout(() => setLoading(false), 8000)
+    async function load() {
+      try {
+        const [tr, ar] = await Promise.all([
+          supabase.from('towns').select('*').eq('slug', 'pala').single(),
+          supabase.from('towns').select('*').eq('is_active', true).order('sort_order', { ascending: true }),
+        ])
+        if (!tr.error && tr.data) setTown(tr.data as Town)
+        else setLoadError(true)
+        if (!ar.error && ar.data) setAllTowns(ar.data as Town[])
+      } catch {
+        setLoadError(true)
+      } finally {
+        clearTimeout(timeout)
+        setLoading(false)
+      }
+    }
+    load()
+    return () => clearTimeout(timeout)
+  }, [])
+
+  if (loading) return (
+    <div style={{ minHeight: '100vh', background: '#F5F0E8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ width: 32, height: 32, border: '2px solid #9B3D1E', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin .8s linear infinite' }}/>
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   )
+
+  if (loadError) return (
+    <div style={{ minHeight: '100vh', background: '#F5F0E8', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: 24, textAlign: 'center' }}>
+      <p style={{ fontFamily: 'Georgia,serif', fontSize: 18, color: '#1C1C1A' }}>Having trouble connecting.</p>
+      <p style={{ fontFamily: 'system-ui,sans-serif', fontSize: 13, color: '#6B5E4E', fontWeight: 300 }}>Please check your connection and refresh the page.</p>
+      <button onClick={() => window.location.reload()} style={{ fontFamily: 'system-ui,sans-serif', background: '#1C3A2B', color: 'white', border: 'none', padding: '11px 24px', fontSize: 12, cursor: 'pointer', letterSpacing: '.08em' }}>Refresh</button>
+    </div>
+  )
+
+  return <TownPage town={town} allTowns={allTowns}/>
 }
