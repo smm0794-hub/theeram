@@ -123,15 +123,6 @@ export default function PropertyForm({ initial }: Props) {
     setUploading(false)
   }
 
-  function handleMapMove(e: React.MouseEvent<SVGSVGElement> | React.TouchEvent<SVGSVGElement>) {
-    if (!dragging || !mapRef.current) return
-    const rect = mapRef.current.getBoundingClientRect()
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY
-    setPinX(Math.round(Math.max(0, Math.min(390, ((clientX - rect.left) / rect.width) * 390))))
-    setPinY(Math.round(Math.max(0, Math.min(530, ((clientY - rect.top) / rect.height) * 530))))
-  }
-
   async function handleSave() {
     if (!name || !slug || !tagline || !ownerWa || eventTypes.length === 0) {
       showToast('Fill in name, tagline, WhatsApp, and at least one event type.')
