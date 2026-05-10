@@ -91,10 +91,7 @@ export default function PropertyForm({ initial }: Props) {
   const [photos, setPhotos] = useState<string[]>(initial?.photos ?? [])
   const [uploading, setUploading] = useState(false)
 
-  const [pinX, setPinX] = useState(initial?.map_pin_x ?? 195)
-  const [pinY, setPinY] = useState(initial?.map_pin_y ?? 265)
-  const mapRef = useRef<SVGSVGElement>(null)
-  const [dragging, setDragging] = useState(false)
+
 
   function handleNameChange(val: string) {
     setName(val)
@@ -146,7 +143,7 @@ export default function PropertyForm({ initial }: Props) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          property: { name, slug, tagline, owner_name: ownerName, owner_whatsapp: ownerWa, price_guide: priceGuide, property_type: propertyType, description, photos, is_active: isActive, map_pin_x: pinX, map_pin_y: pinY, maps_url: mapsUrl, instagram_url: instagramUrl },
+          property: { name, slug, tagline, owner_name: ownerName, owner_whatsapp: ownerWa, price_guide: priceGuide, property_type: propertyType, description, photos, is_active: isActive, maps_url: mapsUrl, instagram_url: instagramUrl },
           attributes: { room_count: roomCount, bathroom_count: bathCount, max_guests_overnight: maxOvernight, max_guests_day_event: maxDay, has_pool: hasPool, has_ac_hall: hasAcHall, ac_hall_capacity: acHallCap, has_non_ac_hall: hasNonAcHall, non_ac_hall_capacity: nonAcHallCap, has_open_lawn: hasLawn, open_lawn_sqft: lawnSqft, has_kitchen: hasKitchen, has_parking: hasParking, parking_count: parkingCount, has_generator: hasGenerator, alcohol_allowed: alcoholAllowed, outside_catering: outsideCatering },
           eventTypes,
         }),
@@ -230,7 +227,7 @@ export default function PropertyForm({ initial }: Props) {
             ))}
           </div>
           <div style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid #D6C9B8' }}>
-            <img src={`/illustrations/property-types/${propertyType.replace(/_/g, '-')}.svg`} alt="" style={{ width: '100%', height: 120, objectFit: 'cover', display: 'block' }} />
+            <div style={{ width: '100%', height: 80, background: '#1C3A2B', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span style={{ fontSize: 10, color: 'rgba(255,255,255,.5)', fontFamily: 'system-ui,sans-serif' }}>{propertyType.replace(/_/g, ' ')}</span></div>
           </div>
         </div>
 

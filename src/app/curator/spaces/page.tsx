@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { supabase, Town, PROPERTY_TYPE_LABELS, PropertyType } from '@/lib/supabase'
+import { Town, PROPERTY_TYPE_LABELS, PropertyType } from '@/lib/supabase'
 
 const C = { green:'#1C3A2B',cream:'#F5F0E8',cream2:'#EDE8DC',cream3:'#E5DFD0',gold:'#C9A84C',terra:'#9B3D1E',text:'#1C1C1A',muted:'#6B5E4E' }
 const sans = { fontFamily:'system-ui,sans-serif' } as const
@@ -15,9 +15,11 @@ interface PropertySummary {
   towns?: { name: string; hero_bg_color: string } | null
 }
 
+interface TownRow { id: string; name: string; hero_bg_color: string }
+
 export default function CuratorSpacesPage() {
   const [properties, setProperties] = useState<PropertySummary[]>([])
-  const [towns, setTowns] = useState<Town[]>([])
+  const [towns, setTowns] = useState<TownRow[]>([])
   const [townFilter, setTownFilter] = useState<string>('all')
   const [loading, setLoading] = useState(true)
   const [toast, setToast] = useState('')
@@ -26,40 +28,63 @@ export default function CuratorSpacesPage() {
 
   async function loadAll() {
     setLoading(true)
+    // Use /api/properties (service role) — fetches ALL properties including drafts
     const [pr, tr] = await Promise.all([
-      supabase.from('properties').select('id,name,slug,property_type,is_active,is_featured,sort_order,photos,created_at,town_id,towns(name,hero_bg_color)')
-        .order('sort_order', { ascending: false }).order('created_at', { ascending: false }),
-      supabase.from('towns').select('*').eq('is_active', true).order('sort_order'),
+      fetch('/api/properties?all=1').then(r => r.json()),
+      fetch('/api/towns').then(r => r.json()).catch(() => ({ data: [] })),
     ])
-    if (!pr.error && pr.data) setProperties(pr.data as unknown as PropertySummary[])
-    if (!tr.error && tr.data) setTowns(tr.data as Town[])
+    if (pr.data) {
+      // Sort by sort_order desc, then created_at desc
+      const sorted = [...pr.data].sort((a: PropertySummary, b: PropertySummary) =>
+        (b.sort_order ?? 0) - (a.sort_order ?? 0) || new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      )
+      setProperties(sorted)
+    }
+    if (tr.data) setTowns(tr.data)
     setLoading(false)
   }
 
   function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(''), 3000) }
 
+  async function patch(id: string, updates: Record<string, any>) {
+    const r = await fetch('/api/properties', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, ...updates }),
+    })
+    return r.ok
+  }
+
   async function toggleActive(id: string, current: boolean) {
-    await supabase.from('properties').update({ is_active: !current }).eq('id', id)
-    setProperties(prev => prev.map(p => p.id === id ? { ...p, is_active: !current } : p))
-    showToast(current ? 'Hidden from public' : 'Now live!')
+    const ok = await patch(id, { is_active: !current })
+    if (ok) {
+      setProperties(prev => prev.map(p => p.id === id ? { ...p, is_active: !current } : p))
+      showToast(current ? 'Hidden from public' : 'Now live!')
+    } else {
+      showToast('Update failed — please try again')
+    }
   }
 
   async function toggleFeatured(id: string, current: boolean) {
-    await supabase.from('properties').update({ is_featured: !current }).eq('id', id)
-    setProperties(prev => prev.map(p => p.id === id ? { ...p, is_featured: !current } : p))
-    showToast(current ? 'Removed Theeram pick' : '⭐ Theeram pick set!')
+    const ok = await patch(id, { is_featured: !current })
+    if (ok) {
+      setProperties(prev => prev.map(p => p.id === id ? { ...p, is_featured: !current } : p))
+      showToast(current ? 'Removed Theeram pick' : '⭐ Theeram pick set!')
+    } else {
+      showToast('Update failed — please try again')
+    }
   }
 
   async function moveProperty(id: string, direction: 'up' | 'down') {
-    const filtered = townFilter === 'all' ? properties : properties.filter(p => p.town_id === townFilter)
-    const idx = filtered.findIndex(p => p.id === id)
+    const list = townFilter === 'all' ? properties : properties.filter(p => p.town_id === townFilter)
+    const idx = list.findIndex(p => p.id === id)
     if (direction === 'up' && idx === 0) return
-    if (direction === 'down' && idx === filtered.length - 1) return
+    if (direction === 'down' && idx === list.length - 1) return
     const swapIdx = direction === 'up' ? idx - 1 : idx + 1
-    const total = filtered.length
+    const total = list.length
     await Promise.all([
-      supabase.from('properties').update({ sort_order: total - idx }).eq('id', filtered[swapIdx].id),
-      supabase.from('properties').update({ sort_order: total - swapIdx }).eq('id', filtered[idx].id),
+      patch(list[idx].id, { sort_order: total - swapIdx }),
+      patch(list[swapIdx].id, { sort_order: total - idx }),
     ])
     await loadAll()
     showToast('Order updated')
@@ -67,12 +92,13 @@ export default function CuratorSpacesPage() {
 
   async function deleteProperty(id: string, name: string) {
     if (!confirm(`Delete "${name}"? This cannot be undone.`)) return
-    await supabase.from('property_attributes').delete().eq('property_id', id)
-    await supabase.from('property_event_types').delete().eq('property_id', id)
-    await supabase.from('inquiries').delete().eq('property_id', id)
-    await supabase.from('properties').delete().eq('id', id)
-    setProperties(prev => prev.filter(p => p.id !== id))
-    showToast('Deleted')
+    const r = await fetch(`/api/properties?id=${id}`, { method: 'DELETE' })
+    if (r.ok) {
+      setProperties(prev => prev.filter(p => p.id !== id))
+      showToast('Deleted')
+    } else {
+      showToast('Delete failed')
+    }
   }
 
   const filtered = townFilter === 'all' ? properties : properties.filter(p => p.town_id === townFilter)
@@ -81,7 +107,9 @@ export default function CuratorSpacesPage() {
 
   return (
     <div style={{ minHeight:'100vh',background:C.cream,paddingBottom:80 }}>
-      <div style={{ background:C.green,padding:'6px 16px' }}><span style={{ ...sans,fontSize:10,color:'rgba(255,255,255,.5)' }}>theeram</span></div>
+      <div style={{ background:C.green,padding:'6px 16px' }}>
+        <span style={{ ...sans,fontSize:10,color:'rgba(255,255,255,.5)' }}>theeram</span>
+      </div>
       <div style={{ background:C.cream,borderBottom:`1px solid ${C.cream3}`,padding:'13px 16px',display:'flex',justifyContent:'space-between',alignItems:'center',position:'sticky',top:0,zIndex:40 }}>
         <div style={{ display:'flex',alignItems:'center',gap:10 }}>
           <Link href="/curator" style={{ ...sans,fontSize:12,color:C.muted,textDecoration:'none' }}>← Curator</Link>
@@ -102,14 +130,14 @@ export default function CuratorSpacesPage() {
       </div>
 
       <div style={{ padding:'8px 16px 0',display:'flex',flexDirection:'column',gap:10 }}>
-        {loading ? [1,2,3].map(i => <div key={i} style={{ height:100,background:'white',border:`1px solid ${C.cream3}` }}/>) :
-        filtered.length === 0 ? (
+        {loading ? [1,2,3].map(i => <div key={i} style={{ height:100,background:'white',border:`1px solid ${C.cream3}` }}/>)
+        : filtered.length === 0 ? (
           <div style={{ textAlign:'center',padding:'40px 0' }}>
             <p style={{ ...sans,fontSize:14,color:C.muted,marginBottom:12 }}>No spaces{townFilter !== 'all' ? ' in this town' : ''} yet.</p>
             <Link href="/curator/new" style={{ ...sans,fontSize:12,color:C.terra,textDecoration:'underline' }}>Add the first listing →</Link>
           </div>
         ) : filtered.map((p, idx) => {
-          const town = (p as any).towns
+          const town = towns.find(t => t.id === p.town_id)
           return (
             <div key={p.id} style={{ background:'white',border:p.is_featured?`1.5px solid ${C.gold}`:`1px solid ${C.cream3}`,padding:14 }}>
               <div style={{ display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:10 }}>

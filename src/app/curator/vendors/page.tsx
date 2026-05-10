@@ -63,23 +63,32 @@ export default function CuratorVendorsPage() {
     setMode('list'); setEditing(null); setSaving(false)
   }
 
+  async function patchVendor(id: string, updates: Record<string, any>) {
+    const r = await fetch('/api/vendors', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, ...updates }),
+    })
+    return r.ok
+  }
+
   async function toggleVendorActive(id: string, current: boolean) {
-    await supabase.from('vendors').update({ is_active: !current }).eq('id', id)
-    setVendors(prev => prev.map(v => v.id === id ? { ...v, is_active: !current } : v))
-    showToast(current ? 'Hidden' : 'Now live!')
+    const ok = await patchVendor(id, { is_active: !current })
+    if (ok) { setVendors(prev => prev.map(v => v.id === id ? { ...v, is_active: !current } : v)); showToast(current ? 'Hidden' : 'Now live!') }
+    else showToast('Update failed')
   }
 
   async function toggleFeatured(id: string, current: boolean) {
-    await supabase.from('vendors').update({ is_featured: !current }).eq('id', id)
-    setVendors(prev => prev.map(v => v.id === id ? { ...v, is_featured: !current } : v))
-    showToast(current ? 'Unfeatured' : 'Featured!')
+    const ok = await patchVendor(id, { is_featured: !current })
+    if (ok) { setVendors(prev => prev.map(v => v.id === id ? { ...v, is_featured: !current } : v)); showToast(current ? 'Unfeatured' : 'Featured!') }
+    else showToast('Update failed')
   }
 
   async function deleteVendor(id: string, name: string) {
     if (!confirm(`Delete "${name}"?`)) return
-    await supabase.from('vendors').delete().eq('id', id)
-    setVendors(prev => prev.filter(v => v.id !== id))
-    showToast('Deleted')
+    const r = await fetch(`/api/vendors?id=${id}`, { method: 'DELETE' })
+    if (r.ok) { setVendors(prev => prev.filter(v => v.id !== id)); showToast('Deleted') }
+    else showToast('Delete failed')
   }
 
   async function approveSubmission(s: VendorSubmission) {
