@@ -5,22 +5,24 @@ export async function POST(req: NextRequest) {
     const { query, townId } = await req.json()
     if (!query) return NextResponse.json({ error: 'Query required' }, { status: 400 })
 
-    const SYSTEM_PROMPT = `You are a venue discovery agent for Theeram Spaces — a curated event venue directory for Pala, Kerala.
+    const SYSTEM_PROMPT = `You are a venue discovery agent for Theeram Spaces, a curated event venue directory for Kerala, India.
 
-Search the web and find event spaces, party halls, villas, homestays, convention centres, and heritage homes in and around Pala, Kottayam district, Kerala. Also cover: Ettumanoor, Erattupetta, Kanjirappally, Changanassery, Bharananganam, Ramapuram.
+Search the web exhaustively for event venues in the specified area. Look for all types: private villas (with/without pool), heritage nalukettu homes, rubber estate bungalows, riverside properties, convention centres, AC/non-AC banquet halls, marriage halls, party halls, open lawns, resorts, homestays, and club houses. Search Google Maps, Justdial, Quickerala, Facebook, and local Kerala directories.
 
-Return ONLY a valid JSON array. No preamble, no markdown fences. Raw JSON only.
+Include every venue you find — even if details are incomplete. The curator will verify. Only exclude: schools, hospitals, government buildings not available for private hire.
 
-Each object must have exactly these fields:
+Return ONLY a raw JSON array. No markdown, no explanation.
+
+Each object:
 {
   "name": string,
   "type": "villa_with_pool|villa_without_pool|heritage_home|open_event_space|auditorium|river_frontage|lodging|resort",
-  "tagline": "one warm compelling sentence",
-  "description": "3-5 sentences, warm editorial tone as if written by a local who visited",
-  "phone": "with country code e.g. 919447000000",
-  "whatsapp": "same format, empty string if unknown",
-  "price_guide": "e.g. Contact owner for pricing",
-  "location": "area, Pala or nearby town",
+  "tagline": "one sentence — what makes it special",
+  "description": "3-5 sentences, warm local tone, specific features and setting",
+  "phone": "country code e.g. 919447000000 or empty string",
+  "whatsapp": "same format or empty string",
+  "price_guide": "e.g. Contact owner or Rs.15,000/day",
+  "location": "specific area within town",
   "instagram": "full URL or empty string",
   "maps_url": "Google Maps URL or empty string",
   "room_count": 0, "bathroom_count": 0, "max_overnight": 0, "max_day": 0,
@@ -31,11 +33,7 @@ Each object must have exactly these fields:
   "event_types": ["staycation","family_gathering","wedding","corporate","birthday","retreat"],
   "confidence": "high|medium|low",
   "source": "URL or source name"
-}
-
-confidence: high = official website or multiple reliable sources with full details. medium = Justdial/Quickerala/Facebook with partial details. low = single mention, minimal details.
-
-Only include venues suitable for private events. No government buildings, schools, hospitals.`
+}`
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -46,26 +44,26 @@ Only include venues suitable for private events. No government buildings, school
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 8000,
+        max_tokens: 6000,
         system: SYSTEM_PROMPT,
         tools: [{ type: 'web_search_20250305', name: 'web_search' }],
         messages: [{
           role: 'user',
-          content: `Find all event venues for: "${query}". Search Google Maps, Justdial, Quickerala, Facebook, booking sites, local directories. Find as many as possible. Return only the JSON array.`
+          content: `Find all event venues for: "${query}". Search multiple sources and venue types. Return only the JSON array.`
         }],
       }),
     })
 
     if (!response.ok) {
       const err = await response.json()
-      return NextResponse.json({ error: err.error?.message ?? `API error ${response.status}` }, { status: response.status })
+      return NextResponse.json({ error: err.error?.message ?? `API ${response.status}` }, { status: response.status })
     }
 
     const data = await response.json()
-    const text = data.content.map((b: any) => b.type === 'text' ? b.text : '').filter(Boolean).join('\n')
+    const text = data.content.map((b: any) => b.type === 'text' ? b.text : '').join('\n')
     const clean = text.replace(/```json|```/g, '').trim()
     const s = clean.indexOf('['), e = clean.lastIndexOf(']')
-    if (s === -1 || e === -1) return NextResponse.json({ error: 'Agent did not return a valid venue list. Try again.' }, { status: 500 })
+    if (s === -1) return NextResponse.json({ error: 'No venue list returned. Try again.' }, { status: 500 })
     const venues = JSON.parse(clean.slice(s, e + 1))
     return NextResponse.json({ venues, townId: townId ?? null })
 
