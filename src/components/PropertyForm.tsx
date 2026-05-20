@@ -1,75 +1,119 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Property, PropertyType, EventType, PROPERTY_TYPE_LABELS, EVENT_TYPES, EVENT_TYPE_LABELS, PROPERTY_TYPES } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
+import type { Property, PropertyType, EventType } from '@/lib/supabase'
 
-interface Props { initial?: Partial<Property> }
+// ── Design tokens ────────────────────────────────────────────────────────────
+const C = {
+  green: '#1C3A2B', cream: '#F5F0E8', cream2: '#EDE8DC', cream3: '#E5DFD0',
+  gold: '#C9A84C', terra: '#9B3D1E', text: '#1C1C1A', muted: '#6B5E4E',
+}
+const sans = { fontFamily: 'system-ui, sans-serif' } as const
 
-function slugify(s: string) {
-  return s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+// ── Shared input style ───────────────────────────────────────────────────────
+const inputStyle: React.CSSProperties = {
+  ...sans, width: '100%', border: `1px solid ${C.cream3}`, padding: '12px 14px',
+  fontSize: 14, background: C.cream, outline: 'none', color: C.text,
+  fontWeight: 300, boxSizing: 'border-box',
+}
+const labelStyle: React.CSSProperties = {
+  ...sans, fontSize: 10, color: C.terra, letterSpacing: '.08em',
+  textTransform: 'uppercase', display: 'block', marginBottom: 6,
+}
+const sectionTitle: React.CSSProperties = {
+  ...sans, fontSize: 10, color: C.terra, letterSpacing: '.1em',
+  textTransform: 'uppercase', marginBottom: 14, fontWeight: 600,
+}
+const section: React.CSSProperties = {
+  background: 'white', border: `1px solid ${C.cream3}`, padding: 16, marginBottom: 12,
 }
 
+const PROPERTY_TYPES: { value: PropertyType; label: string }[] = [
+  { value: 'villa_with_pool', label: 'Villa with pool' },
+  { value: 'villa_without_pool', label: 'Villa without pool' },
+  { value: 'heritage_home', label: 'Heritage home / Tharavadu' },
+  { value: 'open_event_space', label: 'Open event space / Lawn' },
+  { value: 'auditorium', label: 'Auditorium / Convention centre' },
+  { value: 'river_frontage', label: 'Riverside property' },
+  { value: 'lodging', label: 'Lodging / Homestay' },
+  { value: 'resort', label: 'Resort' },
+]
+
+const EVENT_TYPES: { value: EventType; label: string }[] = [
+  { value: 'staycation', label: 'Staycation' },
+  { value: 'family_gathering', label: 'Family Gathering' },
+  { value: 'wedding', label: 'Wedding' },
+  { value: 'corporate', label: 'Corporate Event' },
+  { value: 'birthday', label: 'Birthday Party' },
+  { value: 'retreat', label: 'Retreat' },
+]
+
+// ── Field helper ─────────────────────────────────────────────────────────────
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div style={{ marginBottom: 12 }}>
-      <label style={{ display: 'block', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#7C5C3E', marginBottom: 6 }}>{label}</label>
+    <div style={{ marginBottom: 14 }}>
+      <label style={labelStyle}>{label}</label>
       {children}
     </div>
   )
 }
 
-const inputStyle: React.CSSProperties = {
-  width: '100%', border: '1px solid #D6C9B8', borderRadius: 12, padding: '12px 16px',
-  fontSize: 15, color: '#2C1A0E', backgroundColor: '#FAF7F2', outline: 'none', boxSizing: 'border-box',
-}
-
-function Toggle({ label, value, onChange, note }: { label: string; value: boolean; onChange: (v: boolean) => void; note?: string }) {
+// ── Toggle helper ─────────────────────────────────────────────────────────────
+function Toggle({ label, value, onChange }: { label: string; value: boolean; onChange: (v: boolean) => void }) {
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #D6C9B8' }}>
-      <div>
-        <span style={{ fontSize: 14, color: '#2C1A0E' }}>{label}</span>
-        {note && <p style={{ fontSize: 11, color: '#7C5C3E', marginTop: 2 }}>{note}</p>}
-      </div>
-      <button
-        type="button"
-        onClick={() => onChange(!value)}
-        style={{ width: 48, height: 26, borderRadius: 999, backgroundColor: value ? '#6B8F71' : '#D6C9B8', border: 'none', cursor: 'pointer', position: 'relative', flexShrink: 0, transition: 'background 0.2s' }}
-      >
-        <span style={{ position: 'absolute', top: 3, left: value ? 'calc(100% - 22px)' : 3, width: 20, height: 20, borderRadius: '50%', backgroundColor: 'white', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 0', borderBottom: `1px solid ${C.cream3}` }}>
+      <span style={{ ...sans, fontSize: 14, color: C.text, fontWeight: 300 }}>{label}</span>
+      <button onClick={() => onChange(!value)}
+        style={{ width: 44, height: 24, borderRadius: 12, background: value ? C.green : C.cream3, border: 'none', cursor: 'pointer', position: 'relative', transition: 'background .2s', flexShrink: 0 }}>
+        <div style={{ width: 18, height: 18, borderRadius: '50%', background: 'white', position: 'absolute', top: 3, left: value ? 23 : 3, transition: 'left .2s' }}/>
       </button>
     </div>
   )
 }
 
-export default function PropertyForm({ initial }: Props) {
+// ── Props ────────────────────────────────────────────────────────────────────
+interface PropertyFormProps {
+  initial?: Partial<Property & {
+    property_attributes?: any
+    property_event_types?: { event_type: EventType }[]
+  }>
+  mode: 'new' | 'edit'
+}
+
+// ── Main ─────────────────────────────────────────────────────────────────────
+export default function PropertyForm({ initial, mode }: PropertyFormProps) {
   const router = useRouter()
-  const [saving, setSaving] = useState(false)
-  const [toast, setToast] = useState('')
-  const [toastType, setToastType] = useState<'success' | 'error'>('success')
-  const [saveSuccess, setSaveSuccess] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const attrs = initial?.property_attributes
-
+  // Section 1 — Basics
   const [name, setName] = useState(initial?.name ?? '')
   const [slug, setSlug] = useState(initial?.slug ?? '')
-  const [slugManual, setSlugManual] = useState(!!initial?.slug)
   const [tagline, setTagline] = useState(initial?.tagline ?? '')
   const [ownerName, setOwnerName] = useState(initial?.owner_name ?? '')
   const [ownerWa, setOwnerWa] = useState(initial?.owner_whatsapp ?? '')
   const [priceGuide, setPriceGuide] = useState(initial?.price_guide ?? '')
-  const [propertyType, setPropertyType] = useState<PropertyType>(initial?.property_type ?? 'villa_with_pool')
-  const [description, setDescription] = useState(initial?.description ?? '')
-  const [isActive, setIsActive] = useState(initial?.is_active ?? false)
-  const [mapsUrl, setMapsUrl] = useState(initial?.maps_url ?? '')
-  const [instagramUrl, setInstagramUrl] = useState(initial?.instagram_url ?? '')
+  const [mapsUrl, setMapsUrl] = useState((initial as any)?.maps_url ?? '')
+  const [instagramUrl, setInstagramUrl] = useState((initial as any)?.instagram_url ?? '')
 
+  // Section 2 — Town
+  const [towns, setTowns] = useState<{ id: string; name: string; hero_bg_color: string }[]>([])
+  const [townId, setTownId] = useState<string>((initial as any)?.town_id ?? '')
+
+  // Section 3 — Property type
+  const [propertyType, setPropertyType] = useState<PropertyType>(initial?.property_type ?? 'villa_with_pool')
+
+  // Section 4 — Description
+  const [description, setDescription] = useState(initial?.description ?? '')
+
+  // Section 5 — Capacity
+  const attrs = initial?.property_attributes
   const [roomCount, setRoomCount] = useState(attrs?.room_count ?? 0)
-  const [bathCount, setBathCount] = useState(attrs?.bathroom_count ?? 0)
+  const [bathroomCount, setBathroomCount] = useState(attrs?.bathroom_count ?? 0)
   const [maxOvernight, setMaxOvernight] = useState(attrs?.max_guests_overnight ?? 0)
   const [maxDay, setMaxDay] = useState(attrs?.max_guests_day_event ?? 0)
 
+  // Section 6 — Facilities
   const [hasPool, setHasPool] = useState(attrs?.has_pool ?? false)
   const [hasAcHall, setHasAcHall] = useState(attrs?.has_ac_hall ?? false)
   const [acHallCap, setAcHallCap] = useState(attrs?.ac_hall_capacity ?? 0)
@@ -84,279 +128,265 @@ export default function PropertyForm({ initial }: Props) {
   const [alcoholAllowed, setAlcoholAllowed] = useState(attrs?.alcohol_allowed ?? false)
   const [outsideCatering, setOutsideCatering] = useState(attrs?.outside_catering ?? false)
 
+  // Section 7 — Event types
   const [eventTypes, setEventTypes] = useState<EventType[]>(
-    (initial?.property_event_types?.map((e) => e.event_type) ?? []) as EventType[]
+    initial?.property_event_types?.map(e => e.event_type) ?? []
   )
 
+  // Section 8 — Photos
   const [photos, setPhotos] = useState<string[]>(initial?.photos ?? [])
   const [uploading, setUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({})
 
+  // Section 9 — Status
+  const [isActive, setIsActive] = useState(initial?.is_active ?? false)
 
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [toast, setToast] = useState('')
 
-  function handleNameChange(val: string) {
+  // Load towns
+  useEffect(() => {
+    fetch('/api/towns').then(r => r.json()).then(d => {
+      if (d.data) setTowns(d.data)
+      // Default to first town if new listing and no town set
+      if (!townId && d.data?.length > 0 && mode === 'new') setTownId(d.data[0].id)
+    }).catch(() => {})
+  }, [])
+
+  // Auto-generate slug from name
+  const handleNameChange = useCallback((val: string) => {
     setName(val)
-    if (!slugManual) setSlug(slugify(val))
+    if (mode === 'new') setSlug(val.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''))
+  }, [mode])
+
+  // Toggle event type
+  function toggleEventType(et: EventType) {
+    setEventTypes(prev => prev.includes(et) ? prev.filter(e => e !== et) : [...prev, et])
   }
 
-  function toggleEvent(e: EventType) {
-    setEventTypes((prev) => prev.includes(e) ? prev.filter((x) => x !== e) : [...prev, e])
-  }
-
-  async function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
+  // Photo upload
+  async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? [])
     if (!files.length) return
     setUploading(true)
     const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME
-    const preset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET ?? 'theeram-unsigned'
-    const urls: string[] = []
+    const preset = process.env.CLOUDINARY_UPLOAD_PRESET ?? 'theeram-unsigned'
+    const uploaded: string[] = []
     for (const file of files) {
+      const key = file.name
+      setUploadProgress(p => ({ ...p, [key]: 0 }))
       const fd = new FormData()
       fd.append('file', file)
       fd.append('upload_preset', preset)
       try {
         const r = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, { method: 'POST', body: fd })
         const data = await r.json()
-        if (data.secure_url) urls.push(data.secure_url)
-      } catch {}
+        if (data.secure_url) { uploaded.push(data.secure_url); setUploadProgress(p => ({ ...p, [key]: 100 })) }
+      } catch { setUploadProgress(p => ({ ...p, [key]: -1 })) }
     }
-    setPhotos((prev) => [...prev, ...urls])
+    setPhotos(prev => [...prev, ...uploaded])
     setUploading(false)
   }
 
+  function removePhoto(url: string) { setPhotos(prev => prev.filter(p => p !== url)) }
+
+  // Save
   async function handleSave() {
     if (!name || !slug || !tagline || !ownerWa || eventTypes.length === 0) {
-      showToast('Fill in name, tagline, WhatsApp, and at least one event type.')
-      return
+      setError('Required: name, slug, tagline, WhatsApp number, and at least one event type.'); return
     }
-    setSaving(true)
+    if (!townId) { setError('Please select a town for this listing.'); return }
+    setSaving(true); setError('')
     try {
       const r = await fetch('/api/properties', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          property: { name, slug, tagline, owner_name: ownerName, owner_whatsapp: ownerWa, price_guide: priceGuide, property_type: propertyType, description, photos, is_active: isActive, maps_url: mapsUrl, instagram_url: instagramUrl },
-          attributes: { room_count: roomCount, bathroom_count: bathCount, max_guests_overnight: maxOvernight, max_guests_day_event: maxDay, has_pool: hasPool, has_ac_hall: hasAcHall, ac_hall_capacity: acHallCap, has_non_ac_hall: hasNonAcHall, non_ac_hall_capacity: nonAcHallCap, has_open_lawn: hasLawn, open_lawn_sqft: lawnSqft, has_kitchen: hasKitchen, has_parking: hasParking, parking_count: parkingCount, has_generator: hasGenerator, alcohol_allowed: alcoholAllowed, outside_catering: outsideCatering },
+          property: {
+            name, slug, tagline, owner_name: ownerName, owner_whatsapp: ownerWa,
+            price_guide: priceGuide, property_type: propertyType, description,
+            photos, is_active: isActive, maps_url: mapsUrl,
+            instagram_url: instagramUrl, town_id: townId,
+          },
+          attributes: {
+            room_count: roomCount, bathroom_count: bathroomCount,
+            max_guests_overnight: maxOvernight, max_guests_day_event: maxDay,
+            has_pool: hasPool, has_ac_hall: hasAcHall, ac_hall_capacity: acHallCap,
+            has_non_ac_hall: hasNonAcHall, non_ac_hall_capacity: nonAcHallCap,
+            has_open_lawn: hasLawn, open_lawn_sqft: lawnSqft,
+            has_kitchen: hasKitchen, has_parking: hasParking, parking_count: parkingCount,
+            has_generator: hasGenerator, alcohol_allowed: alcoholAllowed,
+            outside_catering: outsideCatering,
+          },
           eventTypes,
         }),
       })
-      const json = await r.json()
-      if (r.ok) {
-        setSaveSuccess(true)
-        showToast('Property saved successfully!', 'success')
-        setTimeout(() => router.push('/curator'), 2500)
-      } else {
-        showToast('Error: ' + (json.error ?? 'Unknown error'), 'error')
-      }
-    } catch (e: any) {
-      showToast('Error: ' + e.message, 'error')
-    }
+      if (!r.ok) { const d = await r.json(); setError(d.error ?? 'Save failed'); setSaving(false); return }
+      setToast(mode === 'new' ? 'Listing created!' : 'Saved!')
+      setTimeout(() => router.push('/curator/spaces'), 1200)
+    } catch { setError('Connection error. Please try again.') }
     setSaving(false)
   }
 
-  function showToast(msg: string, type: 'success' | 'error' = 'success') {
-    setToast(msg)
-    setToastType(type)
-    setTimeout(() => setToast(''), 5000)
-  }
-
-  const sectionTitle: React.CSSProperties = { fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#7C5C3E', fontWeight: 600, marginBottom: 12 }
-  const section: React.CSSProperties = { marginBottom: 28 }
-
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#FAF7F2', paddingBottom: 100 }}>
+    <div style={{ paddingBottom: 100 }}>
+      {toast && <div style={{ position: 'fixed', bottom: 80, left: '50%', transform: 'translateX(-50%)', background: C.green, color: 'white', ...sans, fontSize: 12, padding: '10px 20px', zIndex: 50, whiteSpace: 'nowrap' }}>{toast}</div>}
 
-      {/* Header */}
-      <header style={{ position: 'sticky', top: 0, zIndex: 20, backgroundColor: '#FAF7F2', borderBottom: '0.5px solid #D6C9B8', padding: '12px 16px', display: 'flex', gap: 12, alignItems: 'center' }}>
-        <button onClick={() => router.push('/curator')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#7C5C3E', padding: 4 }}>
-          <svg viewBox="0 0 20 20" fill="none" width={20} height={20} stroke="currentColor" strokeWidth={2}><path d="M12 5L7 10l5 5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-        </button>
-        <span style={{ fontFamily: 'Georgia, serif', fontSize: 18, color: '#2C1A0E' }}>
-          {initial?.name ? 'Edit property' : 'New property'}
-        </span>
-      </header>
-
-      <div style={{ padding: '20px 16px 0' }}>
-
-        {/* 1 — Basics */}
-        <div style={section}>
-          <p style={sectionTitle}>1 — Basics</p>
-          <Field label="Property name *">
-            <input value={name} onChange={(e) => handleNameChange(e.target.value)} placeholder="e.g. Meenachil Garden Villa" style={inputStyle} />
-          </Field>
-          <Field label="URL slug *">
-            <input value={slug} onChange={(e) => { setSlug(slugify(e.target.value)); setSlugManual(true) }} placeholder="e.g. meenachil-garden-villa" style={inputStyle} />
-            <p style={{ fontSize: 11, color: '#7C5C3E', marginTop: 4 }}>theeram.in/property/{slug || '...'}</p>
-          </Field>
-          <Field label="Tagline *">
-            <input value={tagline} onChange={(e) => setTagline(e.target.value)} placeholder="One sentence — what makes it special" style={inputStyle} />
-          </Field>
-          <Field label="Owner name">
-            <input value={ownerName} onChange={(e) => setOwnerName(e.target.value)} placeholder="e.g. Thomas Varghese" style={inputStyle} />
-          </Field>
-          <Field label="Owner WhatsApp *">
-            <input value={ownerWa} onChange={(e) => setOwnerWa(e.target.value)} placeholder="919447000000" type="tel" style={inputStyle} />
-          </Field>
-          <Field label="Price guide">
-            <input value={priceGuide} onChange={(e) => setPriceGuide(e.target.value)} placeholder="₹12,000–₹20,000 per day" style={inputStyle} />
-          </Field>
-          <Field label="Google Maps link">
-            <input value={mapsUrl} onChange={(e) => setMapsUrl(e.target.value)} placeholder="Paste Google Maps share link" style={inputStyle} />
-          </Field>
-          <Field label="Instagram (handle or link)">
-            <input value={instagramUrl} onChange={(e) => setInstagramUrl(e.target.value)} placeholder="@handle or full Instagram URL" style={inputStyle} />
-          </Field>
-        </div>
-
-        {/* 2 — Property type */}
-        <div style={section}>
-          <p style={sectionTitle}>2 — Property type</p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
-            {PROPERTY_TYPES.map((pt) => (
-              <button key={pt} onClick={() => setPropertyType(pt)} style={{ padding: 12, borderRadius: 12, border: `1px solid ${propertyType === pt ? '#D4735E' : '#D6C9B8'}`, backgroundColor: propertyType === pt ? '#fdf3f1' : 'white', color: propertyType === pt ? '#D4735E' : '#7C5C3E', fontSize: 13, fontWeight: 500, cursor: 'pointer', textAlign: 'left' }}>
-                {PROPERTY_TYPE_LABELS[pt]}
-              </button>
-            ))}
+      {/* ── 1 — Town ─────────────────────────────────────────────── */}
+      <div style={section}>
+        <p style={sectionTitle}>1 — Town</p>
+        <Field label="Which town is this listing in? *">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {towns.length === 0
+              ? <p style={{ ...sans, fontSize: 13, color: C.muted }}>Loading towns...</p>
+              : towns.map(t => (
+                <button key={t.id} onClick={() => setTownId(t.id)}
+                  style={{ ...sans, padding: '12px 14px', border: `1px solid ${townId === t.id ? t.hero_bg_color : C.cream3}`, background: townId === t.id ? t.hero_bg_color : 'white', color: townId === t.id ? 'white' : C.muted, fontSize: 13, cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 12, height: 12, borderRadius: '50%', background: townId === t.id ? 'rgba(255,255,255,.6)' : t.hero_bg_color, flexShrink: 0 }}/>
+                  {t.name}
+                </button>
+              ))
+            }
           </div>
-          <div style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid #D6C9B8' }}>
-            <div style={{ width: '100%', height: 80, background: '#1C3A2B', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span style={{ fontSize: 10, color: 'rgba(255,255,255,.5)', fontFamily: 'system-ui,sans-serif' }}>{propertyType.replace(/_/g, ' ')}</span></div>
-          </div>
-        </div>
-
-        {/* 3 — Description */}
-        <div style={section}>
-          <p style={sectionTitle}>3 — Description</p>
-          <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What makes this place special? 3–5 sentences." rows={5} style={{ ...inputStyle, resize: 'vertical' }} />
-        </div>
-
-        {/* 4 — Capacity */}
-        <div style={section}>
-          <p style={sectionTitle}>4 — Capacity</p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            {[
-              { label: 'Bedrooms', value: roomCount, set: setRoomCount },
-              { label: 'Bathrooms', value: bathCount, set: setBathCount },
-              { label: 'Max overnight', value: maxOvernight, set: setMaxOvernight },
-              { label: 'Max day event', value: maxDay, set: setMaxDay },
-            ].map(({ label, value, set }) => (
-              <Field key={label} label={label}>
-                <input type="number" min={0} value={value || ''} onChange={(e) => set(parseInt(e.target.value) || 0)} style={{ ...inputStyle, textAlign: 'center' }} />
-              </Field>
-            ))}
-          </div>
-        </div>
-
-        {/* 5 — Facilities */}
-        <div style={section}>
-          <p style={sectionTitle}>5 — Facilities</p>
-          <div style={{ backgroundColor: 'white', borderRadius: 12, border: '1px solid #D6C9B8', padding: '0 16px' }}>
-            <Toggle label="Swimming pool" value={hasPool} onChange={setHasPool} />
-            <Toggle label="AC hall" value={hasAcHall} onChange={setHasAcHall} />
-            {hasAcHall && <div style={{ paddingBottom: 12 }}><Field label="AC hall capacity"><input type="number" min={0} value={acHallCap || ''} onChange={(e) => setAcHallCap(parseInt(e.target.value) || 0)} style={inputStyle} /></Field></div>}
-            <Toggle label="Non-AC hall" value={hasNonAcHall} onChange={setHasNonAcHall} />
-            {hasNonAcHall && <div style={{ paddingBottom: 12 }}><Field label="Non-AC hall capacity"><input type="number" min={0} value={nonAcHallCap || ''} onChange={(e) => setNonAcHallCap(parseInt(e.target.value) || 0)} style={inputStyle} /></Field></div>}
-            <Toggle label="Open lawn / garden" value={hasLawn} onChange={setHasLawn} />
-            {hasLawn && <div style={{ paddingBottom: 12 }}><Field label="Lawn size (sqft)"><input type="number" min={0} value={lawnSqft || ''} onChange={(e) => setLawnSqft(parseInt(e.target.value) || 0)} style={inputStyle} /></Field></div>}
-            <Toggle label="Full kitchen" value={hasKitchen} onChange={setHasKitchen} />
-            <Toggle label="Parking" value={hasParking} onChange={setHasParking} />
-            {hasParking && <div style={{ paddingBottom: 12 }}><Field label="Parking spaces"><input type="number" min={0} value={parkingCount || ''} onChange={(e) => setParkingCount(parseInt(e.target.value) || 0)} style={inputStyle} /></Field></div>}
-            <Toggle label="Generator backup" value={hasGenerator} onChange={setHasGenerator} />
-            <Toggle label="Alcohol permitted" value={alcoholAllowed} onChange={setAlcoholAllowed} />
-            <Toggle label="Outside catering allowed" value={outsideCatering} onChange={setOutsideCatering} />
-          </div>
-        </div>
-
-        {/* 6 — Event types */}
-        <div style={section}>
-          <p style={sectionTitle}>6 — Event types *</p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {EVENT_TYPES.map((et) => (
-              <button key={et} onClick={() => toggleEvent(et)} style={{ padding: '10px 16px', borderRadius: 999, fontSize: 13, fontWeight: 500, border: `1px solid ${eventTypes.includes(et) ? 'transparent' : '#7C5C3E'}`, backgroundColor: eventTypes.includes(et) ? '#D4735E' : 'transparent', color: eventTypes.includes(et) ? 'white' : '#7C5C3E', cursor: 'pointer' }}>
-                {EVENT_TYPE_LABELS[et]}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* 7 — Photos */}
-        <div style={section}>
-          <p style={sectionTitle}>7 — Photos</p>
-          <button onClick={() => fileInputRef.current?.click()} disabled={uploading} style={{ width: '100%', border: '2px dashed #D6C9B8', borderRadius: 12, padding: '24px 0', color: '#7C5C3E', fontSize: 13, backgroundColor: 'transparent', cursor: 'pointer' }}>
-            {uploading ? 'Uploading...' : 'Tap to add photos from camera roll'}
-          </button>
-          <input ref={fileInputRef} type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={handlePhotoSelect} />
-          {photos.length > 0 && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginTop: 12 }}>
-              {photos.map((url, i) => (
-                <div key={i} style={{ position: 'relative', aspectRatio: '1', borderRadius: 10, overflow: 'hidden' }}>
-                  <img src={url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" />
-                  {/* Move left */}
-                  {i > 0 && (
-                    <button
-                      onClick={() => setPhotos((prev) => { const a = [...prev]; [a[i - 1], a[i]] = [a[i], a[i - 1]]; return a })}
-                      style={{ position: 'absolute', bottom: 4, left: 4, width: 20, height: 20, borderRadius: 4, backgroundColor: 'rgba(0,0,0,0.5)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                    >←</button>
-                  )}
-                  {/* Move right */}
-                  {i < photos.length - 1 && (
-                    <button
-                      onClick={() => setPhotos((prev) => { const a = [...prev]; [a[i], a[i + 1]] = [a[i + 1], a[i]]; return a })}
-                      style={{ position: 'absolute', bottom: 4, right: 24, width: 20, height: 20, borderRadius: 4, backgroundColor: 'rgba(0,0,0,0.5)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                    >→</button>
-                  )}
-                  {/* Remove */}
-                  <button onClick={() => setPhotos((prev) => prev.filter((_, j) => j !== i))} style={{ position: 'absolute', top: 4, right: 4, width: 22, height: 22, borderRadius: '50%', backgroundColor: '#2C1A0E', color: 'white', border: 'none', cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
-                  {/* First photo badge */}
-                  {i === 0 && <div style={{ position: 'absolute', top: 4, left: 4, backgroundColor: '#C9A84C', color: 'white', fontSize: 8, fontWeight: 700, padding: '2px 5px', borderRadius: 3 }}>HERO</div>}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* 8 — Status */}
-        <div style={section}>
-          <p style={sectionTitle}>8 — Status</p>
-          <div style={{ backgroundColor: 'white', borderRadius: 12, border: '1px solid #D6C9B8', padding: '0 16px' }}>
-            <Toggle
-              label={isActive ? '🟢 Live — visible on site' : '⚪ Draft — hidden from public'}
-              value={isActive}
-              onChange={setIsActive}
-            />
-          </div>
-        </div>
-
+        </Field>
       </div>
+
+      {/* ── 2 — Basics ───────────────────────────────────────────── */}
+      <div style={section}>
+        <p style={sectionTitle}>2 — Basics</p>
+        <Field label="Property name *">
+          <input value={name} onChange={e => handleNameChange(e.target.value)} placeholder="e.g. Meenachil Garden Villa" style={inputStyle}/>
+        </Field>
+        <Field label="Slug (URL) *">
+          <input value={slug} onChange={e => setSlug(e.target.value)} placeholder="meenachil-garden-villa" style={inputStyle}/>
+        </Field>
+        <Field label="Tagline *">
+          <input value={tagline} onChange={e => setTagline(e.target.value)} placeholder="One sentence — what makes it special" style={inputStyle}/>
+        </Field>
+        <Field label="Owner name">
+          <input value={ownerName} onChange={e => setOwnerName(e.target.value)} style={inputStyle}/>
+        </Field>
+        <Field label="Owner WhatsApp *">
+          <input value={ownerWa} onChange={e => setOwnerWa(e.target.value)} placeholder="919447000000" type="tel" style={inputStyle}/>
+        </Field>
+        <Field label="Price guide">
+          <input value={priceGuide} onChange={e => setPriceGuide(e.target.value)} placeholder="₹15,000–₹25,000 per day" style={inputStyle}/>
+        </Field>
+        <Field label="Google Maps URL">
+          <input value={mapsUrl} onChange={e => setMapsUrl(e.target.value)} placeholder="https://maps.app.goo.gl/..." style={inputStyle}/>
+        </Field>
+        <Field label="Instagram URL">
+          <input value={instagramUrl} onChange={e => setInstagramUrl(e.target.value)} placeholder="https://instagram.com/..." style={inputStyle}/>
+        </Field>
+      </div>
+
+      {/* ── 3 — Property type ────────────────────────────────────── */}
+      <div style={section}>
+        <p style={sectionTitle}>3 — Property type</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {PROPERTY_TYPES.map(({ value, label }) => (
+            <button key={value} onClick={() => setPropertyType(value)}
+              style={{ ...sans, padding: '12px 14px', border: `1px solid ${propertyType === value ? C.terra : C.cream3}`, background: propertyType === value ? '#fdf0eb' : 'white', color: propertyType === value ? C.terra : C.muted, fontSize: 13, cursor: 'pointer', textAlign: 'left' as const }}>
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── 4 — Description ──────────────────────────────────────── */}
+      <div style={section}>
+        <p style={sectionTitle}>4 — Description</p>
+        <textarea value={description} onChange={e => setDescription(e.target.value)}
+          placeholder="What makes this place special? 3–5 sentences." rows={5}
+          style={{ ...inputStyle, resize: 'vertical' }}/>
+      </div>
+
+      {/* ── 5 — Capacity ─────────────────────────────────────────── */}
+      <div style={section}>
+        <p style={sectionTitle}>5 — Capacity</p>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          {[['Bedrooms', roomCount, setRoomCount], ['Bathrooms', bathroomCount, setBathroomCount], ['Max guests (overnight)', maxOvernight, setMaxOvernight], ['Max guests (day event)', maxDay, setMaxDay]].map(([label, val, setter]: any) => (
+            <Field key={label as string} label={label as string}>
+              <input type="number" value={val} onChange={e => setter(parseInt(e.target.value) || 0)} style={{ ...inputStyle, textAlign: 'center' }}/>
+            </Field>
+          ))}
+        </div>
+      </div>
+
+      {/* ── 6 — Facilities ───────────────────────────────────────── */}
+      <div style={section}>
+        <p style={sectionTitle}>6 — Facilities</p>
+        <Toggle label="Swimming pool" value={hasPool} onChange={setHasPool}/>
+        <Toggle label="AC hall" value={hasAcHall} onChange={setHasAcHall}/>
+        {hasAcHall && <Field label="AC hall capacity"><input type="number" value={acHallCap} onChange={e => setAcHallCap(parseInt(e.target.value)||0)} style={inputStyle}/></Field>}
+        <Toggle label="Non-AC hall" value={hasNonAcHall} onChange={setHasNonAcHall}/>
+        {hasNonAcHall && <Field label="Non-AC hall capacity"><input type="number" value={nonAcHallCap} onChange={e => setNonAcHallCap(parseInt(e.target.value)||0)} style={inputStyle}/></Field>}
+        <Toggle label="Open lawn / garden" value={hasLawn} onChange={setHasLawn}/>
+        {hasLawn && <Field label="Lawn area (sqft)"><input type="number" value={lawnSqft} onChange={e => setLawnSqft(parseInt(e.target.value)||0)} style={inputStyle}/></Field>}
+        <Toggle label="Full kitchen" value={hasKitchen} onChange={setHasKitchen}/>
+        <Toggle label="Parking" value={hasParking} onChange={setHasParking}/>
+        {hasParking && <Field label="Parking count"><input type="number" value={parkingCount} onChange={e => setParkingCount(parseInt(e.target.value)||0)} style={inputStyle}/></Field>}
+        <Toggle label="Generator backup" value={hasGenerator} onChange={setHasGenerator}/>
+        <Toggle label="Alcohol permitted" value={alcoholAllowed} onChange={setAlcoholAllowed}/>
+        <Toggle label="Outside catering allowed" value={outsideCatering} onChange={setOutsideCatering}/>
+      </div>
+
+      {/* ── 7 — Event types ──────────────────────────────────────── */}
+      <div style={section}>
+        <p style={sectionTitle}>7 — Event types *</p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {EVENT_TYPES.map(({ value, label }) => (
+            <button key={value} onClick={() => toggleEventType(value)}
+              style={{ ...sans, padding: '9px 16px', border: `1px solid ${eventTypes.includes(value) ? C.terra : C.cream3}`, background: eventTypes.includes(value) ? '#fdf0eb' : 'white', color: eventTypes.includes(value) ? C.terra : C.muted, fontSize: 13, cursor: 'pointer' }}>
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── 8 — Photos ───────────────────────────────────────────── */}
+      <div style={section}>
+        <p style={sectionTitle}>8 — Photos</p>
+        <label style={{ display: 'block', border: `2px dashed ${C.cream3}`, padding: 20, textAlign: 'center', cursor: 'pointer', marginBottom: 14 }}>
+          <span style={{ ...sans, fontSize: 13, color: C.muted }}>{uploading ? 'Uploading...' : 'Tap to select photos'}</span>
+          <input type="file" accept="image/*" multiple onChange={handlePhotoUpload} style={{ display: 'none' }}/>
+        </label>
+        {photos.length > 0 && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+            {photos.map((url, i) => (
+              <div key={i} style={{ position: 'relative', aspectRatio: '1' }}>
+                <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}/>
+                <button onClick={() => removePhoto(url)} style={{ position: 'absolute', top: 4, right: 4, width: 22, height: 22, background: 'rgba(0,0,0,.6)', border: 'none', cursor: 'pointer', color: 'white', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── 9 — Status ───────────────────────────────────────────── */}
+      <div style={section}>
+        <p style={sectionTitle}>9 — Status</p>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {[false, true].map(val => (
+            <button key={String(val)} onClick={() => setIsActive(val)}
+              style={{ ...sans, flex: 1, padding: '12px 0', border: `1px solid ${isActive === val ? C.green : C.cream3}`, background: isActive === val ? '#f0faf4' : 'white', color: isActive === val ? C.green : C.muted, fontSize: 13, cursor: 'pointer', fontWeight: isActive === val ? 600 : 400 }}>
+              {val ? '🟢 Live' : '⚪ Draft'}
+            </button>
+          ))}
+        </div>
+        <p style={{ ...sans, fontSize: 11, color: C.muted, marginTop: 8, fontWeight: 300 }}>Draft listings are only visible in the curator. Set to Live when photos are ready.</p>
+      </div>
+
+      {error && <div style={{ ...sans, fontSize: 13, color: C.terra, background: '#fdf0eb', border: `1px solid ${C.terra}`, padding: '12px 14px', marginBottom: 14 }}>{error}</div>}
 
       {/* Sticky save */}
-      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, backgroundColor: '#FAF7F2', borderTop: '0.5px solid #D6C9B8', padding: '12px 16px', zIndex: 30 }}>
-        <button onClick={handleSave} disabled={saving || saveSuccess} style={{ width: '100%', backgroundColor: saveSuccess ? '#6B8F71' : '#2C1A0E', color: 'white', fontWeight: 700, fontSize: 14, borderRadius: 12, padding: '14px 0', border: 'none', cursor: (saving || saveSuccess) ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1, transition: 'background 0.3s' }}>
-          {saving ? 'Saving...' : saveSuccess ? '✓ Saved — going back...' : 'Save property'}
+      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: C.cream, borderTop: `1px solid ${C.cream3}`, padding: '12px 16px', zIndex: 30 }}>
+        <button onClick={handleSave} disabled={saving}
+          style={{ ...sans, width: '100%', background: saving ? C.muted : C.green, color: 'white', fontSize: 11, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase' as const, padding: '14px 0', border: 'none', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? .7 : 1 }}>
+          {saving ? 'Saving...' : mode === 'new' ? 'Create listing' : 'Save changes'}
         </button>
       </div>
-
-      {/* Toast — colour coded */}
-      {toast && (
-        <div style={{
-          position: 'fixed',
-          bottom: 80,
-          left: '50%',
-          transform: 'translateX(-50%)',
-          backgroundColor: toastType === 'success' ? '#6B8F71' : '#D4735E',
-          color: 'white',
-          fontSize: 13,
-          fontWeight: 500,
-          padding: '12px 24px',
-          borderRadius: 999,
-          zIndex: 50,
-          whiteSpace: 'nowrap',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-          maxWidth: 'calc(100vw - 32px)',
-          textAlign: 'center',
-          whiteSpaceCollapse: 'collapse',
-        }}>
-          {toastType === 'success' ? '✓ ' : '✕ '}{toast}
-        </div>
-      )}
     </div>
   )
 }
