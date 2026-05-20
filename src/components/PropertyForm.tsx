@@ -101,7 +101,7 @@ export default function PropertyForm({ initial, mode }: PropertyFormProps) {
   const [townId, setTownId] = useState<string>((initial as any)?.town_id ?? '')
 
   // Section 3 — Property type
-  const [propertyType, setPropertyType] = useState<PropertyType>(initial?.property_type ?? 'villa_with_pool')
+  const [propertyType, setPropertyType] = useState<PropertyType>((initial?.property_type as PropertyType) ?? 'villa_with_pool')
 
   // Section 4 — Description
   const [description, setDescription] = useState(initial?.description ?? '')
@@ -130,7 +130,7 @@ export default function PropertyForm({ initial, mode }: PropertyFormProps) {
 
   // Section 7 — Event types
   const [eventTypes, setEventTypes] = useState<EventType[]>(
-    initial?.property_event_types?.map(e => e.event_type) ?? []
+    initial?.property_event_types?.map(e => e.event_type as EventType) ?? []
   )
 
   // Section 8 — Photos
