@@ -12,7 +12,6 @@ const C = {
 const sans = { fontFamily: 'system-ui, sans-serif' } as const
 const serif = { fontFamily: 'Georgia, serif' } as const
 const mono = { fontFamily: 'monospace' } as const
-
 const inp: React.CSSProperties = {
   ...sans, width: '100%', border: `1px solid ${C.cream3}`,
   padding: '11px 14px', fontSize: 14, background: C.cream,
@@ -34,7 +33,11 @@ interface Venue {
   ac_hall_capacity: number; parking_count: number
   event_types: string[]
   confidence: 'high' | 'medium' | 'low'
-  source: string; selected: boolean; sql: string
+  source: string
+  candidate_images: string[]
+  selected_image: string
+  selected: boolean
+  sql: string
 }
 
 const EVENT_TYPES = [
@@ -57,7 +60,7 @@ const CONFIDENCE_COLOR: Record<string, string> = {
   high: '#2D7A4F', medium: '#8A7040', low: '#9B3D1E',
 }
 
-function slug(name: string) {
+function slugify(name: string) {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 }
 
@@ -65,11 +68,12 @@ function buildSQL(v: Venue, townId?: string | null): string {
   const wa = v.whatsapp || v.phone.replace(/\D/g, '')
   const esc = (s: string) => s.replace(/'/g, "''")
   const types = v.event_types.map(e => `'${e}'`).join(',')
+  const photos = v.selected_image ? `'{${v.selected_image}}'` : `'{}'`
   const townCol = townId ? `,town_id` : ''
   const townVal = townId ? `,'${townId}'` : ''
   return `WITH ins AS (
   INSERT INTO public.properties (name,slug,tagline,description,owner_whatsapp,owner_name,price_guide,photos,is_active,is_featured,sort_order,instagram_url,maps_url,property_type${townCol})
-  VALUES ('${esc(v.name)}','${v.slug}','${esc(v.tagline)}','${esc(v.description)}','${wa}','${esc(v.name)}','${esc(v.price_guide)}','{}',false,false,0,'${v.instagram}','${v.maps_url}','${v.type}'${townVal})
+  VALUES ('${esc(v.name)}','${v.slug}','${esc(v.tagline)}','${esc(v.description)}','${wa}','${esc(v.name)}','${esc(v.price_guide)}',${photos},false,false,0,'${v.instagram}','${v.maps_url}','${v.type}'${townVal})
   RETURNING id
 ),
 attrs AS (
@@ -83,22 +87,25 @@ SELECT id,unnest(ARRAY[${types}]) FROM ins;`
 export default function AgentPage() {
   const [query, setQuery] = useState('event spaces party halls villas in Pala Kerala')
   const [townId, setTownId] = useState<string | null>(null)
-  const [townName, setTownName] = useState('')
+  const [townSlug, setTownSlug] = useState('')
   const [scanning, setScanning] = useState(false)
   const [venues, setVenues] = useState<Venue[]>([])
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const tn = params.get('town'); const tid = params.get('townId')
-    if (tn) { setTownName(tn); setQuery(`event spaces party halls villas in ${tn} Kerala`) }
-    if (tid) setTownId(tid)
-  }, [])
   const [log, setLog] = useState<string[]>([])
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [copied, setCopied] = useState('')
   const [bulkSQL, setBulkSQL] = useState('')
   const [showBulk, setShowBulk] = useState(false)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const tn = params.get('town')
+    const tid = params.get('townId')
+    const ts = params.get('townSlug')
+    if (tn) { setQuery(`event spaces party halls villas in ${tn} Kerala`) }
+    if (tid) setTownId(tid)
+    if (ts) setTownSlug(ts)
+  }, [])
 
   function addLog(msg: string) {
     setLog(prev => [...prev, `${new Date().toLocaleTimeString()} — ${msg}`])
@@ -107,32 +114,35 @@ export default function AgentPage() {
   async function runScan() {
     setScanning(true); setVenues([]); setLog([])
     setError(''); setBulkSQL(''); setShowBulk(false)
-    addLog(`Scanning for: "${query}"`)
-    addLog('Calling agent with web search enabled...')
+    addLog(`Searching: "${query}"`)
+    addLog('Step 1: Fetching search results via Serper...')
     try {
       const res = await fetch('/api/agent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, townId }),
+        body: JSON.stringify({ query, townId, townSlug }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? `Error ${res.status}`)
-      addLog('Agent completed. Parsing results...')
+      addLog('Step 2: Extracting venues with Claude Haiku...')
+      addLog('Step 3: Fetching candidate images...')
       const parsed: any[] = data.venues
       const resolvedTownId = data.townId ?? townId
-      addLog(`Found ${parsed.length} venues. Generating SQL...`)
+      addLog(`✓ Done — ${parsed.length} venues found`)
       const processed: Venue[] = parsed.map((v, i) => {
         const venue: Venue = {
-          ...v, id: `v${i}-${Date.now()}`,
-          slug: slug(v.name),
+          ...v,
+          id: `v${i}-${Date.now()}`,
+          slug: slugify(v.name),
           selected: v.confidence !== 'low',
+          candidate_images: v.candidate_images ?? [],
+          selected_image: v.candidate_images?.[0] ?? '',
           sql: '',
         }
         venue.sql = buildSQL(venue, resolvedTownId)
         return venue
       })
       setVenues(processed)
-      addLog(`✓ Done — ${processed.filter(v => v.selected).length} venues pre-selected`)
     } catch (err: any) {
       const msg = err.message ?? 'Unknown error'
       setError(msg); addLog(`✗ Error: ${msg}`)
@@ -144,7 +154,16 @@ export default function AgentPage() {
     setVenues(prev => prev.map(v => {
       if (v.id !== id) return v
       const u = { ...v, [field]: val }
-      if (field === 'name') u.slug = slug(val)
+      if (field === 'name') u.slug = slugify(val)
+      u.sql = buildSQL(u, townId)
+      return u
+    }))
+  }
+
+  function selectImage(id: string, url: string) {
+    setVenues(prev => prev.map(v => {
+      if (v.id !== id) return v
+      const u = { ...v, selected_image: v.selected_image === url ? '' : url }
       u.sql = buildSQL(u, townId)
       return u
     }))
@@ -153,9 +172,11 @@ export default function AgentPage() {
   function toggleET(id: string, et: string) {
     setVenues(prev => prev.map(v => {
       if (v.id !== id) return v
-      const types = v.event_types.includes(et) ? v.event_types.filter(t => t !== et) : [...v.event_types, et]
+      const types = v.event_types.includes(et)
+        ? v.event_types.filter(t => t !== et)
+        : [...v.event_types, et]
       const u = { ...v, event_types: types }
-      u.sql = buildSQL(u)
+      u.sql = buildSQL(u, townId)
       return u
     }))
   }
@@ -177,7 +198,7 @@ export default function AgentPage() {
   return (
     <div style={{ minHeight: '100vh', background: C.cream, paddingBottom: 80 }}>
       <div style={{ background: C.green, padding: '6px 16px', display: 'flex', justifyContent: 'space-between' }}>
-        <span style={{ ...sans, fontSize: 10, color: 'rgba(255,255,255,.5)', letterSpacing: '.06em' }}>തീരം · theeram</span>
+        <span style={{ ...sans, fontSize: 10, color: 'rgba(255,255,255,.5)' }}>തീരം · theeram</span>
         <span style={{ ...sans, fontSize: 10, color: 'rgba(255,255,255,.4)' }}>Listing Agent</span>
       </div>
 
@@ -187,36 +208,39 @@ export default function AgentPage() {
           <span style={{ color: C.cream3 }}>|</span>
           <span style={{ ...serif, fontSize: 18, color: C.text }}>Listing Agent</span>
         </div>
-        {venues.length > 0 && <span style={{ ...sans, fontSize: 11, color: C.muted }}>{selCount} of {venues.length} selected</span>}
+        {venues.length > 0 && <span style={{ ...sans, fontSize: 11, color: C.muted }}>{selCount}/{venues.length} selected</span>}
       </div>
 
       <div style={{ padding: '20px 16px 0' }}>
 
-        <div style={{ background: C.green, padding: '18px 16px', marginBottom: 20 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+        {/* Info banner */}
+        <div style={{ background: C.green, padding: '16px', marginBottom: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
             <div style={{ width: 14, height: 1, background: C.gold }}/>
-            <span style={{ ...sans, fontSize: 10, color: C.gold, letterSpacing: '.08em' }}>AI-powered discovery</span>
+            <span style={{ ...sans, fontSize: 10, color: C.gold, letterSpacing: '.08em' }}>Serper + Claude Haiku</span>
             <div style={{ width: 14, height: 1, background: C.gold }}/>
           </div>
           <p style={{ ...sans, fontSize: 13, color: 'rgba(255,255,255,.7)', lineHeight: 1.7, fontWeight: 300, margin: 0 }}>
-            The agent searches Google, Justdial, Quickerala, Facebook and local directories. Review each result, edit details, select what meets your standard, then paste the SQL into Supabase. You curate — the agent discovers.
+            Searches Google via Serper, extracts venue details with Haiku, and fetches candidate photos automatically. Each scan costs under ₹1. Review results, pick your preferred photo, then paste the SQL into Supabase.
           </p>
         </div>
 
+        {/* Query input */}
         <div style={{ marginBottom: 14 }}>
           <label style={{ ...sans, fontSize: 10, color: C.terra, letterSpacing: '.08em', display: 'block', marginBottom: 6 }}>SEARCH QUERY</label>
           <input value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => e.key === 'Enter' && !scanning && runScan()} style={inp}/>
           <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' as const }}>
-            {['event spaces Pala Kerala', 'wedding venues Pala Kottayam', 'party halls Erattupetta', 'villas homestays Pala', 'convention centres Pala'].map(q => (
+            {['event spaces Pala Kerala', 'wedding venues Pala Kottayam', 'party halls Thodupuzha', 'villas Kanjirappally Kerala', 'convention centres Pala'].map(q => (
               <button key={q} onClick={() => setQuery(q)} style={{ ...sans, fontSize: 10, color: C.muted, border: `1px solid ${C.cream3}`, padding: '4px 10px', background: 'white', cursor: 'pointer' }}>{q}</button>
             ))}
           </div>
         </div>
 
         <button onClick={runScan} disabled={scanning || !query.trim()} style={{ ...sans, width: '100%', background: scanning ? C.muted : C.green, color: 'white', fontSize: 11, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase' as const, padding: '14px 0', border: 'none', cursor: scanning ? 'not-allowed' : 'pointer', marginBottom: 20 }}>
-          {scanning ? '⟳  Agent scanning the web...' : '⟳  Run agent scan'}
+          {scanning ? '⟳  Scanning...' : '⟳  Run agent scan'}
         </button>
 
+        {/* Log */}
         {log.length > 0 && (
           <div style={{ background: C.green2, padding: '12px 14px', marginBottom: 20 }}>
             {log.map((l, i) => (
@@ -225,8 +249,13 @@ export default function AgentPage() {
           </div>
         )}
 
-        {error && <div style={{ background: '#fdf0eb', border: `1px solid ${C.terra}`, padding: '12px 14px', marginBottom: 20 }}><p style={{ ...sans, fontSize: 13, color: C.terra, margin: 0 }}>{error}</p></div>}
+        {error && (
+          <div style={{ background: '#fdf0eb', border: `1px solid ${C.terra}`, padding: '12px 14px', marginBottom: 20 }}>
+            <p style={{ ...sans, fontSize: 13, color: C.terra, margin: 0 }}>{error}</p>
+          </div>
+        )}
 
+        {/* Venue cards */}
         {venues.length > 0 && (
           <>
             <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 14 }}>
@@ -235,33 +264,55 @@ export default function AgentPage() {
               <div style={{ flex: 1, height: 1, background: C.cream3 }}/>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
               {venues.map(v => (
                 <div key={v.id} style={{ background: 'white', border: v.selected ? `1.5px solid ${C.green}` : `1px solid ${C.cream3}` }}>
 
+                  {/* Card header */}
                   <div style={{ padding: '14px 14px 10px', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
                     <div style={{ flex: 1 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                        <span style={{ ...sans, fontSize: 9, fontWeight: 700, color: CONFIDENCE_COLOR[v.confidence], border: `1px solid ${CONFIDENCE_COLOR[v.confidence]}`, padding: '2px 6px', letterSpacing: '.05em' }}>{v.confidence.toUpperCase()}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' as const }}>
+                        <span style={{ ...sans, fontSize: 9, fontWeight: 700, color: CONFIDENCE_COLOR[v.confidence], border: `1px solid ${CONFIDENCE_COLOR[v.confidence]}`, padding: '2px 6px' }}>{v.confidence.toUpperCase()}</span>
                         <span style={{ ...sans, fontSize: 10, color: C.muted }}>{PROPERTY_TYPES[v.type] ?? v.type}</span>
                       </div>
                       <div style={{ ...serif, fontSize: 16, color: C.text, marginBottom: 2 }}>{v.name}</div>
                       <div style={{ ...sans, fontSize: 11, color: C.muted, fontWeight: 300 }}>{v.location}</div>
+                      {v.phone && <div style={{ ...sans, fontSize: 11, color: C.green, marginTop: 4 }}>📞 {v.phone}</div>}
                     </div>
                     <button onClick={() => update(v.id, 'selected', !v.selected)} style={{ width: 28, height: 28, border: `1.5px solid ${v.selected ? C.green : C.cream3}`, background: v.selected ? C.green : 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                       {v.selected && <svg viewBox="0 0 14 14" fill="none" width={12} height={12} stroke="white" strokeWidth={2}><path d="M2 7l4 4 6-6" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                     </button>
                   </div>
 
-                  <div style={{ padding: '0 14px 10px', display: 'flex', gap: 6, flexWrap: 'wrap' as const }}>
-                    {v.phone && <span style={{ ...sans, fontSize: 10, color: C.muted, background: C.cream2, padding: '3px 8px' }}>📞 {v.phone}</span>}
-                    {v.has_pool && <span style={{ ...sans, fontSize: 10, color: C.muted, background: C.cream2, padding: '3px 8px' }}>Pool</span>}
-                    {v.has_ac_hall && <span style={{ ...sans, fontSize: 10, color: C.muted, background: C.cream2, padding: '3px 8px' }}>AC hall</span>}
-                    {v.has_open_lawn && <span style={{ ...sans, fontSize: 10, color: C.muted, background: C.cream2, padding: '3px 8px' }}>Lawn</span>}
-                    {v.max_day > 0 && <span style={{ ...sans, fontSize: 10, color: C.muted, background: C.cream2, padding: '3px 8px' }}>Up to {v.max_day}</span>}
-                    {v.source && <span style={{ ...sans, fontSize: 10, color: C.muted, background: C.cream2, padding: '3px 8px' }}>via {v.source.replace(/https?:\/\/(www\.)?/, '').split('/')[0].slice(0,20)}</span>}
-                  </div>
+                  {/* Candidate images */}
+                  {v.candidate_images.length > 0 && (
+                    <div style={{ padding: '0 14px 12px' }}>
+                      <div style={{ ...sans, fontSize: 9, color: C.terra, letterSpacing: '.07em', marginBottom: 8 }}>
+                        SELECT PHOTO (tap to select, tap again to deselect)
+                      </div>
+                      <div style={{ display: 'flex', gap: 6, overflowX: 'auto' }} className="no-scrollbar">
+                        {v.candidate_images.map((url, i) => (
+                          <div key={i} onClick={() => selectImage(v.id, url)}
+                            style={{ flexShrink: 0, width: 90, height: 68, position: 'relative', cursor: 'pointer', border: v.selected_image === url ? `2px solid ${C.terra}` : `1px solid ${C.cream3}` }}>
+                            <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                              onError={e => { (e.target as HTMLImageElement).closest('div')!.style.display = 'none' }}/>
+                            {v.selected_image === url && (
+                              <div style={{ position: 'absolute', top: 3, right: 3, width: 16, height: 16, background: C.terra, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <svg viewBox="0 0 10 10" fill="none" width={8} height={8} stroke="white" strokeWidth={1.5}><path d="M2 5l2 2 4-4"/></svg>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                      {v.selected_image && (
+                        <div style={{ ...sans, fontSize: 10, color: C.muted, marginTop: 6 }}>
+                          ⚠️ Reference only — confirm with owner before publishing
+                        </div>
+                      )}
+                    </div>
+                  )}
 
+                  {/* Expand / edit */}
                   <div style={{ borderTop: `1px solid ${C.cream3}` }}>
                     <button onClick={() => setExpandedId(expandedId === v.id ? null : v.id)} style={{ ...sans, width: '100%', padding: '9px 14px', fontSize: 11, color: C.muted, background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' as const, display: 'flex', justifyContent: 'space-between' }}>
                       <span>Review & edit</span><span>{expandedId === v.id ? '▲' : '▼'}</span>
@@ -340,7 +391,7 @@ export default function AgentPage() {
                   <span style={{ ...serif, fontSize: 16, color: C.text }}>Bulk SQL — {selCount} venues</span>
                   <button onClick={() => copy(bulkSQL, 'bulk')} style={{ ...sans, fontSize: 11, color: copied === 'bulk' ? C.green : C.terra, border: `1px solid ${copied === 'bulk' ? C.green : C.terra}`, padding: '6px 14px', background: 'none', cursor: 'pointer', fontWeight: 600 }}>{copied === 'bulk' ? '✓ Copied!' : 'Copy all SQL'}</button>
                 </div>
-                <p style={{ ...sans, fontSize: 12, color: C.muted, marginBottom: 10 }}>Paste into Supabase → SQL Editor → New query → Run. All {selCount} venues inserted as Draft.</p>
+                <p style={{ ...sans, fontSize: 12, color: C.muted, marginBottom: 10 }}>Paste into Supabase → SQL Editor → Run. All {selCount} venues inserted as Draft.</p>
                 <pre style={{ ...mono, fontSize: 10, background: C.green2, color: 'rgba(255,255,255,.65)', padding: '14px', overflowX: 'auto', whiteSpace: 'pre-wrap' as const, margin: 0, maxHeight: 400, overflowY: 'auto' }}>{bulkSQL}</pre>
               </div>
             )}
@@ -356,6 +407,7 @@ export default function AgentPage() {
           </button>
         </div>
       )}
+      <style>{`.no-scrollbar::-webkit-scrollbar{display:none}`}</style>
     </div>
   )
 }
