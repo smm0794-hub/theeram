@@ -87,7 +87,7 @@ export default function GratitudeModal({ propertyName, whatsappUrl, reviewUrl, u
       activateStep(3)
       // Open WhatsApp 150ms after last tick
       addTimer(() => {
-        try { window.open(whatsappUrl, '_blank') } catch {}
+        try { window.location.href = whatsappUrl } catch {}
         setScreen('donate')
       }, STEP_DURATION + 1500)
     }, t0 + gap * 3)
