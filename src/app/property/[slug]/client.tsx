@@ -40,9 +40,12 @@ export default function PropertyDetailClient({ slug }: { slug: string }) {
         .single()
       setProperty(data as Property)
       setLoading(false)
-      // Track view
       if (data?.id) {
-        fetch('/api/track-view', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ property_id: data.id }) }).catch(() => {})
+        fetch('/api/track-view', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ property_id: data.id }),
+        }).catch(() => {})
       }
     }
     load()
@@ -50,14 +53,15 @@ export default function PropertyDetailClient({ slug }: { slug: string }) {
 
   async function handleWhatsApp() {
     if (!property) return
-    try { await supabase.from('inquiries').insert({ property_id: property.id, event_type: property.property_event_types?.[0]?.event_type ?? 'general' }) } catch {}
+    // Log enquiry
+    try {
+      await supabase.from('inquiries').insert({
+        property_id: property.id,
+        event_type: property.property_event_types?.[0]?.event_type ?? 'general',
+      })
+    } catch {}
+    // Show gratitude modal — it handles WhatsApp opening internally
     setShowModal(true)
-  }
-
-  function openWhatsApp() {
-    if (!property) return
-    const msg = encodeURIComponent(`Hi! I found ${property.name} on Theeram and I'm interested in booking. Could you share availability and pricing?`)
-    window.open(`https://wa.me/${property.owner_whatsapp}?text=${msg}`, '_blank')
   }
 
   async function handleShare() {
@@ -88,6 +92,11 @@ export default function PropertyDetailClient({ slug }: { slug: string }) {
   const firstEvent = eventTypes[0]?.event_type ?? 'general'
   const heroBg = CARD_BG[property.property_type] ?? C.green
 
+  const waMessage = encodeURIComponent(
+    `Hi! I found ${property.name} on Theeram and I'm interested in booking. Could you share availability and pricing?`
+  )
+  const waUrl = `https://wa.me/${property.owner_whatsapp}?text=${waMessage}`
+
   const facilities = [
     { label: 'Bedrooms', value: attrs?.room_count, show: (attrs?.room_count ?? 0) > 0 },
     { label: 'Bathrooms', value: attrs?.bathroom_count, show: (attrs?.bathroom_count ?? 0) > 0 },
@@ -103,6 +112,7 @@ export default function PropertyDetailClient({ slug }: { slug: string }) {
   return (
     <div style={{ background: C.cream, minHeight: '100vh', paddingBottom: 90 }}>
       <Header/>
+
       {/* JSON-LD structured data */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
         '@context': 'https://schema.org',
@@ -124,10 +134,8 @@ export default function PropertyDetailClient({ slug }: { slug: string }) {
         ].filter(Boolean),
       }) }}/>
 
-
-      {/* Hero — coloured illustration zone */}
+      {/* Hero */}
       <div style={{ background: heroBg, height: 240, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
-        {/* Background pattern */}
         <div style={{ opacity: .12, position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <svg viewBox="0 0 120 120" fill="none" width={200} height={200} stroke="white" strokeWidth={.8}>
             <circle cx="60" cy="60" r="50"/><circle cx="60" cy="60" r="35"/><circle cx="60" cy="60" r="20"/>
@@ -137,17 +145,18 @@ export default function PropertyDetailClient({ slug }: { slug: string }) {
         {photos.length > 0 ? (
           <img src={photos[0]} alt={property.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', position: 'absolute', inset: 0 }}/>
         ) : null}
-        {/* Back + share */}
+        {/* Back */}
         <button onClick={() => router.back()} style={{ position: 'absolute', top: 16, left: 16, width: 36, height: 36, background: 'rgba(0,0,0,.4)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
           <svg viewBox="0 0 20 20" fill="none" width={18} height={18} stroke="white" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M12 5L7 10l5 5"/></svg>
         </button>
+        {/* Share */}
         <button onClick={handleShare} style={{ position: 'absolute', top: 16, right: 16, width: 36, height: 36, background: 'rgba(0,0,0,.4)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
           {copied
             ? <svg viewBox="0 0 20 20" fill="none" width={16} height={16} stroke="white" strokeWidth={2}><path d="M4 10l5 5 7-9" strokeLinecap="round" strokeLinejoin="round"/></svg>
             : <svg viewBox="0 0 14 14" fill="none" width={14} height={14} stroke="white" strokeWidth={1.3} strokeLinecap="round"><circle cx="11" cy="2.5" r="1.5"/><circle cx="3" cy="7" r="1.5"/><circle cx="11" cy="11.5" r="1.5"/><path d="M4.5 6.3l5-3.2M4.5 7.7l5 3.2"/></svg>
           }
         </button>
-        {/* Property type label bottom */}
+        {/* Property type + name overlay */}
         <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '32px 16px 14px', background: 'linear-gradient(to top, rgba(0,0,0,.55), transparent)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
             <div style={{ width: 10, height: 1, background: C.gold }}/>
@@ -160,7 +169,6 @@ export default function PropertyDetailClient({ slug }: { slug: string }) {
 
       {/* Body */}
       <div style={{ padding: '20px 16px 0' }}>
-        {/* Tagline */}
         <p style={{ ...sans, fontSize: 14, color: C.muted, lineHeight: 1.6, marginBottom: 16, fontWeight: 300 }}>{property.tagline}</p>
 
         {/* Event type pills */}
@@ -271,7 +279,7 @@ export default function PropertyDetailClient({ slug }: { slug: string }) {
         </button>
       </div>
 
-      {/* Lightbox */}
+      {/* Photo lightbox */}
       {activePhoto && (
         <div onClick={() => setActivePhoto(null)} style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <img src={activePhoto} alt="" style={{ maxWidth: '100%', maxHeight: '85vh', objectFit: 'contain' }} onClick={e => e.stopPropagation()}/>
@@ -281,7 +289,17 @@ export default function PropertyDetailClient({ slug }: { slug: string }) {
         </div>
       )}
 
-      <GratitudeModal isOpen={showModal} onClose={() => setShowModal(false)} property={property} eventType={firstEvent} onWhatsApp={openWhatsApp}/>
+      {/* Gratitude modal */}
+      {showModal && (
+        <GratitudeModal
+          propertyName={property.name}
+          whatsappUrl={waUrl}
+          reviewUrl="https://g.page/r/Cav0otb1aGpEEBM/review"
+          upiUrl={`upi://pay?pa=smm0794@okhdfcbank&pn=Theeram&tn=Theeram+chai`}
+          onClose={() => setShowModal(false)}
+        />
+      )}
+
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   )

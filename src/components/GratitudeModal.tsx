@@ -1,197 +1,311 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { Property } from '@/lib/supabase'
-import { C, sans, serif } from '@/lib/design'
+import { useEffect, useRef, useState } from 'react'
 
-interface Props {
-  isOpen: boolean
+const C = {
+  green: '#1C3A2B', cream: '#F5F0E8', cream2: '#EDE8DC', cream3: '#E5DFD0',
+  gold: '#C9A84C', terra: '#9B3D1E', text: '#1C1C1A', muted: '#6B5E4E',
+  wa: '#25D366',
+}
+const sans = { fontFamily: 'system-ui, sans-serif' } as const
+const serif = { fontFamily: 'Georgia, serif' } as const
+
+interface GratitudeModalProps {
+  propertyName: string
+  whatsappUrl: string
+  reviewUrl?: string
+  upiUrl?: string
   onClose: () => void
-  property: Property
-  eventType: string
-  onWhatsApp: () => void
 }
 
-const STORAGE_KEY = 'theeram_coffee_done'
-const RESET_DAYS = 7
-const GOOGLE_REVIEW_URL = 'https://g.page/r/Cav0otb1aGpEEBM/review'
+type Screen = 'connecting' | 'donate' | 'thankyou'
 
-function hasPaidOrSkipped(): boolean {
-  if (typeof window === 'undefined') return false
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return false
-    const { ts } = JSON.parse(raw)
-    return (Date.now() - ts) / (1000 * 60 * 60 * 24) < RESET_DAYS
-  } catch { return false }
-}
+const STEPS = [
+  { id: 0, label: 'Fetching owner details',  icon: 'M 8 10 L 18 10 M 8 14 L 18 14 M 8 18 L 14 18 M 6 6 L 20 6 L 20 22 L 4 22 L 4 6 Z', color: C.gold },
+  { id: 1, label: 'Curating your enquiry',   icon: 'M 4 20 L 8 19 L 19 8 L 16 5 L 5 16 Z M 16 5 L 19 8', color: C.gold },
+  { id: 2, label: 'Connecting to owner',     icon: 'M 9 12 L 15 12 M 12 9 L 15 12 L 12 15 M 5 8 C 5 8 3 10 3 12 C 3 14 5 16 5 16 M 19 8 C 19 8 21 10 21 12 C 21 14 19 16 19 16', color: C.gold },
+  { id: 3, label: 'Opening WhatsApp',        icon: 'M 12 2 C 6.48 2 2 6.48 2 12 C 2 13.85 2.5 15.58 3.36 17.06 L 2 22 L 6.94 20.64 C 8.42 21.5 10.15 22 12 22 C 17.52 22 22 17.52 22 12 C 22 6.48 17.52 2 12 2 Z M 8.5 9 C 8.5 9 9 8 9.5 8 C 10 8 10.5 8.5 11 9.5 C 11.5 10.5 11 11 11 11.5 C 11 12 13 14 13.5 14 C 14 14 14.5 13.5 15 13.5 C 15.5 13.5 16 14 16 14.5 C 16 15 15 15.5 14.5 15.5 C 12 15.5 8.5 12 8.5 9 Z', color: C.wa },
+]
 
-function markDone() {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ ts: Date.now() })) } catch {}
-}
+const STEP_DURATION = 620
+const STEP_GAP = 150
+const CARD_APPEAR_AT_STEP = 2 // card slides in when step 3 activates
 
-type Stage = 'coffee' | 'thanked' | 'review'
-
-export default function GratitudeModal({ isOpen, onClose, property, eventType, onWhatsApp }: Props) {
-  const [stage, setStage] = useState<Stage>('coffee')
-  const [skip, setSkip] = useState(false)
+export default function GratitudeModal({ propertyName, whatsappUrl, reviewUrl, upiUrl, onClose }: GratitudeModalProps) {
+  const [stepStates, setStepStates] = useState<('idle' | 'active' | 'done')[]>(['idle', 'idle', 'idle', 'idle'])
+  const [cardVisible, setCardVisible] = useState(false)
+  const [screen, setScreen] = useState<Screen>('connecting')
+  const [hasPaid, setHasPaid] = useState(false)
+  const timers = useRef<NodeJS.Timeout[]>([])
 
   useEffect(() => {
-    if (isOpen) {
-      setStage('coffee')
-      const done = hasPaidOrSkipped()
-      setSkip(done)
-      if (done) { onWhatsApp(); onClose() }
+    // Check if already donated
+    try {
+      if (localStorage.getItem('theeram_chai')) setHasPaid(true)
+    } catch {}
+
+    // Prevent body scroll
+    document.body.style.overflow = 'hidden'
+    runSequence()
+    return () => {
+      document.body.style.overflow = ''
+      timers.current.forEach(clearTimeout)
     }
-  }, [isOpen])
+  }, [])
 
-  if (!isOpen || skip) return null
-
-  function handleUPI() {
-    window.location.href = `upi://pay?pa=smm0794@okhdfcbank&pn=Theeram&am=20&cu=INR&tn=Theeram+coffee`
-    markDone()
-    setTimeout(() => setStage('thanked'), 800)
+  function addTimer(fn: () => void, delay: number) {
+    const t = setTimeout(fn, delay)
+    timers.current.push(t)
   }
 
-  function proceedToWhatsApp() {
-    markDone()
-    onWhatsApp()
-    onClose()
+  function activateStep(i: number) {
+    setStepStates(prev => {
+      const next = [...prev]
+      next[i] = 'active'
+      return next
+    })
+    addTimer(() => {
+      setStepStates(prev => {
+        const next = [...prev]
+        next[i] = 'done'
+        return next
+      })
+    }, STEP_DURATION)
   }
 
-  function handleSkip() {
-    // Show Google review prompt instead of closing immediately
-    setStage('review')
+  function runSequence() {
+    const t0 = 300
+    const gap = STEP_DURATION + STEP_GAP
+
+    addTimer(() => activateStep(0), t0)
+    addTimer(() => activateStep(1), t0 + gap)
+    addTimer(() => {
+      activateStep(2)
+      addTimer(() => setCardVisible(true), 200)
+    }, t0 + gap * 2)
+    addTimer(() => {
+      activateStep(3)
+      // Open WhatsApp 150ms after last tick
+      addTimer(() => {
+        try { window.open(whatsappUrl, '_blank') } catch {}
+        setScreen('donate')
+      }, STEP_DURATION + 150)
+    }, t0 + gap * 3)
+  }
+
+  function handleChai() {
+    try {
+      localStorage.setItem('theeram_chai', '1')
+      setHasPaid(true)
+    } catch {}
+    if (upiUrl) {
+      try { window.open(upiUrl, '_blank') } catch {}
+    }
+    setScreen('thankyou')
   }
 
   function handleReview() {
-    window.open(GOOGLE_REVIEW_URL, '_blank')
-    markDone()
-    onWhatsApp()
-    onClose()
+    if (reviewUrl) {
+      try { window.open(reviewUrl, '_blank') } catch {}
+    }
+    setScreen('thankyou')
   }
 
-  function handleSkipReview() {
-    markDone()
-    onWhatsApp()
-    onClose()
-  }
-
-  const overlay: React.CSSProperties = {
-    position: 'fixed', inset: 0, zIndex: 60,
-    background: 'rgba(22,48,35,.78)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
-  }
-  const card: React.CSSProperties = {
-    background: 'white', width: 300, padding: '26px 22px',
-    display: 'flex', flexDirection: 'column', gap: 14,
-  }
-  const divider = (label: string) => (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      <div style={{ flex: 1, height: 1, background: C.cream3 }}/>
-      <span style={{ ...sans, fontSize: 10, color: C.muted }}>{label}</span>
-      <div style={{ flex: 1, height: 1, background: C.cream3 }}/>
-    </div>
-  )
-
-  // ── Thanked stage ─────────────────────────────────────────────────────────
-  if (stage === 'thanked') return (
-    <div style={overlay} onClick={proceedToWhatsApp}>
-      <div style={card} onClick={e => e.stopPropagation()}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ ...serif, fontSize: 36, color: C.gold, marginBottom: 12 }}>🪔</div>
-          <h2 style={{ ...serif, fontSize: 20, color: C.text, fontWeight: 400, marginBottom: 10, lineHeight: 1.3 }}>Thank you for supporting Theeram.</h2>
-          <p style={{ ...sans, fontSize: 13, color: C.muted, lineHeight: 1.7, marginBottom: 20, fontWeight: 300 }}>You are helping keep this little corner of Kerala independent and free.</p>
-        </div>
-        <button onClick={proceedToWhatsApp} style={{ ...sans, width: '100%', background: '#25D366', color: 'white', fontSize: 11, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase' as const, padding: '13px 0', border: 'none', cursor: 'pointer' }}>
-          Continue to WhatsApp →
-        </button>
-      </div>
-    </div>
-  )
-
-  // ── Google review stage ───────────────────────────────────────────────────
-  if (stage === 'review') return (
-    <div style={overlay}>
-      <div style={card} onClick={e => e.stopPropagation()}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ flex: 1, height: 1, background: C.cream3 }}/>
-          <span style={{ ...sans, fontSize: 9, color: C.terra, letterSpacing: '.1em', textTransform: 'uppercase' as const }}>One small favour</span>
-          <div style={{ flex: 1, height: 1, background: C.cream3 }}/>
-        </div>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 28, marginBottom: 10 }}>⭐</div>
-          <h2 style={{ ...serif, fontSize: 18, color: C.text, fontWeight: 400, marginBottom: 8, lineHeight: 1.35 }}>Leave us a Google review?</h2>
-          <p style={{ ...sans, fontSize: 12, color: C.muted, lineHeight: 1.7, fontWeight: 300 }}>It takes 30 seconds and helps other families in Kerala discover Theeram. That is worth more than a coffee.</p>
-        </div>
-        <button onClick={handleReview} style={{ ...sans, width: '100%', background: C.green, color: 'white', fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase' as const, padding: '13px 0', border: 'none', cursor: 'pointer' }}>
-          ⭐ Leave a Google review
-        </button>
-        <button onClick={proceedToWhatsApp} style={{ ...sans, fontSize: 11, color: '#25D366', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'center' as const, fontWeight: 600 }}>
-          Continue to WhatsApp →
-        </button>
-        <button onClick={handleSkipReview} style={{ ...sans, fontSize: 11, color: C.muted, textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'center' as const }}>
-          Skip
-        </button>
-      </div>
-    </div>
-  )
-
-  // ── Coffee stage (default) ────────────────────────────────────────────────
   return (
-    <div style={overlay} onClick={onClose}>
-      <div style={card} onClick={e => e.stopPropagation()}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ flex: 1, height: 1, background: C.cream3 }}/>
-          <span style={{ ...sans, fontSize: 9, color: C.terra, letterSpacing: '.1em', textTransform: 'uppercase' as const }}>You found your space</span>
-          <div style={{ flex: 1, height: 1, background: C.cream3 }}/>
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 100,
+      background: C.cream,
+      display: 'flex', flexDirection: 'column',
+      overflowY: 'auto',
+    }}>
+      {/* Green top — connecting section */}
+      <div style={{ background: C.green, padding: '36px 28px 36px', flexShrink: 0 }}>
+        <p style={{ ...sans, fontSize: 10, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.12em', margin: '0 0 18px', textAlign: 'center' }}>
+          തീരം · theeram
+        </p>
+        <p style={{ ...serif, fontSize: 13, color: 'rgba(255,255,255,0.45)', textAlign: 'center', margin: '0 0 5px', fontWeight: 300 }}>
+          Connecting you to
+        </p>
+        <p style={{ ...serif, fontSize: 20, color: C.gold, textAlign: 'center', margin: 0, fontWeight: 300, lineHeight: 1.3 }}>
+          {propertyName}
+        </p>
+
+        {/* Steps */}
+        <div style={{ marginTop: 26, display: 'flex', flexDirection: 'column', gap: 15 }}>
+          {STEPS.map((step, i) => {
+            const state = stepStates[i]
+            const isActive = state === 'active'
+            const isDone = state === 'done'
+            const ringColor = step.color
+            const circumference = 69.1
+
+            return (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 13, opacity: state === 'idle' ? 0.25 : 1, transition: 'opacity 0.3s' }}>
+                {/* Animated circle */}
+                <div style={{ position: 'relative', width: 28, height: 28, flexShrink: 0 }}>
+                  <svg width="28" height="28" viewBox="0 0 28 28">
+                    {/* Track */}
+                    <circle cx="14" cy="14" r="11" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="1.5"/>
+                    {/* Progress ring */}
+                    <circle
+                      cx="14" cy="14" r="11" fill="none"
+                      stroke={ringColor} strokeWidth="1.5"
+                      strokeDasharray={circumference}
+                      strokeDashoffset={isActive || isDone ? 0 : circumference}
+                      strokeLinecap="round"
+                      transform="rotate(-90 14 14)"
+                      style={{ transition: isActive || isDone ? 'stroke-dashoffset 0.62s ease' : 'none' }}
+                    />
+                    {/* Fill on done */}
+                    <circle cx="14" cy="14" r="11" fill={ringColor} opacity={isDone ? 1 : 0} style={{ transition: 'opacity 0.18s' }}/>
+                    {/* Tick on done */}
+                    <path
+                      d="M8.5 14l3.5 3.5L19.5 10"
+                      stroke="white" strokeWidth="1.8" fill="none"
+                      strokeLinecap="round" strokeLinejoin="round"
+                      opacity={isDone ? 1 : 0}
+                      style={{ transition: 'opacity 0.18s' }}
+                    />
+                    {/* Icon when not done */}
+                    {!isDone && (
+                      <path
+                        d={step.icon}
+                        stroke="rgba(255,255,255,0.55)" strokeWidth="1.3" fill="none"
+                        strokeLinecap="round" strokeLinejoin="round"
+                        transform="scale(0.52) translate(13.5, 13.5)"
+                        style={{ opacity: isDone ? 0 : 1, transition: 'opacity 0.18s' }}
+                      />
+                    )}
+                  </svg>
+                  {/* Simple emoji icon fallback */}
+                  {!isDone && (
+                    <span style={{
+                      position: 'absolute', top: '50%', left: '50%',
+                      transform: 'translate(-50%, -50%)',
+                      fontSize: 11,
+                      opacity: isDone ? 0 : 1,
+                      transition: 'opacity 0.18s',
+                      pointerEvents: 'none',
+                    }}>
+                      {i === 0 ? '📋' : i === 1 ? '✏️' : i === 2 ? '🔗' : '💬'}
+                    </span>
+                  )}
+                </div>
+
+                <p style={{
+                  ...sans, fontSize: 13, margin: 0, fontWeight: 300,
+                  color: isDone ? 'rgba(255,255,255,0.95)' : isActive ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.5)',
+                  transition: 'color 0.3s',
+                }}>
+                  {step.label}
+                </p>
+              </div>
+            )
+          })}
         </div>
-
-        <div style={{ textAlign: 'center' }}>
-          <h2 style={{ ...serif, fontSize: 17, color: C.text, fontWeight: 400, lineHeight: 1.4, marginBottom: 4 }}>
-            Buy Theeram a coffee
-          </h2>
-          <p style={{ ...sans, fontSize: 12, color: C.muted, fontWeight: 300 }}>Keep this directory free · ₹20</p>
-        </div>
-
-        {/* UPI pay button */}
-        <button onClick={handleUPI} style={{ ...sans, width: '100%', background: 'linear-gradient(135deg,#5F259F,#8B3FC8)', color: 'white', fontSize: 13, fontWeight: 700, padding: '13px 0', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-          <svg viewBox="0 0 20 20" fill="none" width={16} height={16}><rect width="20" height="20" rx="3" fill="rgba(255,255,255,.2)"/><path d="M10 3L5 12h4v2l7-9h-5V3z" fill="white"/></svg>
-          Pay ₹20 with UPI
-        </button>
-
-        {/* QR toggle */}
-        <QRToggle/>
-
-        {divider('then')}
-
-        <button onClick={proceedToWhatsApp} style={{ ...sans, width: '100%', background: '#25D366', color: 'white', fontSize: 11, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase' as const, padding: '13px 0', border: 'none', cursor: 'pointer' }}>
-          Continue to WhatsApp →
-        </button>
-
-        <button onClick={handleSkip} style={{ ...sans, fontSize: 11, color: C.muted, textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'center' as const }}>
-          Skip for now
-        </button>
       </div>
-    </div>
-  )
-}
 
-function QRToggle() {
-  const [show, setShow] = useState(false)
-  return (
-    <div style={{ textAlign: 'center' }}>
-      <button onClick={() => setShow(v => !v)} style={{ ...sans, fontSize: 11, color: C.muted, background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>
-        {show ? 'Hide QR' : 'or scan QR instead'}
-      </button>
-      {show && (
-        <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>
-          <div style={{ width: 88, height: 88, border: `1px solid ${C.cream3}`, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fafafa' }}>
-            <img src="/upi-qr.png" alt="UPI QR" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { (e.target as HTMLImageElement).style.display='none' }}/>
+      {/* Cream bottom — donation section */}
+      <div style={{
+        padding: '24px 24px 36px',
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        opacity: cardVisible ? 1 : 0,
+        transform: cardVisible ? 'translateY(0)' : 'translateY(14px)',
+        transition: 'opacity 0.45s, transform 0.45s',
+      }}>
+
+        {/* Default — donate state */}
+        {screen !== 'thankyou' && (
+          <>
+            <div>
+              <p style={{ ...serif, fontSize: 15, color: C.text, textAlign: 'center', margin: '0 0 4px', fontWeight: 300 }}>
+                Theeram is free, always.
+              </p>
+              <p style={{ ...sans, fontSize: 12, color: C.muted, textAlign: 'center', fontWeight: 300, margin: '0 0 20px', lineHeight: 1.65 }}>
+                If it helped, keep us going<br/>with a chai.
+              </p>
+
+              <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                <button
+                  onClick={handleChai}
+                  style={{
+                    flex: 1, background: C.green, border: 'none', color: 'white',
+                    ...sans, fontSize: 13, padding: '13px 8px', borderRadius: 10,
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  }}>
+                  ☕ Buy us a chai
+                </button>
+                <button
+                  onClick={handleReview}
+                  style={{
+                    flex: 1, background: 'transparent', border: `1px solid ${C.cream3}`, color: C.muted,
+                    ...sans, fontSize: 13, padding: '13px 8px', borderRadius: 10,
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  }}>
+                  ⭐ Leave a review
+                </button>
+              </div>
+
+              <p style={{ ...sans, fontSize: 11, color: '#C4BAB0', textAlign: 'center', margin: 0 }}>
+                Either way, thank you.
+              </p>
+            </div>
+
+            <div>
+              <div style={{ width: '100%', height: 1, background: C.cream3, margin: '20px 0' }}/>
+              <button
+                onClick={onClose}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  ...sans, fontSize: 12, color: C.terra,
+                  display: 'flex', alignItems: 'center', gap: 5, margin: '0 auto',
+                }}>
+                ← Back to listings
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* Thank you state */}
+        {screen === 'thankyou' && (
+          <div style={{ textAlign: 'center', paddingTop: 16 }}>
+            <div style={{ fontSize: 34, marginBottom: 14, display: 'inline-block', animation: 'heartbeat 1s ease-in-out infinite' }}>
+              ❤️
+            </div>
+            <p style={{ ...serif, fontSize: 18, color: C.green, margin: '0 0 8px', fontWeight: 300 }}>
+              Thank you.
+            </p>
+            <p style={{ ...sans, fontSize: 13, color: C.muted, fontWeight: 300, margin: '0 0 32px', lineHeight: 1.7 }}>
+              You're helping keep Theeram<br/>free for everyone.
+            </p>
+
+            <div style={{ width: '100%', height: 1, background: C.cream3, margin: '0 0 20px' }}/>
+            <button
+              onClick={onClose}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                ...sans, fontSize: 12, color: C.terra,
+                display: 'flex', alignItems: 'center', gap: 5, margin: '0 auto',
+              }}>
+              ← Back to listings
+            </button>
           </div>
-          <p style={{ ...sans, fontSize: 10, color: C.muted }}>GPay · PhonePe · any UPI app</p>
-        </div>
-      )}
+        )}
+      </div>
+
+      <style>{`
+        @keyframes heartbeat {
+          0%   { transform: scale(1); }
+          14%  { transform: scale(1.28); }
+          28%  { transform: scale(1); }
+          42%  { transform: scale(1.18); }
+          56%  { transform: scale(1); }
+          100% { transform: scale(1); }
+        }
+      `}</style>
     </div>
   )
 }
