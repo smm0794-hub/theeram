@@ -479,13 +479,13 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
         <div style={{ ...sans, fontSize: 10, color: 'rgba(255,255,255,.18)', lineHeight: 1.6 }}>© {new Date().getFullYear()} Theeram Spaces · Kerala</div>
       </footer>
       {/* Gratitude modal */}
-      {modalProperty && (
+      {modalProperty && showModal && (
         <GratitudeModal
-          isOpen={showModal}
+          propertyName={modalProperty.name}
+          whatsappUrl={`https://wa.me/${modalProperty.owner_whatsapp}?text=${encodeURIComponent(`Hi! I found ${modalProperty.name} on Theeram and I'm interested in booking. Could you share availability and pricing?`)}`}
+          reviewUrl="https://g.page/r/Cav0otb1aGpEEBM/review"
+          upiUrl="upi://pay?pa=smm0794@okhdfcbank&pn=Theeram&tn=Theeram+chai"
           onClose={() => { setShowModal(false); setModalProperty(null) }}
-          property={modalProperty}
-          eventType={modalProperty.property_event_types?.[0]?.event_type ?? 'general'}
-          onWhatsApp={() => openWhatsAppDirect(modalProperty)}
         />
       )}
     </div>
