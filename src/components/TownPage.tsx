@@ -7,7 +7,6 @@ import { C, sans, serif } from '@/lib/design'
 import Header from '@/components/Header'
 import GratitudeModal from '@/components/GratitudeModal'
 
-// ── Card bg by property type ─────────────────────────────────────────────────
 const CARD_BG: Record<string, string> = {
   villa_with_pool: '#1C3A2B', villa_without_pool: '#2E5C4E',
   heritage_home: '#8A7040', open_event_space: '#4A6741',
@@ -22,13 +21,10 @@ const TYPE_LABEL: Record<string, string> = {
   lodging: 'Lodging', resort: 'Resort',
 }
 
-// ── Property type SVG illustrations ─────────────────────────────────────────
 function PropIllustration({ type, photos }: { type: string; photos: string[] }) {
-  // If photos exist, show first photo
   if (photos && photos.length > 0) {
     return <img src={photos[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', position: 'absolute', inset: 0 }}/>
   }
-  // Otherwise show SVG illustration per type
   const stroke = 'rgba(255,255,255,0.45)'
   const sw = 1
   if (type === 'heritage_home') return (
@@ -83,7 +79,6 @@ function PropIllustration({ type, photos }: { type: string; photos: string[] }) 
       <line x1="35" y1="6" x2="35" y2="18"/>
     </svg>
   )
-  // default / resort
   return (
     <svg viewBox="0 0 70 56" fill="none" width={70} height={56} stroke={stroke} strokeWidth={sw}>
       <path d="M8 28L35 10L62 28V50H8Z"/><rect x="26" y="34" width="18" height="16"/><line x1="12" y1="28" x2="58" y2="28"/>
@@ -91,7 +86,6 @@ function PropIllustration({ type, photos }: { type: string; photos: string[] }) 
   )
 }
 
-// ── Space feel filters ────────────────────────────────────────────────────────
 const FEEL_FILTERS = [
   { id: 'all', ml: 'എല്ലാം', en: 'All spaces', desc: 'Browse everything' },
   { id: 'heritage_home', ml: 'താവഴി', en: 'Tharavadu', desc: 'Heritage ancestral homes' },
@@ -111,7 +105,6 @@ const MAKER_FILTERS = [
   { id: 'beauty_styling', ml: 'ഭംഗി', en: 'Beauty', desc: 'Bridal & styling' },
 ]
 
-// Filter matching — 'villa' matches both villa_with_pool and villa_without_pool
 function matchesFilter(propertyType: string, filter: string): boolean {
   if (filter === 'all') return true
   if (filter === 'villa') return propertyType === 'villa_with_pool' || propertyType === 'villa_without_pool'
@@ -164,8 +157,6 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
   const [search, setSearch] = useState('')
   const heroBg = town.hero_bg_color || C.green
   const otherTowns = allTowns.filter(t => t.slug !== town.slug)
-
-  // Dynamic top bar text based on town
   const topBarText = `${town.name} · ${town.district} · Kerala`
 
   useEffect(() => {
@@ -185,19 +176,22 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
   }, [town.id])
 
   async function handleWhatsApp(p: Property) {
-    try { await supabase.from('inquiries').insert({ property_id: p.id, event_type: p.property_event_types?.[0]?.event_type ?? 'general' }) } catch {}
+    try {
+      await supabase.from('inquiries').insert({
+        property_id: p.id,
+        event_type: p.property_event_types?.[0]?.event_type ?? 'general',
+      })
+    } catch {}
     setModalProperty(p)
     setShowModal(true)
   }
 
-  function openWhatsAppDirect(p: Property) {
-    const msg = encodeURIComponent(`Hi! I found ${p.name} on Theeram and I'm interested in booking. Could you share availability and pricing?`)
-    window.open(`https://wa.me/${p.owner_whatsapp}?text=${msg}`, '_blank')
-  }
-
   async function share(slug: string, name: string) {
     const url = `${window.location.origin}/property/${slug}`
-    try { if (navigator.share) await navigator.share({ title: name, url }); else await navigator.clipboard.writeText(url) } catch {}
+    try {
+      if (navigator.share) await navigator.share({ title: name, url })
+      else await navigator.clipboard.writeText(url)
+    } catch {}
   }
 
   const filteredProps = properties.filter(p => {
@@ -216,7 +210,7 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
     <div style={{ background: C.cream, minHeight: '100vh', overflowX: 'hidden' }}>
       <style>{`.no-scrollbar::-webkit-scrollbar{display:none}`}</style>
 
-      {/* ── Top bar — dynamic per town ──────────────────────────── */}
+      {/* Top bar */}
       <div style={{ background: heroBg, padding: '6px 16px', display: 'flex', justifyContent: 'space-between' }}>
         <span style={{ ...sans, fontSize: 10, color: 'rgba(255,255,255,.5)', letterSpacing: '.06em' }}>തീരം · theeram</span>
         <span style={{ ...sans, fontSize: 10, color: 'rgba(255,255,255,.4)', letterSpacing: '.04em' }}>{topBarText}</span>
@@ -224,7 +218,7 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
 
       <Header/>
 
-      {/* ── Hero ───────────────────────────────────────────────── */}
+      {/* Hero */}
       <section style={{ background: heroBg, padding: '50px 20px 48px', position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', right: -20, top: -20, opacity: .06, pointerEvents: 'none' }}>
           <svg viewBox="0 0 200 200" fill="none" width={220} height={220}>
@@ -255,7 +249,7 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
         </div>
       </section>
 
-      {/* ── Trust bar ──────────────────────────────────────────── */}
+      {/* Trust bar */}
       <div style={{ background: C.cream2, borderBottom: `1px solid ${C.cream3}`, padding: '18px 16px', display: 'flex' }}>
         {[['No fees', 'Speak to the owner'], ['Individually reviewed', 'Every listing, by us'], ['WhatsApp first', 'The Kerala way']].map(([title, sub], i) => (
           <div key={title} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 4, padding: '0 6px', borderLeft: i > 0 ? `1px solid ${C.cream3}` : 'none' }}>
@@ -266,7 +260,7 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
         ))}
       </div>
 
-      {/* ── Other towns — moved here, just below trust bar ─────── */}
+      {/* Other towns */}
       {otherTowns.length > 0 && (
         <section style={{ background: C.cream, padding: '22px 0 4px', borderBottom: `1px solid ${C.cream3}` }}>
           <div style={{ padding: '0 16px', marginBottom: 12 }}>
@@ -290,7 +284,7 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
         </section>
       )}
 
-      {/* ── Context-aware filter ────────────────────────────────── */}
+      {/* Filter section */}
       <section style={{ background: C.cream, paddingTop: 24 }}>
         <div style={{ padding: '0 16px', marginBottom: 14 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 10 }}>
@@ -310,7 +304,7 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
           : <FilterRow filters={MAKER_FILTERS} active={makerFilter} onSelect={setMakerFilter}/>}
       </section>
 
-      {/* ── Toggle + listing ───────────────────────────────────── */}
+      {/* Toggle + listing */}
       <section id="main-listing" style={{ background: C.sage }}>
         <div style={{ display: 'flex', alignItems: 'center', padding: '12px 16px', gap: 10, background: C.sage, borderBottom: `1px solid rgba(0,0,0,.07)`, position: 'sticky', top: 55, zIndex: 40 }}>
           <div style={{ flex: 1, display: 'flex', background: 'rgba(255,255,255,.5)', border: `1px solid ${C.cream3}`, borderRadius: 3, overflow: 'hidden' }}>
@@ -338,7 +332,7 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
             style={{ width: '100%', border: `1px solid rgba(0,0,0,.12)`, padding: '10px 12px 10px 34px', fontSize: 13, fontFamily: 'system-ui,sans-serif', background: 'rgba(255,255,255,.65)', outline: 'none', color: C.text, fontWeight: 300, boxSizing: 'border-box' as const }}/>
         </div>
 
-        {/* ── SPACES PANEL ─────────────────────────────────────── */}
+        {/* Spaces panel */}
         {tab === 'spaces' && (
           <div style={{ padding: '8px 16px 40px', display: 'flex', flexDirection: 'column', gap: 14 }}>
             {loading ? [1,2,3].map(i => <div key={i} style={{ height: 340, background: 'rgba(255,255,255,.4)', border: `1px solid ${C.cream3}` }}/>)
@@ -364,12 +358,9 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
               return (
                 <div key={p.id} style={{ background: 'white', border: `1px solid ${C.cream3}`, overflow: 'hidden', position: 'relative' }}>
                   {(p as any).is_featured && <div style={{ position: 'absolute', top: 0, left: 0, background: C.gold, padding: '4px 10px', zIndex: 2 }}><span style={{ ...sans, fontSize: 9, fontWeight: 700, color: C.text }}>Theeram pick</span></div>}
-                  {/* Photo / illustration zone */}
                   <Link href={`/property/${p.slug}`} style={{ display: 'block', height: 180, background: CARD_BG[p.property_type] ?? C.green, textDecoration: 'none', position: 'relative', overflow: 'hidden', flexShrink: 0 }}>
                     <PropIllustration type={p.property_type} photos={photos}/>
-                    {/* Gradient overlay for text readability when photo exists */}
                     {photos.length > 0 && <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,.3) 0%, transparent 60%)' }}/>}
-                    {/* Property type badge on image */}
                     <div style={{ position: 'absolute', bottom: 10, left: 12, display: 'flex', alignItems: 'center', gap: 5 }}>
                       <div style={{ width: 8, height: 1, background: C.gold }}/>
                       <span style={{ ...serif, fontSize: 11, color: C.gold, fontStyle: 'italic' }}>{TYPE_LABEL[p.property_type] ?? p.property_type}</span>
@@ -400,7 +391,7 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
           </div>
         )}
 
-        {/* ── MAKERS PANEL ─────────────────────────────────────── */}
+        {/* Makers panel */}
         {tab === 'makers' && (
           <div style={{ padding: '8px 16px 40px', display: 'flex', flexDirection: 'column', gap: 12 }}>
             {loading ? [1,2,3].map(i => <div key={i} style={{ height: 160, background: 'rgba(255,255,255,.4)', border: `1px solid ${C.cream3}` }}/>)
@@ -428,7 +419,7 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
         )}
       </section>
 
-      {/* ── Why this town ───────────────────────────────────────── */}
+      {/* Why this town */}
       <section style={{ background: C.green2, padding: '46px 20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 18 }}>
           <div style={{ width: 15, height: 1, background: C.gold }}/>
@@ -452,12 +443,11 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
         </div>
       </section>
 
-      {/* ── Footer ─────────────────────────────────────────────── */}
+      {/* Footer */}
       <footer style={{ background: C.dark, padding: '40px 16px 32px', textAlign: 'center' }}>
         <div style={{ ...serif, fontSize: 19, color: C.gold, marginBottom: 5, fontWeight: 300 }}>തീരം · theeram</div>
         <div style={{ ...sans, fontSize: 10, color: 'rgba(255,255,255,.4)', letterSpacing: '.08em', marginBottom: 20 }}>Spaces for every occasion · Kerala</div>
         <div style={{ width: 38, height: 1, background: 'rgba(255,255,255,.1)', margin: '0 auto 18px' }}/>
-        {/* Towns row */}
         <div style={{ marginBottom: 10 }}>
           <div style={{ ...sans, fontSize: 9, color: 'rgba(255,255,255,.25)', letterSpacing: '.1em', marginBottom: 8 }}>LOCATIONS</div>
           <div style={{ display: 'flex', justifyContent: 'center', gap: 16, flexWrap: 'wrap' as const }}>
@@ -467,17 +457,21 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
           </div>
         </div>
         <div style={{ width: 38, height: 1, background: 'rgba(255,255,255,.08)', margin: '12px auto' }}/>
-        {/* Site links row */}
         <div style={{ display: 'flex', justifyContent: 'center', gap: 20, marginBottom: 14, flexWrap: 'wrap' as const }}>
           {[['About', '/about'], ['Privacy', '/privacy'], ['Terms', '/terms']].map(([label, href]) => (
             <Link key={label} href={href} style={{ ...sans, fontSize: 10, color: 'rgba(255,255,255,.28)', textDecoration: 'none', letterSpacing: '.04em' }}>{label}</Link>
           ))}
         </div>
-        <a href={`https://wa.me/919447000000?text=${encodeURIComponent('Hi! I need help finding the right event space.')}`} target="_blank" rel="noopener noreferrer"
-          style={{ ...sans, fontSize: 11, color: 'rgba(255,255,255,.4)', display: 'block', marginBottom: 8 }}>💬 Need help? Ask us on WhatsApp</a>
+        <a
+          href={`https://wa.me/${process.env.NEXT_PUBLIC_CURATOR_WHATSAPP}?text=${encodeURIComponent('Hi! I need help finding the right event space.')}`}
+          target="_blank" rel="noopener noreferrer"
+          style={{ ...sans, fontSize: 11, color: 'rgba(255,255,255,.4)', display: 'block', marginBottom: 8 }}>
+          💬 Need help? Ask us on WhatsApp
+        </a>
         <div style={{ ...sans, fontSize: 10, color: 'rgba(255,255,255,.14)', lineHeight: 1.6, marginBottom: 6 }}>We use anonymous page view analytics to understand which spaces are most popular. No personal data is collected.</div>
         <div style={{ ...sans, fontSize: 10, color: 'rgba(255,255,255,.18)', lineHeight: 1.6 }}>© {new Date().getFullYear()} Theeram Spaces · Kerala</div>
       </footer>
+
       {/* Gratitude modal */}
       {modalProperty && showModal && (
         <GratitudeModal

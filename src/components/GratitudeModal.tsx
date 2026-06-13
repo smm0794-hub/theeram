@@ -27,8 +27,8 @@ const STEPS = [
   { id: 3, label: 'Opening WhatsApp',        icon: 'M 12 2 C 6.48 2 2 6.48 2 12 C 2 13.85 2.5 15.58 3.36 17.06 L 2 22 L 6.94 20.64 C 8.42 21.5 10.15 22 12 22 C 17.52 22 22 17.52 22 12 C 22 6.48 17.52 2 12 2 Z M 8.5 9 C 8.5 9 9 8 9.5 8 C 10 8 10.5 8.5 11 9.5 C 11.5 10.5 11 11 11 11.5 C 11 12 13 14 13.5 14 C 14 14 14.5 13.5 15 13.5 C 15.5 13.5 16 14 16 14.5 C 16 15 15 15.5 14.5 15.5 C 12 15.5 8.5 12 8.5 9 Z', color: C.wa },
 ]
 
-const STEP_DURATION = 620
-const STEP_GAP = 150
+const STEP_DURATION = 800
+const STEP_GAP = 300
 const CARD_APPEAR_AT_STEP = 2 // card slides in when step 3 activates
 
 export default function GratitudeModal({ propertyName, whatsappUrl, reviewUrl, upiUrl, onClose }: GratitudeModalProps) {
@@ -89,7 +89,7 @@ export default function GratitudeModal({ propertyName, whatsappUrl, reviewUrl, u
       addTimer(() => {
         try { window.open(whatsappUrl, '_blank') } catch {}
         setScreen('donate')
-      }, STEP_DURATION + 150)
+      }, STEP_DURATION + 1500)
     }, t0 + gap * 3)
   }
 
