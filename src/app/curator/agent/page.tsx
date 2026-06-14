@@ -35,7 +35,7 @@ interface Venue {
   confidence: 'high' | 'medium' | 'low'
   source: string
   candidate_images: string[]
-  selected_image: string
+  selected_images: string[]
   already_listed: boolean
   selected: boolean
   sql: string
@@ -79,7 +79,8 @@ function buildSQL(v: Venue, townId?: string | null): string {
   const wa = (v.whatsapp || v.phone || '').replace(/\D/g, '')
   const eventTypes = v.event_types?.length ? v.event_types : ['family_gathering']
   const types = eventTypes.map(e => `'${esc(e)}'`).join(',')
-  const photos = v.selected_image ? `'{${esc(v.selected_image)}}'` : `'{}'`
+  const photoArr = (v.selected_images ?? []).filter(Boolean)
+  const photos = photoArr.length ? `'{${photoArr.map(esc).join(',')}}'` : `'{}'`
   const townCol = townId ? `,town_id` : ''
   const townVal = townId ? `,'${esc(townId)}'` : ''
   return `WITH ins AS (
@@ -162,7 +163,7 @@ export default function AgentPage() {
           slug: slugify(v.name),
           selected: !v.already_listed && v.confidence !== 'low',
           candidate_images: v.candidate_images ?? [],
-          selected_image: v.candidate_images?.[0] ?? '',
+          selected_images: [],  // user picks manually
           already_listed: !!v.already_listed,
           sql: '',
         }
@@ -190,7 +191,11 @@ export default function AgentPage() {
   function selectImage(id: string, url: string) {
     setVenues(prev => prev.map(v => {
       if (v.id !== id) return v
-      const u = { ...v, selected_image: v.selected_image === url ? '' : url }
+      const already = v.selected_images.includes(url)
+      const selected_images = already
+        ? v.selected_images.filter(u => u !== url)
+        : [...v.selected_images, url]
+      const u = { ...v, selected_images }
       u.sql = buildSQL(u, townId)
       return u
     }))
@@ -249,14 +254,14 @@ export default function AgentPage() {
 
         {!v.already_listed && v.candidate_images.length > 0 && (
           <div style={{ padding: '0 14px 12px' }}>
-            <div style={{ ...sans, fontSize: 9, color: C.terra, letterSpacing: '.07em', marginBottom: 8 }}>SELECT PHOTO (tap to select / deselect)</div>
+            <div style={{ ...sans, fontSize: 9, color: C.terra, letterSpacing: '.07em', marginBottom: 8 }}>SELECT PHOTOS — tap to add, tap again to remove</div>
             <div style={{ display: 'flex', gap: 6, overflowX: 'auto' }} className="no-scrollbar">
               {v.candidate_images.map((url, i) => (
                 <div key={i} onClick={() => selectImage(v.id, url)}
-                  style={{ flexShrink: 0, width: 90, height: 68, position: 'relative', cursor: 'pointer', border: v.selected_image === url ? `2px solid ${C.terra}` : `1px solid ${C.cream3}` }}>
+                  style={{ flexShrink: 0, width: 90, height: 68, position: 'relative', cursor: 'pointer', border: v.selected_images.includes(url) ? `2px solid ${C.terra}` : `1px solid ${C.cream3}` }}>
                   <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                     onError={e => { const d = (e.target as HTMLImageElement).closest('div'); if (d) d.style.display = 'none' }}/>
-                  {v.selected_image === url && (
+                  {v.selected_images.includes(url) && (
                     <div style={{ position: 'absolute', top: 3, right: 3, width: 16, height: 16, background: C.terra, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <svg viewBox="0 0 10 10" fill="none" width={8} height={8} stroke="white" strokeWidth={1.5}><path d="M2 5l2 2 4-4"/></svg>
                     </div>
@@ -264,7 +269,7 @@ export default function AgentPage() {
                 </div>
               ))}
             </div>
-            {v.selected_image && <div style={{ ...sans, fontSize: 10, color: C.muted, marginTop: 6 }}>⚠️ Reference only — confirm with owner before publishing</div>}
+            {v.selected_images.length > 0 && <div style={{ ...sans, fontSize: 10, color: C.muted, marginTop: 6 }}>⚠️ {v.selected_images.length} photo{v.selected_images.length > 1 ? 's' : ''} selected · Reference only — confirm with owner before publishing</div>}
           </div>
         )}
 
