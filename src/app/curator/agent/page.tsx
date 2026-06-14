@@ -77,7 +77,8 @@ function n(x: any): number {
 
 function buildSQL(v: Venue, townId?: string | null): string {
   const wa = (v.whatsapp || v.phone || '').replace(/\D/g, '')
-  const types = v.event_types.map(e => `'${esc(e)}'`).join(',')
+  const eventTypes = v.event_types?.length ? v.event_types : ['family_gathering']
+  const types = eventTypes.map(e => `'${esc(e)}'`).join(',')
   const photos = v.selected_image ? `'{${esc(v.selected_image)}}'` : `'{}'`
   const townCol = townId ? `,town_id` : ''
   const townVal = townId ? `,'${esc(townId)}'` : ''
@@ -91,7 +92,7 @@ attrs AS (
   SELECT id,${n(v.room_count)},${n(v.bathroom_count)},${n(v.max_overnight)},${n(v.max_day)},${!!v.has_pool},${!!v.has_ac_hall},${!!v.has_open_lawn},${!!v.has_kitchen},${!!v.has_parking},${!!v.has_generator},${!!v.alcohol_allowed},${!!v.outside_catering},${n(v.ac_hall_capacity)},0,${n(v.parking_count)} FROM ins
 )
 INSERT INTO public.property_event_types (property_id,event_type)
-SELECT id,unnest(ARRAY[${types}]) FROM ins;`
+SELECT id,unnest(ARRAY[${types}]::text[]) FROM ins;`
 }
 
 export default function AgentPage() {
