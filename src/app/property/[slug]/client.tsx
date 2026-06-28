@@ -41,15 +41,53 @@ export default function PropertyDetailClient({ slug }: { slug: string }) {
       setProperty(data as Property)
       setLoading(false)
       if (data?.id) {
-        fetch('/api/track-view', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ property_id: data.id }),
-        }).catch(() => {})
+        try {
+          const res = await fetch('/api/track-view', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ property_id: data.id }),
+          })
+          const { view_id } = await res.json()
+          if (view_id) startDurationTracking(view_id)
+        } catch {}
       }
     }
     load()
   }, [slug])
+
+  // ── Time-on-page tracking ──────────────────────────────────────────────
+  // Counts only active (foreground) time — pauses while the tab is hidden —
+  // and reliably reports the total via sendBeacon when the user actually leaves.
+  function startDurationTracking(viewId: string) {
+    let activeMs = 0
+    let lastResumeAt = Date.now()
+    let isVisible = document.visibilityState === 'visible'
+
+    function onVisibilityChange() {
+      const now = Date.now()
+      if (document.visibilityState === 'hidden' && isVisible) {
+        activeMs += now - lastResumeAt
+        isVisible = false
+      } else if (document.visibilityState === 'visible' && !isVisible) {
+        lastResumeAt = now
+        isVisible = true
+      }
+    }
+
+    function sendDuration() {
+      if (isVisible) activeMs += Date.now() - lastResumeAt
+      const seconds = Math.round(activeMs / 1000)
+      if (seconds < 1) return
+      const payload = JSON.stringify({ view_id: viewId, duration_seconds: seconds })
+      try {
+        navigator.sendBeacon('/api/track-view', new Blob([payload], { type: 'application/json' }))
+      } catch {}
+    }
+
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    window.addEventListener('pagehide', sendDuration)
+    window.addEventListener('beforeunload', sendDuration)
+  }
 
   async function handleWhatsApp() {
     if (!property) return

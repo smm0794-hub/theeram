@@ -19,6 +19,7 @@ export async function GET() {
 
     const now = Date.now()
     const day7 = 7 * 24 * 60 * 60 * 1000
+    const day14 = 14 * 24 * 60 * 60 * 1000
     const day30 = 30 * 24 * 60 * 60 * 1000
 
     const stats = {
@@ -37,8 +38,8 @@ export async function GET() {
       trend.push({
         date: dateStr,
         label: date.toISOString().slice(5, 10).replace('-', '/'),
-        enquiries: enquiryRows.filter((r: any) => new Date(r.created_at).toISOString().slice(0, 10) === dateStr).length,
         views: viewRows.filter((r: any) => new Date(r.viewed_at).toISOString().slice(0, 10) === dateStr).length,
+        enquiries: enquiryRows.filter((r: any) => new Date(r.created_at).toISOString().slice(0, 10) === dateStr).length,
       })
     }
 
@@ -61,18 +62,27 @@ export async function GET() {
     viewRows.forEach((r: any) => { const c = r.vendors?.category; if (c) { catMap[c] = catMap[c] ?? { enquiries: 0, views: 0 }; catMap[c].views++ } })
     const categoryBreakdown = Object.entries(catMap).map(([category, v]) => ({ category, ...v })).sort((a, b) => (b.enquiries + b.views) - (a.enquiries + a.views))
 
-    // ── Pitch insights — same shape as properties, gracefully sparse ───────
-    const eligibleForBest = allMakerStats.filter(m => m.views >= 2)
-    const bestConverter = eligibleForBest.length ? [...eligibleForBest].sort((a, b) => b.conversion_pct - a.conversion_pct)[0] : null
-    const mostEnquired = allMakerStats.some(m => m.enquiries > 0) ? [...allMakerStats].sort((a, b) => b.enquiries - a.enquiries)[0] : null
+    // ── Growth / decline per maker, same logic as properties ───────────────
+    const movement = vendors.map((v: any) => {
+      const makerViews = viewRows.filter((r: any) => r.vendors?.id === v.id)
+      const last7 = makerViews.filter((r: any) => now - new Date(r.viewed_at).getTime() < day7).length
+      const prev7 = makerViews.filter((r: any) => {
+        const age = now - new Date(r.viewed_at).getTime()
+        return age >= day7 && age < day14
+      }).length
+      const delta = last7 - prev7
+      return {
+        name: v.name, slug: v.slug, last7, prev7, delta,
+        pct_change: prev7 > 0 ? Math.round(((last7 - prev7) / prev7) * 100) : (last7 > 0 ? 100 : 0),
+      }
+    }).filter((m: any) => m.last7 > 0 || m.prev7 > 0)
 
-    const last7 = trend.slice(7, 14).reduce((s, d) => s + d.enquiries, 0)
-    const prev7 = trend.slice(0, 7).reduce((s, d) => s + d.enquiries, 0)
-    const momentum = { this_week: last7, last_week: prev7, multiplier: prev7 > 0 ? Math.round((last7 / prev7) * 10) / 10 : null }
+    const topGainer = movement.length ? [...movement].sort((a, b) => b.delta - a.delta)[0] : null
+    const topDecliner = movement.length ? [...movement].sort((a, b) => a.delta - b.delta)[0] : null
 
     return NextResponse.json({
       stats, trend, topMakers, categoryBreakdown, totalMakers: vendors.length,
-      pitchInsights: { bestConverter, mostEnquired, momentum },
+      movement: { topGainer, topDecliner },
     })
 
   } catch (err: any) {
