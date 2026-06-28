@@ -40,15 +40,6 @@ function PitchCard({ icon, eyebrow, headline, sub, cardRef }: { icon: string; ey
   )
 }
 
-async function downloadCard(ref: React.RefObject<HTMLDivElement>, filename: string) {
-  if (!ref.current) return
-  try {
-    // Lightweight approach: use the browser's built-in capability via html-to-canvas-free method —
-    // since we can't guarantee html2canvas is installed, fall back to prompting a manual screenshot.
-    alert('Tip: use your device\\'s screenshot tool to capture this card, or right-click → "Save as image" on supported browsers.')
-  } catch {}
-}
-
 export default function AnalyticsPage() {
   const [towns, setTowns] = useState<{ id: string; name: string; hero_bg_color: string }[]>([])
   const [loading, setLoading] = useState(true)
