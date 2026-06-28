@@ -439,7 +439,7 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
 
       {/* Toggle + listing */}
       <section id="main-listing" style={{ background: C.sage }}>
-        <div style={{ display: 'flex', alignItems: 'center', padding: '12px 16px', gap: 10, background: C.sage, borderBottom: `1px solid rgba(0,0,0,.07)`, position: 'sticky', top: 0, zIndex: 40, boxShadow: '0 2px 6px rgba(0,0,0,.04)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', padding: '12px 16px', gap: 10, background: C.sage, borderBottom: `1px solid rgba(0,0,0,.07)` }}>
           <div style={{ flex: 1, display: 'flex', background: 'rgba(255,255,255,.5)', border: `1px solid ${C.cream3}`, borderRadius: 3, overflow: 'hidden' }}>
             {(['spaces', 'makers'] as const).map(t => (
               <button key={t} onClick={() => { setTab(t); setSearch('') }} className="tap-press"
@@ -454,14 +454,16 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
           </Link>
         </div>
 
-        <div style={{ padding: '12px 16px 8px', position: 'relative' }}>
-          <svg viewBox="0 0 16 16" fill="none" width={13} height={13} stroke={C.muted} strokeWidth={1.4} strokeLinecap="round"
-            style={{ position: 'absolute', left: 28, top: '50%', transform: 'translateY(-50%)' }}>
-            <circle cx="7" cy="7" r="5"/><path d="M11 11l2 2"/>
-          </svg>
-          <input value={search} onChange={e => setSearch(e.target.value)}
-            placeholder={tab === 'spaces' ? `Search spaces in ${town.name}...` : 'Search makers...'}
-            style={{ width: '100%', border: `1px solid rgba(0,0,0,.12)`, padding: '10px 12px 10px 34px', fontSize: 13, fontFamily: 'system-ui,sans-serif', background: 'rgba(255,255,255,.7)', outline: 'none', color: C.text, fontWeight: 300, boxSizing: 'border-box' as const, boxShadow: 'inset 0 1px 3px rgba(0,0,0,.04)' }}/>
+        <div style={{ padding: '12px 16px', position: 'sticky', top: 5, zIndex: 40, background: C.sage, borderBottom: `1px solid rgba(0,0,0,.07)`, boxShadow: '0 2px 6px rgba(0,0,0,.04)' }}>
+          <div style={{ position: 'relative' }}>
+            <svg viewBox="0 0 16 16" fill="none" width={13} height={13} stroke={C.muted} strokeWidth={1.4} strokeLinecap="round"
+              style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }}>
+              <circle cx="7" cy="7" r="5"/><path d="M11 11l2 2"/>
+            </svg>
+            <input value={search} onChange={e => setSearch(e.target.value)}
+              placeholder={tab === 'spaces' ? `Search spaces in ${town.name}...` : 'Search makers...'}
+              style={{ width: '100%', border: `1px solid rgba(0,0,0,.12)`, padding: '10px 12px 10px 34px', fontSize: 13, fontFamily: 'system-ui,sans-serif', background: 'rgba(255,255,255,.85)', outline: 'none', color: C.text, fontWeight: 300, boxSizing: 'border-box' as const, boxShadow: 'inset 0 1px 3px rgba(0,0,0,.04)' }}/>
+          </div>
         </div>
 
         {/* Spaces panel */}
