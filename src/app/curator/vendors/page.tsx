@@ -42,15 +42,21 @@ export default function CuratorVendorsPage() {
 
   useEffect(() => { loadAll() }, [])
 
+  // ── Data layer — now goes through /api/vendors (service role), not the anon
+  // Supabase client. The anon client could only ever see is_active=true rows
+  // and had no DELETE policy at all, which is why drafts were invisible and
+  // delete silently did nothing. Districts and submissions still use the anon
+  // client directly since those tables have open public-read policies.
   async function loadAll() {
     setLoading(true)
     const [vr, sr, dr, vdr] = await Promise.all([
-      supabase.from('vendors').select('*').order('is_featured', { ascending: false }).order('created_at', { ascending: false }),
+      fetch('/api/vendors?all=1').then(r => r.json()).catch(() => ({ data: [] })),
       supabase.from('vendor_submissions').select('*').order('created_at', { ascending: false }),
       supabase.from('kerala_districts').select('id, name').order('sort_order'),
       supabase.from('vendor_districts').select('vendor_id, district_id'),
     ])
-    if (!vr.error) setVendors((vr.data ?? []) as Vendor[])
+    if (vr.data) setVendors(vr.data as Vendor[])
+    else if (vr.error) showToast('Could not load makers: ' + vr.error)
     if (!sr.error) setSubmissions((sr.data ?? []) as VendorSubmission[])
     if (!dr.error) setDistricts((dr.data ?? []) as District[])
     if (!vdr.error) {
@@ -76,7 +82,6 @@ export default function CuratorVendorsPage() {
   async function editVendor(v: Vendor) {
     setEditing({ ...v })
     setEditingDistricts(vendorDistrictMap[v.id] ?? [])
-    // Load attributes for this vendor
     const { data } = await supabase.from('vendor_attributes').select('*').eq('vendor_id', v.id).single()
     if (data) {
       setEditingAttrs({
@@ -108,21 +113,23 @@ export default function CuratorVendorsPage() {
     if (!payload.slug) payload.slug = slug(payload.name)
     if (isNew) delete payload.id
 
-    const q = isNew
-      ? supabase.from('vendors').insert(payload).select().single()
-      : supabase.from('vendors').update(payload).eq('id', editing.id!).select().single()
-    const { data: savedVendor, error } = await q
-    if (error) { showToast('Save failed: ' + error.message); setSaving(false); return }
+    const r = isNew
+      ? await fetch('/api/vendors', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+      : await fetch('/api/vendors', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: editing.id, ...payload }) })
 
-    const vendorId = savedVendor.id
+    const result = await r.json()
+    if (!r.ok) { showToast('Save failed: ' + (result.error ?? 'unknown error')); setSaving(false); return }
 
-    // Upsert attributes
-    await supabase.from('vendor_attributes').upsert({ vendor_id: vendorId, ...editingAttrs })
-
-    // Sync districts — delete existing then re-insert selected
-    await supabase.from('vendor_districts').delete().eq('vendor_id', vendorId)
-    if (editingDistricts.length > 0) {
-      await supabase.from('vendor_districts').insert(editingDistricts.map(d => ({ vendor_id: vendorId, district_id: d })))
+    const vendorId = result.data?.id ?? editing.id
+    if (vendorId) {
+      // Attributes and districts still go through the anon client — these tables
+      // already have public-write-friendly policies via the curator session pattern
+      // used elsewhere; if that changes, move these into the API route too.
+      await supabase.from('vendor_attributes').upsert({ vendor_id: vendorId, ...editingAttrs })
+      await supabase.from('vendor_districts').delete().eq('vendor_id', vendorId)
+      if (editingDistricts.length > 0) {
+        await supabase.from('vendor_districts').insert(editingDistricts.map(d => ({ vendor_id: vendorId, district_id: d })))
+      }
     }
 
     showToast(isNew ? 'Maker added!' : 'Saved')
@@ -131,26 +138,22 @@ export default function CuratorVendorsPage() {
   }
 
   async function toggleVendorActive(id: string, current: boolean) {
-    await supabase.from('vendors').update({ is_active: !current }).eq('id', id)
-    setVendors(prev => prev.map(v => v.id === id ? { ...v, is_active: !current } : v))
-    showToast(current ? 'Hidden' : 'Now live!')
+    const r = await fetch('/api/vendors', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, is_active: !current }) })
+    if (r.ok) { setVendors(prev => prev.map(v => v.id === id ? { ...v, is_active: !current } : v)); showToast(current ? 'Hidden' : 'Now live!') }
+    else showToast('Update failed')
   }
 
   async function toggleFeatured(id: string, current: boolean) {
-    await supabase.from('vendors').update({ is_featured: !current }).eq('id', id)
-    setVendors(prev => prev.map(v => v.id === id ? { ...v, is_featured: !current } : v))
-    showToast(current ? 'Unfeatured' : '⭐ Theeram pick set!')
+    const r = await fetch('/api/vendors', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, is_featured: !current }) })
+    if (r.ok) { setVendors(prev => prev.map(v => v.id === id ? { ...v, is_featured: !current } : v)); showToast(current ? 'Unfeatured' : '⭐ Theeram pick set!') }
+    else showToast('Update failed')
   }
 
   async function deleteVendor(id: string, name: string) {
     if (!confirm(`Delete "${name}"? This also removes their attributes and district tags.`)) return
-    await supabase.from('vendor_districts').delete().eq('vendor_id', id)
-    await supabase.from('vendor_attributes').delete().eq('vendor_id', id)
-    await supabase.from('vendor_inquiries').delete().eq('vendor_id', id)
-    await supabase.from('vendor_views').delete().eq('vendor_id', id)
-    await supabase.from('vendors').delete().eq('id', id)
-    setVendors(prev => prev.filter(v => v.id !== id))
-    showToast('Deleted')
+    const r = await fetch(`/api/vendors?id=${id}`, { method: 'DELETE' })
+    if (r.ok) { setVendors(prev => prev.filter(v => v.id !== id)); showToast('Deleted') }
+    else { const result = await r.json().catch(() => ({})); showToast('Delete failed: ' + (result.error ?? 'unknown error')) }
   }
 
   async function approveSubmission(s: VendorSubmission) {
@@ -161,8 +164,8 @@ export default function CuratorVendorsPage() {
       instagram_url: s.instagram_url, price_guide: s.price_guide,
       is_active: true, is_featured: false,
     }
-    const { error } = await supabase.from('vendors').insert(vendorPayload)
-    if (error) { showToast('Error: ' + error.message); return }
+    const r = await fetch('/api/vendors', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(vendorPayload) })
+    if (!r.ok) { const result = await r.json().catch(() => ({})); showToast('Error: ' + (result.error ?? 'unknown')); return }
     await supabase.from('vendor_submissions').update({ status: 'approved' }).eq('id', s.id)
     await loadAll()
     showToast(`${s.name} approved and listed!`)
@@ -204,7 +207,6 @@ export default function CuratorVendorsPage() {
     )
   }
 
-  // Category-specific detail fields — mirrors the maker agent's schema exactly
   function renderCategoryDetails() {
     const cat = editing?.category
     const d = editingAttrs.category_details
@@ -287,7 +289,6 @@ export default function CuratorVendorsPage() {
         </div>
         {field('Price guide', 'price_guide')}
 
-        {/* Districts served — replaces the old single area_served free-text field */}
         <label style={{ ...sans,fontSize:9,color:C.terra,letterSpacing:'.07em',display:'block',marginBottom:8,marginTop:6 }}>DISTRICTS SERVED</label>
         <div style={{ display:'flex',flexWrap:'wrap' as const,gap:6,marginBottom:16 }}>
           {districts.map(d => (
@@ -295,14 +296,12 @@ export default function CuratorVendorsPage() {
           ))}
         </div>
 
-        {/* Universal attributes */}
         <label style={{ ...sans,fontSize:9,color:C.terra,letterSpacing:'.07em',display:'block',marginBottom:8 }}>EXPERIENCE</label>
         <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:16 }}>
           {numField('Years experience', editingAttrs.years_experience, v => setEditingAttrs(p => ({...p, years_experience: v})))}
           {numField('Team size', editingAttrs.team_size, v => setEditingAttrs(p => ({...p, team_size: v})))}
         </div>
 
-        {/* Category-specific details */}
         <label style={{ ...sans,fontSize:9,color:C.terra,letterSpacing:'.07em',display:'block',marginBottom:8 }}>CATEGORY DETAILS</label>
         <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:6,marginBottom:16 }}>
           {renderCategoryDetails()}
