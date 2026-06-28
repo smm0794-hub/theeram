@@ -41,15 +41,6 @@ const PROPERTY_TYPES: { value: PropertyType; label: string }[] = [
   { value: 'resort', label: 'Resort' },
 ]
 
-const EVENT_TYPES: { value: EventType; label: string }[] = [
-  { value: 'staycation', label: 'Staycation' },
-  { value: 'family_gathering', label: 'Family Gathering' },
-  { value: 'wedding', label: 'Wedding' },
-  { value: 'corporate', label: 'Corporate Event' },
-  { value: 'birthday', label: 'Birthday Party' },
-  { value: 'retreat', label: 'Retreat' },
-]
-
 // ── Field helper ─────────────────────────────────────────────────────────────
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -128,17 +119,12 @@ export default function PropertyForm({ initial, mode }: PropertyFormProps) {
   const [alcoholAllowed, setAlcoholAllowed] = useState(attrs?.alcohol_allowed ?? false)
   const [outsideCatering, setOutsideCatering] = useState(attrs?.outside_catering ?? false)
 
-  // Section 7 — Event types
-  const [eventTypes, setEventTypes] = useState<EventType[]>(
-    initial?.property_event_types?.map(e => e.event_type as EventType) ?? []
-  )
-
-  // Section 8 — Photos
+  // Section 7 — Photos
   const [photos, setPhotos] = useState<string[]>(initial?.photos ?? [])
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({})
 
-  // Section 9 — Status
+  // Section 8 — Status
   const [isActive, setIsActive] = useState(initial?.is_active ?? false)
 
   const [saving, setSaving] = useState(false)
@@ -159,11 +145,6 @@ export default function PropertyForm({ initial, mode }: PropertyFormProps) {
     setName(val)
     if (mode === 'new') setSlug(val.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''))
   }, [mode])
-
-  // Toggle event type
-  function toggleEventType(et: EventType) {
-    setEventTypes(prev => prev.includes(et) ? prev.filter(e => e !== et) : [...prev, et])
-  }
 
   // Photo upload
   async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -193,8 +174,8 @@ export default function PropertyForm({ initial, mode }: PropertyFormProps) {
 
   // Save
   async function handleSave() {
-    if (!name || !slug || !tagline || !ownerWa || eventTypes.length === 0) {
-      setError('Required: name, slug, tagline, WhatsApp number, and at least one event type.'); return
+    if (!name || !slug || !tagline || !ownerWa) {
+      setError('Required: name, slug, tagline, and WhatsApp number.'); return
     }
     if (!townId) { setError('Please select a town for this listing.'); return }
     setSaving(true); setError('')
@@ -219,7 +200,6 @@ export default function PropertyForm({ initial, mode }: PropertyFormProps) {
             has_generator: hasGenerator, alcohol_allowed: alcoholAllowed,
             outside_catering: outsideCatering,
           },
-          eventTypes,
         }),
       })
       if (!r.ok) { const d = await r.json(); setError(d.error ?? 'Save failed'); setSaving(false); return }
@@ -332,22 +312,9 @@ export default function PropertyForm({ initial, mode }: PropertyFormProps) {
         <Toggle label="Outside catering allowed" value={outsideCatering} onChange={setOutsideCatering}/>
       </div>
 
-      {/* ── 7 — Event types ──────────────────────────────────────── */}
+      {/* ── 7 — Photos ───────────────────────────────────────────── */}
       <div style={section}>
-        <p style={sectionTitle}>7 — Event types *</p>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          {EVENT_TYPES.map(({ value, label }) => (
-            <button key={value} onClick={() => toggleEventType(value)}
-              style={{ ...sans, padding: '9px 16px', border: `1px solid ${eventTypes.includes(value) ? C.terra : C.cream3}`, background: eventTypes.includes(value) ? '#fdf0eb' : 'white', color: eventTypes.includes(value) ? C.terra : C.muted, fontSize: 13, cursor: 'pointer' }}>
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* ── 8 — Photos ───────────────────────────────────────────── */}
-      <div style={section}>
-        <p style={sectionTitle}>8 — Photos</p>
+        <p style={sectionTitle}>7 — Photos</p>
         <label style={{ display: 'block', border: `2px dashed ${C.cream3}`, padding: 20, textAlign: 'center', cursor: 'pointer', marginBottom: 14 }}>
           <span style={{ ...sans, fontSize: 13, color: C.muted }}>{uploading ? 'Uploading...' : 'Tap to select photos'}</span>
           <input type="file" accept="image/*" multiple onChange={handlePhotoUpload} style={{ display: 'none' }}/>
@@ -364,9 +331,9 @@ export default function PropertyForm({ initial, mode }: PropertyFormProps) {
         )}
       </div>
 
-      {/* ── 9 — Status ───────────────────────────────────────────── */}
+      {/* ── 8 — Status ───────────────────────────────────────────── */}
       <div style={section}>
-        <p style={sectionTitle}>9 — Status</p>
+        <p style={sectionTitle}>8 — Status</p>
         <div style={{ display: 'flex', gap: 8 }}>
           {[false, true].map(val => (
             <button key={String(val)} onClick={() => setIsActive(val)}
