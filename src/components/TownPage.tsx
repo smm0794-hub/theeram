@@ -120,12 +120,12 @@ const MAKER_FILTERS = [
 
 // Section divider — alternates line side and occasionally swaps the glyph, so the
 // repeated motif doesn't feel templated across every section.
-function SectionDivider({ label, variant = 'line-left', fill = false }: { label: string; variant?: 'line-left' | 'line-right' | 'glyph'; fill?: boolean }) {
+function SectionDivider({ label, variant = 'line-left', fill = false, accent = C.terra }: { label: string; variant?: 'line-left' | 'line-right' | 'glyph'; fill?: boolean; accent?: string }) {
   if (variant === 'glyph') {
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 14 }}>
-        <span style={{ color: C.terra, fontSize: 11 }}>❋</span>
-        <span style={{ ...sans, fontSize: 10, color: C.terra, letterSpacing: '.08em' }}>{label}</span>
+        <span style={{ color: accent, fontSize: 11 }}>❋</span>
+        <span style={{ ...sans, fontSize: 10, color: accent, letterSpacing: '.08em' }}>{label}</span>
         {fill && <div style={{ flex: 1, height: 1, background: C.cream3 }}/>}
       </div>
     )
@@ -134,15 +134,15 @@ function SectionDivider({ label, variant = 'line-left', fill = false }: { label:
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 14 }}>
         {fill && <div style={{ flex: 1, height: 1, background: C.cream3 }}/>}
-        <span style={{ ...sans, fontSize: 10, color: C.terra, letterSpacing: '.08em' }}>{label}</span>
-        <div style={{ width: 14, height: 1, background: C.terra }}/>
+        <span style={{ ...sans, fontSize: 10, color: accent, letterSpacing: '.08em' }}>{label}</span>
+        <div style={{ width: 14, height: 1, background: accent }}/>
       </div>
     )
   }
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 14 }}>
-      <div style={{ width: 14, height: 1, background: C.terra }}/>
-      <span style={{ ...sans, fontSize: 10, color: C.terra, letterSpacing: '.08em' }}>{label}</span>
+      <div style={{ width: 14, height: 1, background: accent }}/>
+      <span style={{ ...sans, fontSize: 10, color: accent, letterSpacing: '.08em' }}>{label}</span>
       {fill && <div style={{ flex: 1, height: 1, background: C.cream3 }}/>}
     </div>
   )
@@ -286,14 +286,14 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
         @keyframes trustPulse { 0%,100% { opacity: 1; } 50% { opacity: .55; } }
         @keyframes trustFadeUp { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
         @keyframes cardFadeUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
-        @keyframes pickGlow { 0%,100% { box-shadow: 0 3px 10px rgba(201,168,76,.25); } 50% { box-shadow: 0 3px 16px rgba(201,168,76,.5); } }
+        @keyframes pickGlowGreen { 0%,100% { box-shadow: 0 3px 10px rgba(28,58,43,.3); } 50% { box-shadow: 0 3px 20px rgba(45,122,79,.55); } }
         @keyframes tickerScroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
         .tap-press { transition: transform .12s ease; }
         .tap-press:active { transform: scale(0.97); }
       `}</style>
 
-      {/* Thin accent strip — beige, matches the "find a space by feel" section background */}
-      <div style={{ height: 9, background: C.cream2, position: 'relative' }}>
+      {/* Thin accent strip — beige, sticky so the scroll progress fill stays visible throughout */}
+      <div style={{ height: 5, background: C.cream2, position: 'sticky', top: 0, zIndex: 60 }}>
         {/* Scroll progress indicator — thin gold fill on top of the beige strip */}
         <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${scrollPct}%`, background: C.gold, transition: 'width .1s linear' }}/>
       </div>
@@ -365,7 +365,7 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
         <div style={{ display: 'flex', gap: 12, position: 'relative', zIndex: 2 }}>
           {hasWhyContent && (
             <button onClick={() => setWhyOpen(o => !o)} className="tap-press"
-              style={{ ...sans, background: whyOpen ? C.gold : 'transparent', color: whyOpen ? C.text : C.gold, fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', padding: '12px 20px', border: `1px solid ${C.gold}`, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, boxShadow: whyOpen ? '0 4px 14px rgba(201,168,76,.3)' : 'none' }}>
+              style={{ ...sans, background: whyOpen ? C.green : C.gold, color: whyOpen ? C.gold : C.text, fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', padding: '12px 20px', border: `1px solid ${C.gold}`, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
               Why {town.name} <span className={`why-chevron${whyOpen ? ' rotated' : ''}`} style={{ fontSize: 11 }}>⌄</span>
             </button>
           )}
@@ -378,7 +378,7 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
         {hasWhyContent && (
           <div className={`why-expand${whyOpen ? ' open' : ''}`} style={{ position: 'relative', zIndex: 2 }}>
             <div style={{ borderTop: '1px solid rgba(255,255,255,.12)', paddingTop: 20 }}>
-              <SectionDivider label={`എന്തുകൊണ്ട് ${town.name}?`} variant="line-left"/>
+              <SectionDivider label={`എന്തുകൊണ്ട് ${town.name}?`} variant="line-left" accent={C.gold}/>
               <div style={{ ...serif, fontSize: 21, fontWeight: 300, color: 'white', marginBottom: 12, lineHeight: 1.3 }}>
                 {town.why_here_heading || `Why ${town.name}?`}
               </div>
@@ -501,8 +501,8 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
               return (
                 <div key={p.id} className="tap-press" style={{
                   background: 'white',
-                  border: isPick ? `1.5px solid ${C.gold}` : `1px solid ${C.cream3}`,
-                  boxShadow: isPick ? '0 0 0 1px rgba(201,168,76,.25), 0 6px 18px rgba(201,168,76,.2)' : '0 2px 8px rgba(0,0,0,.04)',
+                  border: `1px solid ${C.cream3}`,
+                  boxShadow: '0 2px 8px rgba(0,0,0,.04)',
                   overflow: 'hidden', position: 'relative',
                   opacity: 0, animation: 'cardFadeUp .45s ease forwards', animationDelay: `${Math.min(idx * 0.06, 0.4)}s`,
                 }}>
@@ -525,8 +525,8 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
                     </div>}
                     <div style={{ width: '100%', height: 1, background: C.cream3, marginBottom: 10 }}/>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      {/* Price — now in terracotta accent colour, more prominent than before */}
-                      <span style={{ ...sans, fontSize: 15, fontWeight: 600, color: C.terra }}>{p.price_guide?.split(/[-–—]/)[0]?.trim() ?? '₹12,000'} / day</span>
+                      {/* Price — black, slightly larger weight for prominence without colour */}
+                      <span style={{ ...sans, fontSize: 15, fontWeight: 600, color: C.text }}>{p.price_guide?.split(/[-–—]/)[0]?.trim() ?? '₹12,000'} / day</span>
                       <div style={{ display: 'flex', gap: 7 }}>
                         <button onClick={() => share(p.slug, p.name)} className="tap-press" style={{ width: 32, height: 32, border: `1px solid ${C.cream3}`, background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.muted }}>
                           <svg viewBox="0 0 14 14" fill="none" width={12} height={12} stroke="currentColor" strokeWidth={1.3} strokeLinecap="round"><circle cx="11" cy="2.5" r="1.5"/><circle cx="3" cy="7" r="1.5"/><circle cx="11" cy="11.5" r="1.5"/><path d="M4.5 6.3l5-3.2M4.5 7.7l5 3.2"/></svg>
@@ -534,8 +534,8 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
                         <button onClick={() => handleWhatsApp(p)} className="tap-press"
                           style={{
                             ...sans, background: C.green, color: 'white', fontSize: 10, fontWeight: 700, letterSpacing: '.09em', textTransform: 'uppercase' as const, padding: '9px 13px', border: 'none', cursor: 'pointer',
-                            boxShadow: isPick ? '0 3px 10px rgba(201,168,76,.25)' : '0 3px 10px rgba(28,58,43,.25)',
-                            animation: isPick ? 'pickGlow 2.4s ease-in-out infinite' : 'none',
+                            boxShadow: '0 3px 10px rgba(28,58,43,.25)',
+                            animation: isPick ? 'pickGlowGreen 2.4s ease-in-out infinite' : 'none',
                           }}>
                           Talk to owner
                         </button>
