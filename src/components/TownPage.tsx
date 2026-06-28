@@ -155,9 +155,9 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
   const [showModal, setShowModal] = useState(false)
   const [makerFilter, setMakerFilter] = useState('all')
   const [search, setSearch] = useState('')
+  const [whyOpen, setWhyOpen] = useState(false)
   const heroBg = town.hero_bg_color || C.green
   const otherTowns = allTowns.filter(t => t.slug !== town.slug)
-  const topBarText = `${town.name} · ${town.district} · Kerala`
 
   useEffect(() => {
     async function load() {
@@ -173,6 +173,7 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
       setLoading(false)
     }
     load()
+    setWhyOpen(false) // collapse "Why" section if town changes
   }, [town.id])
 
   async function handleWhatsApp(p: Property) {
@@ -206,19 +207,21 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
     return true
   })
 
+  const hasWhyContent = !!(town.why_here_text || town.why_here_heading)
+
   return (
     <div style={{ background: C.cream, minHeight: '100vh', overflowX: 'hidden' }}>
-      <style>{`.no-scrollbar::-webkit-scrollbar{display:none}`}</style>
-
-      {/* Top bar */}
-      <div style={{ background: heroBg, padding: '6px 16px', display: 'flex', justifyContent: 'space-between' }}>
-        <span style={{ ...sans, fontSize: 10, color: 'rgba(255,255,255,.5)', letterSpacing: '.06em' }}>തീരം · theeram</span>
-        <span style={{ ...sans, fontSize: 10, color: 'rgba(255,255,255,.4)', letterSpacing: '.04em' }}>{topBarText}</span>
-      </div>
+      <style>{`
+        .no-scrollbar::-webkit-scrollbar{display:none}
+        .why-expand { max-height: 0; overflow: hidden; opacity: 0; margin-top: 0; transition: max-height .45s ease, opacity .35s ease, margin-top .35s ease; }
+        .why-expand.open { max-height: 600px; opacity: 1; margin-top: 22px; }
+        .why-chevron { display:inline-block; transition: transform .35s ease; }
+        .why-chevron.rotated { transform: rotate(180deg); }
+      `}</style>
 
       <Header/>
 
-      {/* Hero */}
+      {/* Hero — town name + Malayalam wordmark inline, no separate top ribbon */}
       <section style={{ background: heroBg, padding: '50px 20px 48px', position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', right: -20, top: -20, opacity: .06, pointerEvents: 'none' }}>
           <svg viewBox="0 0 200 200" fill="none" width={220} height={220}>
@@ -229,62 +232,94 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
             <line x1="100" y1="10" x2="100" y2="190" stroke="white" strokeWidth={1}/>
           </svg>
         </div>
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, marginBottom: 18, background: 'rgba(255,255,255,.1)', padding: '4px 12px' }}>
-          <span style={{ ...sans, fontSize: 10, color: 'rgba(255,255,255,.7)', letterSpacing: '.08em' }}>{town.district} District · Kerala</span>
+
+        {/* Wordmark — Malayalam + English */}
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 8 }}>
+          <span style={{ ...serif, fontSize: 14, color: 'rgba(255,255,255,.5)' }}>തീരം</span>
+          <span style={{ color: 'rgba(255,255,255,.3)', fontSize: 12 }}>·</span>
+          <span style={{ ...serif, fontSize: 14, color: 'rgba(255,255,255,.5)', letterSpacing: '.03em' }}>theeram</span>
         </div>
-        <h1 style={{ ...serif, fontSize: 34, lineHeight: 1.18, color: 'white', marginBottom: 16, fontWeight: 300 }}
+
+        {/* Town name — prominent, replaces the old tiny top-bar ribbon */}
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 9, marginBottom: 18, flexWrap: 'wrap' as const }}>
+          <span style={{ ...serif, fontSize: 22, color: C.gold, fontWeight: 400 }}>{town.name}</span>
+          <span style={{ ...sans, fontSize: 11, color: 'rgba(255,255,255,.55)', letterSpacing: '.03em' }}>{town.district} District · Kerala</span>
+        </div>
+
+        <h1 style={{ ...serif, fontSize: 32, lineHeight: 1.2, color: 'white', marginBottom: 16, fontWeight: 300 }}
           dangerouslySetInnerHTML={{ __html: town.hero_headline || `Event spaces in <em style="color:${C.gold}">${town.name}</em>` }}/>
         <div style={{ width: 34, height: 2, background: C.gold, marginBottom: 18 }}/>
-        <p style={{ ...sans, fontSize: 13, color: 'rgba(255,255,255,.68)', lineHeight: 1.75, maxWidth: 300, marginBottom: 30, fontWeight: 300 }}>
+        <p style={{ ...sans, fontSize: 13, color: 'rgba(255,255,255,.68)', lineHeight: 1.75, maxWidth: 300, marginBottom: 28, fontWeight: 300 }}>
           {town.hero_subtext}
         </p>
+
         <div style={{ display: 'flex', gap: 12 }}>
           <button onClick={() => document.getElementById('main-listing')?.scrollIntoView({ behavior: 'smooth' })}
             style={{ ...sans, background: C.gold, color: C.text, fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', padding: '12px 22px', border: 'none', cursor: 'pointer' }}>
             Find a space
           </button>
-          <Link href="/about" style={{ ...sans, background: 'transparent', color: C.gold, fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', padding: '12px 22px', border: `1px solid ${C.gold}`, textDecoration: 'none' }}>
-            Our story
-          </Link>
+          {hasWhyContent && (
+            <button onClick={() => setWhyOpen(o => !o)}
+              style={{ ...sans, background: whyOpen ? 'rgba(201,168,76,.12)' : 'transparent', color: C.gold, fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', padding: '12px 18px', border: `1px solid ${C.gold}`, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+              Why {town.name} <span className={`why-chevron${whyOpen ? ' rotated' : ''}`} style={{ fontSize: 11 }}>⌄</span>
+            </button>
+          )}
         </div>
+
+        {/* Expandable "Why [Town]" — grows the hero inline, dynamic per town */}
+        {hasWhyContent && (
+          <div className={`why-expand${whyOpen ? ' open' : ''}`}>
+            <div style={{ borderTop: '1px solid rgba(255,255,255,.12)', paddingTop: 20 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 14 }}>
+                <div style={{ width: 14, height: 1, background: C.gold }}/>
+                <span style={{ ...sans, fontSize: 10, color: C.gold, letterSpacing: '.08em' }}>എന്തുകൊണ്ട് {town.name}?</span>
+              </div>
+              <div style={{ ...serif, fontSize: 21, fontWeight: 300, color: 'white', marginBottom: 12, lineHeight: 1.3 }}>
+                {town.why_here_heading || `Why ${town.name}?`}
+              </div>
+              <p style={{ ...sans, fontSize: 12.5, color: 'rgba(255,255,255,.65)', lineHeight: 1.75, fontWeight: 300, marginBottom: 20 }}>
+                {town.why_here_text}
+              </p>
+              {(town.stat_1_value || town.stat_2_value || town.stat_3_value) && (
+                <>
+                  <div style={{ width: '100%', height: 1, background: 'rgba(255,255,255,.1)', marginBottom: 18 }}/>
+                  <div style={{ display: 'flex' }}>
+                    {[[town.stat_1_value, town.stat_1_label], [town.stat_2_value, town.stat_2_label], [town.stat_3_value, town.stat_3_label]].map(([val, label], i) => val ? (
+                      <div key={i} style={{ flex: 1, borderLeft: i > 0 ? '1px solid rgba(255,255,255,.1)' : 'none', paddingLeft: i > 0 ? 14 : 0 }}>
+                        <div style={{ ...serif, fontSize: 21, color: C.gold, marginBottom: 2, fontWeight: 300 }}>{val}</div>
+                        <div style={{ ...sans, fontSize: 8.5, color: 'rgba(255,255,255,.4)', letterSpacing: '.08em' }}>{label}</div>
+                      </div>
+                    ) : null)}
+                  </div>
+                </>
+              )}
+              <button onClick={() => setWhyOpen(false)}
+                style={{ ...sans, marginTop: 18, background: 'none', border: 'none', color: 'rgba(255,255,255,.45)', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
+                ↑ Collapse
+              </button>
+            </div>
+          </div>
+        )}
       </section>
 
-      {/* Trust bar */}
+      {/* Trust bar — staggered fade-in, updated messaging */}
       <div style={{ background: C.cream2, borderBottom: `1px solid ${C.cream3}`, padding: '18px 16px', display: 'flex' }}>
-        {[['No fees', 'Speak to the owner'], ['Individually reviewed', 'Every listing, by us'], ['WhatsApp first', 'The Kerala way']].map(([title, sub], i) => (
-          <div key={title} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 4, padding: '0 6px', borderLeft: i > 0 ? `1px solid ${C.cream3}` : 'none' }}>
+        {[['Best price', 'No middlemen'], ['Reviewed', 'Every listing, by us'], ['No login', 'Browse freely']].map(([title, sub], i) => (
+          <div key={title}
+            style={{
+              flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 4, padding: '0 6px',
+              borderLeft: i > 0 ? `1px solid ${C.cream3}` : 'none',
+              opacity: 0, animation: `trustFadeUp .5s ease forwards`, animationDelay: `${0.1 + i * 0.18}s`,
+            }}>
             <div style={{ width: 7, height: 7, background: C.terra, transform: 'rotate(45deg)', marginBottom: 4 }}/>
             <div style={{ ...sans, fontSize: 11, fontWeight: 500, color: C.text }}>{title}</div>
             <div style={{ ...sans, fontSize: 10, color: C.muted, fontWeight: 300 }}>{sub}</div>
           </div>
         ))}
       </div>
+      <style>{`@keyframes trustFadeUp { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }`}</style>
 
-      {/* Other towns */}
-      {otherTowns.length > 0 && (
-        <section style={{ background: C.cream, padding: '22px 0 4px', borderBottom: `1px solid ${C.cream3}` }}>
-          <div style={{ padding: '0 16px', marginBottom: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ width: 14, height: 1, background: C.terra }}/>
-              <span style={{ ...sans, fontSize: 10, color: C.terra, letterSpacing: '.08em' }}>മറ്റ് ഇടങ്ങൾ</span>
-              <div style={{ flex: 1, height: 1, background: C.cream3 }}/>
-              <span style={{ ...sans, fontSize: 10, color: C.muted }}>Browse other towns →</span>
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: 8, overflowX: 'auto', padding: '0 16px 16px' }} className="no-scrollbar">
-            {otherTowns.map(t => (
-              <Link key={t.slug} href={`/${t.slug}`} style={{ textDecoration: 'none', flexShrink: 0 }}>
-                <div style={{ background: t.hero_bg_color || C.green, padding: '12px 14px', minWidth: 130 }}>
-                  <div style={{ ...sans, fontSize: 9, color: C.gold, letterSpacing: '.07em', marginBottom: 4 }}>{t.district}</div>
-                  <div style={{ ...serif, fontSize: 15, color: 'white', lineHeight: 1.2 }}>{t.name}</div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Filter section */}
+      {/* Filter section — unchanged */}
       <section style={{ background: C.cream, paddingTop: 24 }}>
         <div style={{ padding: '0 16px', marginBottom: 14 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 10 }}>
@@ -304,7 +339,7 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
           : <FilterRow filters={MAKER_FILTERS} active={makerFilter} onSelect={setMakerFilter}/>}
       </section>
 
-      {/* Toggle + listing */}
+      {/* Toggle + listing — unchanged */}
       <section id="main-listing" style={{ background: C.sage }}>
         <div style={{ display: 'flex', alignItems: 'center', padding: '12px 16px', gap: 10, background: C.sage, borderBottom: `1px solid rgba(0,0,0,.07)`, position: 'sticky', top: 55, zIndex: 40 }}>
           <div style={{ flex: 1, display: 'flex', background: 'rgba(255,255,255,.5)', border: `1px solid ${C.cream3}`, borderRadius: 3, overflow: 'hidden' }}>
@@ -355,9 +390,15 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
                 attrs?.has_ac_hall && 'AC hall',
                 attrs?.max_guests_day_event ? `Up to ${attrs.max_guests_day_event}` : null,
               ].filter(Boolean) as string[]
+              const isPick = (p as any).is_featured
               return (
-                <div key={p.id} style={{ background: 'white', border: `1px solid ${C.cream3}`, overflow: 'hidden', position: 'relative' }}>
-                  {(p as any).is_featured && <div style={{ position: 'absolute', top: 0, left: 0, background: C.gold, padding: '4px 10px', zIndex: 2 }}><span style={{ ...sans, fontSize: 9, fontWeight: 700, color: C.text }}>Theeram pick</span></div>}
+                <div key={p.id} style={{
+                  background: 'white',
+                  border: isPick ? `1.5px solid ${C.gold}` : `1px solid ${C.cream3}`,
+                  boxShadow: isPick ? '0 0 0 1px rgba(201,168,76,.25), 0 4px 14px rgba(201,168,76,.18)' : 'none',
+                  overflow: 'hidden', position: 'relative',
+                }}>
+                  {isPick && <div style={{ position: 'absolute', top: 0, left: 0, background: C.gold, padding: '4px 10px', zIndex: 2 }}><span style={{ ...sans, fontSize: 9, fontWeight: 700, color: C.text }}>★ Theeram pick</span></div>}
                   <Link href={`/property/${p.slug}`} style={{ display: 'block', height: 180, background: CARD_BG[p.property_type] ?? C.green, textDecoration: 'none', position: 'relative', overflow: 'hidden', flexShrink: 0 }}>
                     <PropIllustration type={p.property_type} photos={photos}/>
                     {photos.length > 0 && <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,.3) 0%, transparent 60%)' }}/>}
@@ -376,7 +417,7 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
                     </div>}
                     <div style={{ width: '100%', height: 1, background: C.cream3, marginBottom: 10 }}/>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ ...sans, fontSize: 14, fontWeight: 500 }}>{p.price_guide?.split('–')[0] ?? '₹12,000'} / day</span>
+                      <span style={{ ...sans, fontSize: 14, fontWeight: 500 }}>{p.price_guide?.split(/[-–—]/)[0]?.trim() ?? '₹12,000'} / day</span>
                       <div style={{ display: 'flex', gap: 7 }}>
                         <button onClick={() => share(p.slug, p.name)} style={{ width: 32, height: 32, border: `1px solid ${C.cream3}`, background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.muted }}>
                           <svg viewBox="0 0 14 14" fill="none" width={12} height={12} stroke="currentColor" strokeWidth={1.3} strokeLinecap="round"><circle cx="11" cy="2.5" r="1.5"/><circle cx="3" cy="7" r="1.5"/><circle cx="11" cy="11.5" r="1.5"/><path d="M4.5 6.3l5-3.2M4.5 7.7l5 3.2"/></svg>
@@ -391,7 +432,7 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
           </div>
         )}
 
-        {/* Makers panel */}
+        {/* Makers panel — unchanged */}
         {tab === 'makers' && (
           <div style={{ padding: '8px 16px 40px', display: 'flex', flexDirection: 'column', gap: 12 }}>
             {loading ? [1,2,3].map(i => <div key={i} style={{ height: 160, background: 'rgba(255,255,255,.4)', border: `1px solid ${C.cream3}` }}/>)
@@ -419,31 +460,39 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
         )}
       </section>
 
-      {/* Why this town */}
-      <section style={{ background: C.green2, padding: '46px 20px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 18 }}>
-          <div style={{ width: 15, height: 1, background: C.gold }}/>
-          <span style={{ ...sans, fontSize: 10, color: C.gold, letterSpacing: '.08em' }}>എന്തുകൊണ്ട് {town.name}?</span>
-          <div style={{ width: 15, height: 1, background: C.gold }}/>
+      {/* End-of-list section — replaces the old standalone "Why this town" block.
+          Now purely: "more coming" message + other towns, horizontal scroll. */}
+      <section style={{ background: C.green2, padding: '40px 0' }}>
+        <div style={{ textAlign: 'center', padding: '0 20px' }}>
+          <div style={{ fontSize: 20, marginBottom: 10 }}>🌿</div>
+          <div style={{ ...serif, fontSize: 18, color: 'white', fontWeight: 300, marginBottom: 8, lineHeight: 1.4 }}>
+            More spaces being added<br/>every week
+          </div>
+          <p style={{ ...sans, fontSize: 12, color: 'rgba(255,255,255,.55)', fontWeight: 300, marginBottom: 22, lineHeight: 1.6 }}>
+            Can't find what you're looking for?<br/>Check other locations on Theeram.
+          </p>
         </div>
-        <h2 style={{ ...serif, fontSize: 28, fontWeight: 300, color: 'white', marginBottom: 15, lineHeight: 1.25 }}>
-          {town.why_here_heading || `Why ${town.name}?`}
-        </h2>
-        <p style={{ ...sans, fontSize: 13, color: 'rgba(255,255,255,.65)', lineHeight: 1.8, marginBottom: 26, fontWeight: 300 }}>
-          {town.why_here_text}
-        </p>
-        <div style={{ width: '100%', height: 1, background: 'rgba(255,255,255,.1)', marginBottom: 24 }}/>
-        <div style={{ display: 'flex' }}>
-          {[[town.stat_1_value, town.stat_1_label], [town.stat_2_value, town.stat_2_label], [town.stat_3_value, town.stat_3_label]].map(([val, label], i) => val ? (
-            <div key={i} style={{ flex: 1, borderLeft: i > 0 ? '1px solid rgba(255,255,255,.1)' : 'none', paddingLeft: i > 0 ? 16 : 0 }}>
-              <div style={{ ...serif, fontSize: 24, color: C.gold, marginBottom: 3, fontWeight: 300 }}>{val}</div>
-              <div style={{ ...sans, fontSize: 9, color: 'rgba(255,255,255,.4)', letterSpacing: '.1em' }}>{label}</div>
+
+        {otherTowns.length > 0 && (
+          <>
+            <div style={{ width: 30, height: 1, background: 'rgba(255,255,255,.15)', margin: '0 auto 20px' }}/>
+            <div style={{ textAlign: 'center', padding: '0 20px', marginBottom: 12 }}>
+              <span style={{ ...sans, fontSize: 10, color: C.gold, letterSpacing: '.08em' }}>OTHER LOCATIONS</span>
             </div>
-          ) : null)}
-        </div>
+            <div style={{ display: 'flex', gap: 8, overflowX: 'auto', padding: '0 20px 6px', scrollSnapType: 'x proximity' as const }} className="no-scrollbar">
+              {otherTowns.map(t => (
+                <Link key={t.slug} href={`/${t.slug}`} style={{ textDecoration: 'none', flexShrink: 0, scrollSnapAlign: 'start' }}>
+                  <div style={{ background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.2)', color: 'white', fontSize: 11, padding: '9px 18px', whiteSpace: 'nowrap', ...sans }}>
+                    {t.name}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </>
+        )}
       </section>
 
-      {/* Footer */}
+      {/* Footer — preserved exactly as-is, no changes */}
       <footer style={{ background: C.dark, padding: '40px 16px 32px', textAlign: 'center' }}>
         <div style={{ ...serif, fontSize: 19, color: C.gold, marginBottom: 5, fontWeight: 300 }}>തീരം · theeram</div>
         <div style={{ ...sans, fontSize: 10, color: 'rgba(255,255,255,.4)', letterSpacing: '.08em', marginBottom: 20 }}>Spaces for every occasion · Kerala</div>
