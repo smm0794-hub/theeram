@@ -276,7 +276,7 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
   const hasWhyContent = !!(town.why_here_text || town.why_here_heading)
 
   return (
-    <div style={{ background: C.cream, minHeight: '100vh', overflowX: 'hidden' }}>
+    <div style={{ background: C.cream, minHeight: '100vh' }}>
       <style>{`
         .no-scrollbar::-webkit-scrollbar{display:none}
         .why-expand { max-height: 0; overflow: hidden; opacity: 0; margin-top: 0; transition: max-height .45s ease, opacity .35s ease, margin-top .35s ease; }
@@ -286,7 +286,7 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
         @keyframes trustPulse { 0%,100% { opacity: 1; } 50% { opacity: .55; } }
         @keyframes trustFadeUp { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
         @keyframes cardFadeUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
-        @keyframes pickGlowGreen { 0%,100% { box-shadow: 0 3px 10px rgba(28,58,43,.3); } 50% { box-shadow: 0 3px 20px rgba(45,122,79,.55); } }
+        @keyframes pickPulse { 0%,100% { transform: scale(1); box-shadow: 0 3px 10px rgba(28,58,43,.3); } 50% { transform: scale(1.045); box-shadow: 0 6px 22px rgba(45,122,79,.6); } }
         @keyframes tickerScroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
         .tap-press { transition: transform .12s ease; }
         .tap-press:active { transform: scale(0.97); }
@@ -525,8 +525,8 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
                     </div>}
                     <div style={{ width: '100%', height: 1, background: C.cream3, marginBottom: 10 }}/>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      {/* Price — black, slightly larger weight for prominence without colour */}
-                      <span style={{ ...sans, fontSize: 15, fontWeight: 600, color: C.text }}>{p.price_guide?.split(/[-–—]/)[0]?.trim() ?? '₹12,000'} / day</span>
+                      {/* Price — full range shown as stored, e.g. "₹20,000 - ₹23,000" or "Contact owner" */}
+                      <span style={{ ...sans, fontSize: 14, fontWeight: 600, color: C.text }}>{p.price_guide || 'Contact owner'}</span>
                       <div style={{ display: 'flex', gap: 7 }}>
                         <button onClick={() => share(p.slug, p.name)} className="tap-press" style={{ width: 32, height: 32, border: `1px solid ${C.cream3}`, background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.muted }}>
                           <svg viewBox="0 0 14 14" fill="none" width={12} height={12} stroke="currentColor" strokeWidth={1.3} strokeLinecap="round"><circle cx="11" cy="2.5" r="1.5"/><circle cx="3" cy="7" r="1.5"/><circle cx="11" cy="11.5" r="1.5"/><path d="M4.5 6.3l5-3.2M4.5 7.7l5 3.2"/></svg>
@@ -534,8 +534,9 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
                         <button onClick={() => handleWhatsApp(p)} className="tap-press"
                           style={{
                             ...sans, background: C.green, color: 'white', fontSize: 10, fontWeight: 700, letterSpacing: '.09em', textTransform: 'uppercase' as const, padding: '9px 13px', border: 'none', cursor: 'pointer',
-                            boxShadow: '0 3px 10px rgba(28,58,43,.25)',
-                            animation: isPick ? 'pickGlowGreen 2.4s ease-in-out infinite' : 'none',
+                            boxShadow: isPick ? undefined : '0 3px 10px rgba(28,58,43,.25)',
+                            animation: isPick ? 'pickPulse 1.8s ease-in-out infinite' : 'none',
+                            transformOrigin: 'center',
                           }}>
                           Talk to owner
                         </button>
