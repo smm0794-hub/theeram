@@ -23,24 +23,45 @@ interface MakerStat { name:string; slug:string; category:string; is_featured:boo
 interface CategoryStat { category:string; enquiries:number; views:number }
 interface MovementItem { name:string; slug:string; last7:number; prev7:number; delta:number; pct_change:number }
 
-function LineChart({ data, color }: { data: TrendDay[]; color: string }) {
-  const max = Math.max(...data.map(d => d.views), 1)
-  const width = 300, height = 90, padding = 4
-  const points = data.map((d, i) => {
-    const x = padding + (i / (data.length - 1)) * (width - padding * 2)
-    const y = height - padding - (d.views / max) * (height - padding * 2)
-    return `${x},${y}`
-  }).join(' ')
+function LineChart({ data }: { data: TrendDay[] }) {
+  const max = Math.max(...data.map(d => Math.max(d.views, d.enquiries)), 1)
+  const width = 320, height = 130, padding = 14
+  const plotW = width - padding * 2, plotH = height - padding * 2 - 14
+
+  function pointsFor(key: 'views' | 'enquiries') {
+    return data.map((d, i) => {
+      const x = padding + (i / (data.length - 1)) * plotW
+      const y = padding + 14 + plotH - (d[key] / max) * plotH
+      return { x, y, val: d[key] }
+    })
+  }
+
+  const viewPoints = pointsFor('views')
+  const enqPoints = pointsFor('enquiries')
 
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} width="100%" height={height} preserveAspectRatio="none">
-      <polyline points={points} fill="none" stroke={color} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round"/>
-      {data.map((d, i) => {
-        const x = padding + (i / (data.length - 1)) * (width - padding * 2)
-        const y = height - padding - (d.views / max) * (height - padding * 2)
-        return <circle key={i} cx={x} cy={y} r={d.views > 0 ? 2.5 : 0} fill={color}/>
-      })}
-    </svg>
+    <div>
+      <div style={{ display:'flex', gap:14, marginBottom:8 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:5 }}><div style={{ width:14, height:2, background:'#2D7A4F' }}/><span style={{ ...sans, fontSize:10, color:C.muted }}>Views</span></div>
+        <div style={{ display:'flex', alignItems:'center', gap:5 }}><div style={{ width:14, height:2, background:C.terra }}/><span style={{ ...sans, fontSize:10, color:C.muted }}>Enquiries</span></div>
+      </div>
+      <svg viewBox={`0 0 ${width} ${height}`} width="100%" height={height} preserveAspectRatio="none">
+        <polyline points={viewPoints.map(p => `${p.x},${p.y}`).join(' ')} fill="none" stroke="#2D7A4F" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round"/>
+        <polyline points={enqPoints.map(p => `${p.x},${p.y}`).join(' ')} fill="none" stroke={C.terra} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round"/>
+        {viewPoints.map((p, i) => (
+          <g key={`v${i}`}>
+            {p.val > 0 && <circle cx={p.x} cy={p.y} r={2.3} fill="#2D7A4F"/>}
+            {p.val > 0 && <text x={p.x} y={p.y - 6} fontSize="8" fill="#2D7A4F" textAnchor="middle">{p.val}</text>}
+          </g>
+        ))}
+        {enqPoints.map((p, i) => (
+          <g key={`e${i}`}>
+            {p.val > 0 && <circle cx={p.x} cy={p.y} r={2.3} fill={C.terra}/>}
+            {p.val > 0 && <text x={p.x} y={p.y + 13} fontSize="8" fill={C.terra} textAnchor="middle">{p.val}</text>}
+          </g>
+        ))}
+      </svg>
+    </div>
   )
 }
 
@@ -106,7 +127,7 @@ export default function MakerAnalyticsPage() {
 
             <div style={{ background:'white', border:`1px solid ${C.cream3}`, padding:'16px 14px', marginBottom:16 }}>
               <div style={{ ...sans, fontSize:10, color:C.muted, letterSpacing:'.07em', marginBottom:12 }}>PAGE VIEWS — LAST 14 DAYS</div>
-              <LineChart data={trend} color="#2D7A4F"/>
+              <LineChart data={trend}/>
               <div style={{ display:'flex', justifyContent:'space-between', marginTop:6 }}>
                 <span style={{ ...sans, fontSize:9, color:C.muted }}>{trend[0]?.label}</span>
                 <span style={{ ...sans, fontSize:9, color:C.muted }}>{trend[trend.length-1]?.label}</span>
