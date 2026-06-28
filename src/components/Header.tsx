@@ -4,16 +4,27 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { C, sans, serif } from '@/lib/design'
 
+// Header is now minimal — just the 1px accent line at the very top.
+// The wordmark + hamburger live inside the hero itself (see TownPage.tsx).
+// This component is kept for non-town pages (about, privacy, list, etc.)
+// where there's no hero to anchor the nav to.
+
 interface Props {
   sticky?: boolean
+  minimal?: boolean // true = only render the accent line, no header bar (used when hero handles nav)
 }
 
-export default function Header({ sticky = true }: Props) {
+export default function Header({ sticky = true, minimal = false }: Props) {
   const [open, setOpen] = useState(false)
+
+  if (minimal) {
+    return <div style={{ height: 3, background: C.green }}/>
+  }
 
   return (
     <>
-      {/* Main header — no top bar here; TownPage renders its own dynamic top bar */}
+      <div style={{ height: 3, background: C.green }}/>
+
       <header style={{ background: C.cream, borderBottom: `1px solid ${C.cream3}`, padding: '11px 16px', position: sticky ? 'sticky' : 'relative', top: 0, zIndex: 50, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 9, textDecoration: 'none' }}>
           <div style={{ width: 33, height: 33, borderRadius: '50%', background: C.green, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -37,7 +48,6 @@ export default function Header({ sticky = true }: Props) {
         </button>
       </header>
 
-      {/* Nav drawer */}
       {open && (
         <div style={{ background: C.cream, borderBottom: `1px solid ${C.cream3}`, padding: '20px', display: 'flex', flexDirection: 'column', gap: 0, position: 'sticky', top: sticky ? 55 : undefined, zIndex: 49 }}>
           {[

@@ -4,7 +4,6 @@ import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { supabase, Property, Vendor, Town, VENDOR_CATEGORY_LABELS, VendorCategory } from '@/lib/supabase'
 import { C, sans, serif } from '@/lib/design'
-import Header from '@/components/Header'
 import GratitudeModal from '@/components/GratitudeModal'
 
 const CARD_BG: Record<string, string> = {
@@ -121,7 +120,14 @@ function FilterRow({ filters, active, onSelect }: { filters: typeof FEEL_FILTERS
         className="no-scrollbar">
         {filters.map(f => (
           <div key={f.id} onClick={() => onSelect(f.id)}
-            style={{ minWidth: 148, flexShrink: 0, background: active === f.id ? '#fdf0eb' : 'white', border: active === f.id ? `1.5px solid ${C.terra}` : `1px solid ${C.cream3}`, padding: '14px 12px', cursor: 'pointer', scrollSnapAlign: 'start', transition: 'all .15s' }}>
+            style={{
+              minWidth: 148, flexShrink: 0,
+              background: active === f.id ? '#fdf0eb' : 'white',
+              border: active === f.id ? `1.5px solid ${C.terra}` : `1px solid ${C.cream3}`,
+              padding: '14px 12px', cursor: 'pointer', scrollSnapAlign: 'start',
+              transition: 'all .15s',
+              boxShadow: active === f.id ? '0 3px 10px rgba(155,61,30,.12)' : '0 1px 3px rgba(0,0,0,.03)',
+            }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 5 }}>
               <div style={{ width: 8, height: 1, background: C.terra }}/>
               <span style={{ ...sans, fontSize: 9, color: C.terra, letterSpacing: '.06em' }}>{f.ml}</span>
@@ -156,6 +162,7 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
   const [makerFilter, setMakerFilter] = useState('all')
   const [search, setSearch] = useState('')
   const [whyOpen, setWhyOpen] = useState(false)
+  const [navOpen, setNavOpen] = useState(false)
   const heroBg = town.hero_bg_color || C.green
   const otherTowns = allTowns.filter(t => t.slug !== town.slug)
 
@@ -173,7 +180,7 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
       setLoading(false)
     }
     load()
-    setWhyOpen(false) // collapse "Why" section if town changes
+    setWhyOpen(false)
   }, [town.id])
 
   async function handleWhatsApp(p: Property) {
@@ -217,12 +224,16 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
         .why-expand.open { max-height: 600px; opacity: 1; margin-top: 22px; }
         .why-chevron { display:inline-block; transition: transform .35s ease; }
         .why-chevron.rotated { transform: rotate(180deg); }
+        @keyframes trustPulse { 0%,100% { opacity: 1; } 50% { opacity: .55; } }
+        @keyframes trustFadeUp { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
       `}</style>
 
-      <Header/>
+      {/* Thin accent line — replaces the old top announcement bar entirely */}
+      <div style={{ height: 3, background: C.green }}/>
 
-      {/* Hero — town name + Malayalam wordmark inline, no separate top ribbon */}
-      <section style={{ background: heroBg, padding: '50px 20px 48px', position: 'relative', overflow: 'hidden' }}>
+      {/* Hero — now carries the wordmark + hamburger nav directly, no separate header bar */}
+      <section style={{ background: heroBg, padding: '24px 20px 48px', position: 'relative', overflow: 'hidden' }}>
+        {/* Decorative mandala — kept, adds quiet depth */}
         <div style={{ position: 'absolute', right: -20, top: -20, opacity: .06, pointerEvents: 'none' }}>
           <svg viewBox="0 0 200 200" fill="none" width={220} height={220}>
             <circle cx="100" cy="100" r="90" stroke="white" strokeWidth={1}/>
@@ -232,30 +243,62 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
             <line x1="100" y1="10" x2="100" y2="190" stroke="white" strokeWidth={1}/>
           </svg>
         </div>
+        {/* Subtle radial glow bottom-left for depth — pure CSS, no image */}
+        <div style={{ position: 'absolute', left: -60, bottom: -60, width: 220, height: 220, borderRadius: '50%', background: 'radial-gradient(circle, rgba(201,168,76,.10), transparent 70%)', pointerEvents: 'none' }}/>
 
-        {/* Wordmark — Malayalam + English */}
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 8 }}>
-          <span style={{ ...serif, fontSize: 14, color: 'rgba(255,255,255,.5)' }}>തീരം</span>
-          <span style={{ color: 'rgba(255,255,255,.3)', fontSize: 12 }}>·</span>
-          <span style={{ ...serif, fontSize: 14, color: 'rgba(255,255,255,.5)', letterSpacing: '.03em' }}>theeram</span>
+        {/* Top row — wordmark left, hamburger right */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 22, position: 'relative', zIndex: 2 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+            <span style={{ ...serif, fontSize: 14, color: 'rgba(255,255,255,.55)' }}>തീരം</span>
+            <span style={{ color: 'rgba(255,255,255,.3)', fontSize: 12 }}>·</span>
+            <span style={{ ...serif, fontSize: 14, color: 'rgba(255,255,255,.55)', letterSpacing: '.03em' }}>theeram</span>
+          </div>
+          <button onClick={() => setNavOpen(v => !v)} style={{ background: 'rgba(255,255,255,.08)', border: 'none', cursor: 'pointer', padding: 8, borderRadius: 6 }}>
+            {navOpen ? (
+              <svg viewBox="0 0 20 20" fill="none" width={18} height={18} stroke="white" strokeWidth={1.4} strokeLinecap="round"><path d="M5 5l10 10M15 5L5 15"/></svg>
+            ) : (
+              <svg viewBox="0 0 20 20" fill="none" width={18} height={18} stroke="white" strokeWidth={1.4} strokeLinecap="round">
+                <line x1="3" y1="6" x2="17" y2="6"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="14" x2="17" y2="14"/>
+              </svg>
+            )}
+          </button>
         </div>
 
-        {/* Town name — prominent, replaces the old tiny top-bar ribbon */}
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 9, marginBottom: 18, flexWrap: 'wrap' as const }}>
+        {/* Nav drawer — opens below the hero top row */}
+        {navOpen && (
+          <div style={{ background: 'rgba(0,0,0,.18)', borderRadius: 8, padding: '6px 16px', marginBottom: 20, position: 'relative', zIndex: 2 }}>
+            {[
+              { label: 'Spaces', href: '/', note: null },
+              { label: 'Makers', href: '/?tab=makers', note: null },
+              { label: 'About', href: '/about', note: null },
+              { label: 'List your space', href: '/list', note: 'Owner' },
+              { label: 'List your service', href: '/join', note: 'Maker' },
+            ].map(({ label, href, note }, i) => (
+              <Link key={label} href={href} onClick={() => setNavOpen(false)}
+                style={{ ...sans, fontSize: 13, color: 'white', textDecoration: 'none', fontWeight: 300, padding: '11px 0', borderBottom: i < 4 ? '1px solid rgba(255,255,255,.1)' : 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                {label}
+                {note && <span style={{ fontSize: 9, color: C.gold, letterSpacing: '.06em', border: `1px solid ${C.gold}`, padding: '2px 7px', borderRadius: 3 }}>{note}</span>}
+              </Link>
+            ))}
+          </div>
+        )}
+
+        {/* Town name — prominent */}
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 9, marginBottom: 18, flexWrap: 'wrap' as const, position: 'relative', zIndex: 2 }}>
           <span style={{ ...serif, fontSize: 22, color: C.gold, fontWeight: 400 }}>{town.name}</span>
           <span style={{ ...sans, fontSize: 11, color: 'rgba(255,255,255,.55)', letterSpacing: '.03em' }}>{town.district} District · Kerala</span>
         </div>
 
-        <h1 style={{ ...serif, fontSize: 32, lineHeight: 1.2, color: 'white', marginBottom: 16, fontWeight: 300 }}
+        <h1 style={{ ...serif, fontSize: 32, lineHeight: 1.2, color: 'white', marginBottom: 16, fontWeight: 300, position: 'relative', zIndex: 2 }}
           dangerouslySetInnerHTML={{ __html: town.hero_headline || `Event spaces in <em style="color:${C.gold}">${town.name}</em>` }}/>
-        <div style={{ width: 34, height: 2, background: C.gold, marginBottom: 18 }}/>
-        <p style={{ ...sans, fontSize: 13, color: 'rgba(255,255,255,.68)', lineHeight: 1.75, maxWidth: 300, marginBottom: 28, fontWeight: 300 }}>
+        <div style={{ width: 34, height: 2, background: C.gold, marginBottom: 18, position: 'relative', zIndex: 2 }}/>
+        <p style={{ ...sans, fontSize: 13, color: 'rgba(255,255,255,.68)', lineHeight: 1.75, maxWidth: 300, marginBottom: 28, fontWeight: 300, position: 'relative', zIndex: 2 }}>
           {town.hero_subtext}
         </p>
 
-        <div style={{ display: 'flex', gap: 12 }}>
+        <div style={{ display: 'flex', gap: 12, position: 'relative', zIndex: 2 }}>
           <button onClick={() => document.getElementById('main-listing')?.scrollIntoView({ behavior: 'smooth' })}
-            style={{ ...sans, background: C.gold, color: C.text, fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', padding: '12px 22px', border: 'none', cursor: 'pointer' }}>
+            style={{ ...sans, background: C.gold, color: C.text, fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', padding: '12px 22px', border: 'none', cursor: 'pointer', boxShadow: '0 4px 14px rgba(201,168,76,.3)' }}>
             Find a space
           </button>
           {hasWhyContent && (
@@ -266,9 +309,9 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
           )}
         </div>
 
-        {/* Expandable "Why [Town]" — grows the hero inline, dynamic per town */}
+        {/* Expandable "Why [Town]" */}
         {hasWhyContent && (
-          <div className={`why-expand${whyOpen ? ' open' : ''}`}>
+          <div className={`why-expand${whyOpen ? ' open' : ''}`} style={{ position: 'relative', zIndex: 2 }}>
             <div style={{ borderTop: '1px solid rgba(255,255,255,.12)', paddingTop: 20 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 14 }}>
                 <div style={{ width: 14, height: 1, background: C.gold }}/>
@@ -302,24 +345,17 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
         )}
       </section>
 
-      {/* Trust bar — staggered fade-in, updated messaging */}
-      <div style={{ background: C.cream2, borderBottom: `1px solid ${C.cream3}`, padding: '18px 16px', display: 'flex' }}>
-        {[['Best price', 'No middlemen'], ['Reviewed', 'Every listing, by us'], ['No login', 'Browse freely']].map(([title, sub], i) => (
-          <div key={title}
-            style={{
-              flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 4, padding: '0 6px',
-              borderLeft: i > 0 ? `1px solid ${C.cream3}` : 'none',
-              opacity: 0, animation: `trustFadeUp .5s ease forwards`, animationDelay: `${0.1 + i * 0.18}s`,
-            }}>
-            <div style={{ width: 7, height: 7, background: C.terra, transform: 'rotate(45deg)', marginBottom: 4 }}/>
-            <div style={{ ...sans, fontSize: 11, fontWeight: 500, color: C.text }}>{title}</div>
-            <div style={{ ...sans, fontSize: 10, color: C.muted, fontWeight: 300 }}>{sub}</div>
+      {/* Trust bar — compact, single accent colour pulse instead of diamonds, no sub-labels reading wall */}
+      <div style={{ background: C.green2, padding: '11px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 18, boxShadow: 'inset 0 2px 8px rgba(0,0,0,.12)' }}>
+        {['Best price · No middlemen', 'Reviewed', 'No login'].map((text, i) => (
+          <div key={text} style={{ display: 'flex', alignItems: 'center', gap: 7, opacity: 0, animation: `trustFadeUp .45s ease forwards`, animationDelay: `${0.08 + i * 0.12}s` }}>
+            <div style={{ width: 5, height: 5, borderRadius: '50%', background: C.gold, animation: 'trustPulse 2.2s ease-in-out infinite', animationDelay: `${i * 0.3}s` }}/>
+            <span style={{ ...sans, fontSize: 10.5, color: 'rgba(255,255,255,.8)', fontWeight: 400, whiteSpace: 'nowrap' as const }}>{text}</span>
           </div>
         ))}
       </div>
-      <style>{`@keyframes trustFadeUp { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }`}</style>
 
-      {/* Filter section — unchanged */}
+      {/* Filter section — swipe hint text removed */}
       <section style={{ background: C.cream, paddingTop: 24 }}>
         <div style={{ padding: '0 16px', marginBottom: 14 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 10 }}>
@@ -327,11 +363,8 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
             <span style={{ ...sans, fontSize: 10, color: C.terra, letterSpacing: '.08em' }}>{tab === 'spaces' ? 'ഭാവം' : 'കൈവഴക്കം'}</span>
             <div style={{ flex: 1, height: 1, background: C.cream3 }}/>
           </div>
-          <div style={{ ...serif, fontSize: 20, fontWeight: 400, color: C.text, marginBottom: 4 }}>
+          <div style={{ ...serif, fontSize: 20, fontWeight: 400, color: C.text }}>
             {tab === 'spaces' ? 'Find a space by feel' : 'Find by craft'}
-          </div>
-          <div style={{ ...sans, fontSize: 12, color: C.muted, fontWeight: 300 }}>
-            {tab === 'spaces' ? 'Swipe to browse. Tap to filter.' : 'What do you need for your event?'}
           </div>
         </div>
         {tab === 'spaces'
@@ -339,13 +372,13 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
           : <FilterRow filters={MAKER_FILTERS} active={makerFilter} onSelect={setMakerFilter}/>}
       </section>
 
-      {/* Toggle + listing — unchanged */}
+      {/* Toggle + listing */}
       <section id="main-listing" style={{ background: C.sage }}>
-        <div style={{ display: 'flex', alignItems: 'center', padding: '12px 16px', gap: 10, background: C.sage, borderBottom: `1px solid rgba(0,0,0,.07)`, position: 'sticky', top: 55, zIndex: 40 }}>
+        <div style={{ display: 'flex', alignItems: 'center', padding: '12px 16px', gap: 10, background: C.sage, borderBottom: `1px solid rgba(0,0,0,.07)`, position: 'sticky', top: 0, zIndex: 40, boxShadow: '0 2px 6px rgba(0,0,0,.04)' }}>
           <div style={{ flex: 1, display: 'flex', background: 'rgba(255,255,255,.5)', border: `1px solid ${C.cream3}`, borderRadius: 3, overflow: 'hidden' }}>
             {(['spaces', 'makers'] as const).map(t => (
               <button key={t} onClick={() => { setTab(t); setSearch('') }}
-                style={{ flex: 1, padding: '9px 0', fontSize: 12, fontWeight: 500, textAlign: 'center', cursor: 'pointer', border: 'none', fontFamily: 'system-ui,sans-serif', letterSpacing: '.02em', transition: 'all .15s', background: tab === t ? C.green : 'transparent', color: tab === t ? 'white' : C.muted }}>
+                style={{ flex: 1, padding: '9px 0', fontSize: 12, fontWeight: 500, textAlign: 'center', cursor: 'pointer', border: 'none', fontFamily: 'system-ui,sans-serif', letterSpacing: '.02em', transition: 'all .15s', background: tab === t ? C.green : 'transparent', color: tab === t ? 'white' : C.muted, boxShadow: tab === t ? '0 2px 6px rgba(28,58,43,.3)' : 'none' }}>
                 {t === 'spaces' ? 'Spaces' : 'Makers'}
               </button>
             ))}
@@ -356,7 +389,6 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
           </Link>
         </div>
 
-        {/* Search */}
         <div style={{ padding: '12px 16px 8px', position: 'relative' }}>
           <svg viewBox="0 0 16 16" fill="none" width={13} height={13} stroke={C.muted} strokeWidth={1.4} strokeLinecap="round"
             style={{ position: 'absolute', left: 28, top: '50%', transform: 'translateY(-50%)' }}>
@@ -364,7 +396,7 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
           </svg>
           <input value={search} onChange={e => setSearch(e.target.value)}
             placeholder={tab === 'spaces' ? `Search spaces in ${town.name}...` : 'Search makers...'}
-            style={{ width: '100%', border: `1px solid rgba(0,0,0,.12)`, padding: '10px 12px 10px 34px', fontSize: 13, fontFamily: 'system-ui,sans-serif', background: 'rgba(255,255,255,.65)', outline: 'none', color: C.text, fontWeight: 300, boxSizing: 'border-box' as const }}/>
+            style={{ width: '100%', border: `1px solid rgba(0,0,0,.12)`, padding: '10px 12px 10px 34px', fontSize: 13, fontFamily: 'system-ui,sans-serif', background: 'rgba(255,255,255,.7)', outline: 'none', color: C.text, fontWeight: 300, boxSizing: 'border-box' as const, boxShadow: 'inset 0 1px 3px rgba(0,0,0,.04)' }}/>
         </div>
 
         {/* Spaces panel */}
@@ -395,13 +427,14 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
                 <div key={p.id} style={{
                   background: 'white',
                   border: isPick ? `1.5px solid ${C.gold}` : `1px solid ${C.cream3}`,
-                  boxShadow: isPick ? '0 0 0 1px rgba(201,168,76,.25), 0 4px 14px rgba(201,168,76,.18)' : 'none',
+                  boxShadow: isPick ? '0 0 0 1px rgba(201,168,76,.25), 0 6px 18px rgba(201,168,76,.2)' : '0 2px 8px rgba(0,0,0,.04)',
                   overflow: 'hidden', position: 'relative',
+                  transition: 'box-shadow .2s',
                 }}>
-                  {isPick && <div style={{ position: 'absolute', top: 0, left: 0, background: C.gold, padding: '4px 10px', zIndex: 2 }}><span style={{ ...sans, fontSize: 9, fontWeight: 700, color: C.text }}>★ Theeram pick</span></div>}
+                  {isPick && <div style={{ position: 'absolute', top: 0, left: 0, background: C.gold, padding: '4px 10px', zIndex: 2, boxShadow: '0 2px 6px rgba(0,0,0,.15)' }}><span style={{ ...sans, fontSize: 9, fontWeight: 700, color: C.text }}>★ Theeram pick</span></div>}
                   <Link href={`/property/${p.slug}`} style={{ display: 'block', height: 180, background: CARD_BG[p.property_type] ?? C.green, textDecoration: 'none', position: 'relative', overflow: 'hidden', flexShrink: 0 }}>
                     <PropIllustration type={p.property_type} photos={photos}/>
-                    {photos.length > 0 && <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,.3) 0%, transparent 60%)' }}/>}
+                    <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,.35) 0%, transparent 55%)' }}/>
                     <div style={{ position: 'absolute', bottom: 10, left: 12, display: 'flex', alignItems: 'center', gap: 5 }}>
                       <div style={{ width: 8, height: 1, background: C.gold }}/>
                       <span style={{ ...serif, fontSize: 11, color: C.gold, fontStyle: 'italic' }}>{TYPE_LABEL[p.property_type] ?? p.property_type}</span>
@@ -422,7 +455,7 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
                         <button onClick={() => share(p.slug, p.name)} style={{ width: 32, height: 32, border: `1px solid ${C.cream3}`, background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.muted }}>
                           <svg viewBox="0 0 14 14" fill="none" width={12} height={12} stroke="currentColor" strokeWidth={1.3} strokeLinecap="round"><circle cx="11" cy="2.5" r="1.5"/><circle cx="3" cy="7" r="1.5"/><circle cx="11" cy="11.5" r="1.5"/><path d="M4.5 6.3l5-3.2M4.5 7.7l5 3.2"/></svg>
                         </button>
-                        <button onClick={() => handleWhatsApp(p)} style={{ ...sans, background: C.green, color: 'white', fontSize: 10, fontWeight: 700, letterSpacing: '.09em', textTransform: 'uppercase' as const, padding: '9px 13px', border: 'none', cursor: 'pointer' }}>Talk to owner</button>
+                        <button onClick={() => handleWhatsApp(p)} style={{ ...sans, background: C.green, color: 'white', fontSize: 10, fontWeight: 700, letterSpacing: '.09em', textTransform: 'uppercase' as const, padding: '9px 13px', border: 'none', cursor: 'pointer', boxShadow: '0 3px 10px rgba(28,58,43,.25)' }}>Talk to owner</button>
                       </div>
                     </div>
                   </div>
@@ -432,7 +465,7 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
           </div>
         )}
 
-        {/* Makers panel — unchanged */}
+        {/* Makers panel */}
         {tab === 'makers' && (
           <div style={{ padding: '8px 16px 40px', display: 'flex', flexDirection: 'column', gap: 12 }}>
             {loading ? [1,2,3].map(i => <div key={i} style={{ height: 160, background: 'rgba(255,255,255,.4)', border: `1px solid ${C.cream3}` }}/>)
@@ -442,7 +475,7 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
                 <button onClick={() => { setMakerFilter('all'); setSearch('') }} style={{ ...sans, fontSize: 12, color: C.terra, background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>Clear filters</button>
               </div>
             ) : filteredVendors.map(v => (
-              <div key={v.id} style={{ background: 'white', border: `1px solid ${C.cream3}`, padding: '18px 16px' }}>
+              <div key={v.id} style={{ background: 'white', border: `1px solid ${C.cream3}`, padding: '18px 16px', boxShadow: '0 2px 8px rgba(0,0,0,.04)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 7 }}>
                   <div style={{ width: 8, height: 1, background: C.terra }}/>
                   <span style={{ ...sans, fontSize: 9, color: C.terra, letterSpacing: '.07em' }}>{VENDOR_CATEGORY_LABELS[v.category as VendorCategory]}</span>
@@ -451,7 +484,7 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
                 <div style={{ ...serif, fontSize: 18, color: C.text, marginBottom: 4 }}>{v.name}</div>
                 <div style={{ ...sans, fontSize: 12, color: C.muted, fontWeight: 300, marginBottom: 12 }}>{v.tagline}</div>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  {v.whatsapp && <button onClick={() => { const msg = encodeURIComponent(`Hi! I found ${v.name} on Theeram.`); window.location.href = `https://wa.me/${v.whatsapp}?text=${msg}` }} style={{ ...sans, flex: 1, background: C.green, color: 'white', fontSize: 10, fontWeight: 700, letterSpacing: '.09em', textTransform: 'uppercase' as const, padding: '9px 0', border: 'none', cursor: 'pointer' }}>WhatsApp</button>}
+                  {v.whatsapp && <button onClick={() => { const msg = encodeURIComponent(`Hi! I found ${v.name} on Theeram.`); window.location.href = `https://wa.me/${v.whatsapp}?text=${msg}` }} style={{ ...sans, flex: 1, background: C.green, color: 'white', fontSize: 10, fontWeight: 700, letterSpacing: '.09em', textTransform: 'uppercase' as const, padding: '9px 0', border: 'none', cursor: 'pointer', boxShadow: '0 3px 10px rgba(28,58,43,.2)' }}>WhatsApp</button>}
                   {v.phone && <a href={`tel:${v.phone}`} style={{ ...sans, padding: '9px 12px', border: `1px solid ${C.cream3}`, color: C.text, fontSize: 10, textDecoration: 'none' }}>📞 Call</a>}
                 </div>
               </div>
@@ -460,8 +493,7 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
         )}
       </section>
 
-      {/* End-of-list section — replaces the old standalone "Why this town" block.
-          Now purely: "more coming" message + other towns, horizontal scroll. */}
+      {/* End-of-list section */}
       <section style={{ background: C.green2, padding: '40px 0' }}>
         <div style={{ textAlign: 'center', padding: '0 20px' }}>
           <div style={{ fontSize: 20, marginBottom: 10 }}>🌿</div>
