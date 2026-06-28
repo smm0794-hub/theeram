@@ -266,14 +266,14 @@ export default function CuratorPage() {
         </div>
       )}
 
-      {/* ── Zone 2: Tools — grouped by Spaces / Makers ────────────────────── */}
+      {/* ── Zone 2: Tools — Spaces and Makers, each with Listings / Analytics / Agent in that order ── */}
       <div style={{ padding: '20px 16px 4px' }}>
         <SectionLabel>SPACES</SectionLabel>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 18 }}>
           {[
-            { label: '🤖 Agent', href: '/curator/agent' },
+            { label: '📋 Listings', href: '/curator/spaces' },
             { label: '📊 Analytics', href: '/curator/analytics' },
-            { label: '📬 Submissions', href: '/curator/submissions' },
+            { label: '🤖 Agent', href: '/curator/agent' },
           ].map(({ label, href }) => (
             <Link key={href} href={href} style={{ ...sans, textAlign: 'center', padding: '9px 0', border: `1px solid ${C.cream3}`, color: C.muted, fontSize: 11, fontWeight: 500, textDecoration: 'none', background: 'white' }}>
               {label}
@@ -284,9 +284,9 @@ export default function CuratorPage() {
         <SectionLabel>MAKERS</SectionLabel>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
           {[
-            { label: '✨ Makers', href: '/curator/vendors' },
-            { label: '🤖 Agent', href: '/curator/maker-agent' },
+            { label: '📋 Listings', href: '/curator/vendors' },
             { label: '📊 Analytics', href: '/curator/maker-analytics' },
+            { label: '🤖 Agent', href: '/curator/maker-agent' },
           ].map(({ label, href }) => (
             <Link key={href} href={href} style={{ ...sans, textAlign: 'center', padding: '9px 0', border: `1px solid ${C.cream3}`, color: C.muted, fontSize: 11, fontWeight: 500, textDecoration: 'none', background: 'white' }}>
               {label}
