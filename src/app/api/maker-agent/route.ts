@@ -111,6 +111,7 @@ Each object must have exactly these fields:
   "phone": "country code format e.g. 919447000000 — empty string if not found, NEVER invent",
   "whatsapp": "same format — empty string if not found",
   "instagram_url": "full Instagram URL or empty string",
+  "instagram_followers": 0,
   "facebook_url": "full Facebook URL or empty string",
   "price_guide": "specific range if found, else 'Contact for pricing'",
   "years_experience": 0,
@@ -129,6 +130,7 @@ Rules:
 - confidence=medium if name and some details found but no phone
 - confidence=low if name only
 - NEVER invent phone numbers or details — use empty string/0/false when unknown
+- instagram_followers: only fill if explicitly stated in a search result (e.g. a directory listing mentioning "10k followers") — otherwise leave as 0. Do not estimate or guess based on typical account sizes.
 - min_guests/max_guests only relevant for catering and event_management — leave 0 for other categories
 - offers_trial and home_service mainly relevant for beauty_styling — leave false for other categories unless explicitly mentioned
 - Merge providers appearing in multiple results into ONE entry with the most complete details

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { supabase, Property, Vendor, Town, VENDOR_CATEGORY_LABELS, VendorCategory } from '@/lib/supabase'
 import { C, sans, serif } from '@/lib/design'
 import GratitudeModal from '@/components/GratitudeModal'
+import MakerCard from '@/components/MakerCard'
 
 const CARD_BG: Record<string, string> = {
   villa_with_pool: '#1C3A2B', villa_without_pool: '#2E5C4E',
@@ -219,11 +220,19 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
         supabase.from('properties').select('*, property_attributes(*), property_event_types(event_type)')
           .eq('is_active', true).eq('town_id', town.id)
           .order('sort_order', { ascending: false }).order('created_at', { ascending: false }),
-        supabase.from('vendors').select('*').eq('is_active', true)
+        supabase.from('vendors').select('*, vendor_attributes(*)').eq('is_active', true)
           .order('is_featured', { ascending: false }).order('created_at', { ascending: false }),
       ])
       if (!pr.error && pr.data) setProperties(pr.data as Property[])
-      if (!vr.error && vr.data) setVendors(vr.data as Vendor[])
+      if (!vr.error && vr.data) {
+        // Supabase returns joined one-to-one relations as an array — normalise to
+        // a single object so MakerCard's vendor_attributes?.field access works.
+        const normalised = vr.data.map((v: any) => ({
+          ...v,
+          vendor_attributes: Array.isArray(v.vendor_attributes) ? v.vendor_attributes[0] : v.vendor_attributes,
+        }))
+        setVendors(normalised as Vendor[])
+      }
       setLoading(false)
     }
     load()
@@ -561,18 +570,8 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
                 <button onClick={() => { setMakerFilter('all'); setSearch('') }} style={{ ...sans, fontSize: 12, color: C.terra, background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>Clear filters</button>
               </div>
             ) : filteredVendors.map((v, idx) => (
-              <div key={v.id} style={{ background: 'white', border: `1px solid ${C.cream3}`, padding: '18px 16px', boxShadow: '0 2px 8px rgba(0,0,0,.04)', opacity: 0, animation: 'cardFadeUp .45s ease forwards', animationDelay: `${Math.min(idx * 0.06, 0.4)}s` }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 7 }}>
-                  <div style={{ width: 8, height: 1, background: C.terra }}/>
-                  <span style={{ ...sans, fontSize: 9, color: C.terra, letterSpacing: '.07em' }}>{VENDOR_CATEGORY_LABELS[v.category as VendorCategory]}</span>
-                  <div style={{ width: 8, height: 1, background: C.terra }}/>
-                </div>
-                <div style={{ ...serif, fontSize: 18, color: C.text, marginBottom: 4 }}>{v.name}</div>
-                <div style={{ ...sans, fontSize: 12, color: C.muted, fontWeight: 300, marginBottom: 12 }}>{v.tagline}</div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  {v.whatsapp && <button onClick={() => { const msg = encodeURIComponent(`Hi! I found ${v.name} on Theeram (theeramspaces.in).`); window.location.href = `https://wa.me/${v.whatsapp}?text=${msg}` }} className="tap-press" style={{ ...sans, flex: 1, background: C.green, color: 'white', fontSize: 10, fontWeight: 700, letterSpacing: '.09em', textTransform: 'uppercase' as const, padding: '9px 0', border: 'none', cursor: 'pointer', boxShadow: '0 3px 10px rgba(28,58,43,.2)' }}>WhatsApp</button>}
-                  {v.phone && <a href={`tel:${v.phone}`} style={{ ...sans, padding: '9px 12px', border: `1px solid ${C.cream3}`, color: C.text, fontSize: 10, textDecoration: 'none' }}>📞 Call</a>}
-                </div>
+              <div key={v.id} style={{ opacity: 0, animation: 'cardFadeUp .45s ease forwards', animationDelay: `${Math.min(idx * 0.06, 0.4)}s` }}>
+                <MakerCard maker={v as any}/>
               </div>
             ))}
           </div>

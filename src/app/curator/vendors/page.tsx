@@ -14,7 +14,7 @@ type MainTab = 'makers' | 'submissions'
 
 interface District { id: string; name: string }
 interface VendorAttrs {
-  years_experience: number; team_size: number
+  years_experience: number; team_size: number; instagram_followers: number
   min_guests: number; max_guests: number
   portfolio_url: string; facebook_url: string
   offers_trial: boolean; home_service: boolean
@@ -28,7 +28,7 @@ export default function CuratorVendorsPage() {
   const [mode, setMode] = useState<Mode>('list')
   const [editing, setEditing] = useState<Partial<Vendor> | null>(null)
   const [editingAttrs, setEditingAttrs] = useState<VendorAttrs>({
-    years_experience: 0, team_size: 0, min_guests: 0, max_guests: 0,
+    years_experience: 0, team_size: 0, instagram_followers: 0, min_guests: 0, max_guests: 0,
     portfolio_url: '', facebook_url: '', offers_trial: false, home_service: false, category_details: {},
   })
   const [editingDistricts, setEditingDistricts] = useState<string[]>([])
@@ -74,7 +74,7 @@ export default function CuratorVendorsPage() {
 
   function newVendor() {
     setEditing({ is_active: false, is_featured: false, category: 'photography_video' })
-    setEditingAttrs({ years_experience: 0, team_size: 0, min_guests: 0, max_guests: 0, portfolio_url: '', facebook_url: '', offers_trial: false, home_service: false, category_details: {} })
+    setEditingAttrs({ years_experience: 0, team_size: 0, instagram_followers: 0, min_guests: 0, max_guests: 0, portfolio_url: '', facebook_url: '', offers_trial: false, home_service: false, category_details: {} })
     setEditingDistricts([])
     setMode('edit')
   }
@@ -85,14 +85,14 @@ export default function CuratorVendorsPage() {
     const { data } = await supabase.from('vendor_attributes').select('*').eq('vendor_id', v.id).single()
     if (data) {
       setEditingAttrs({
-        years_experience: data.years_experience ?? 0, team_size: data.team_size ?? 0,
+        years_experience: data.years_experience ?? 0, team_size: data.team_size ?? 0, instagram_followers: data.instagram_followers ?? 0,
         min_guests: data.min_guests ?? 0, max_guests: data.max_guests ?? 0,
         portfolio_url: data.portfolio_url ?? '', facebook_url: data.facebook_url ?? '',
         offers_trial: data.offers_trial ?? false, home_service: data.home_service ?? false,
         category_details: data.category_details ?? {},
       })
     } else {
-      setEditingAttrs({ years_experience: 0, team_size: 0, min_guests: 0, max_guests: 0, portfolio_url: '', facebook_url: '', offers_trial: false, home_service: false, category_details: {} })
+      setEditingAttrs({ years_experience: 0, team_size: 0, instagram_followers: 0, min_guests: 0, max_guests: 0, portfolio_url: '', facebook_url: '', offers_trial: false, home_service: false, category_details: {} })
     }
     setMode('edit')
   }
@@ -300,6 +300,11 @@ export default function CuratorVendorsPage() {
         <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:16 }}>
           {numField('Years experience', editingAttrs.years_experience, v => setEditingAttrs(p => ({...p, years_experience: v})))}
           {numField('Team size', editingAttrs.team_size, v => setEditingAttrs(p => ({...p, team_size: v})))}
+        </div>
+
+        <label style={{ ...sans,fontSize:9,color:C.terra,letterSpacing:'.07em',display:'block',marginBottom:8 }}>SOCIAL REACH</label>
+        <div style={{ marginBottom:16 }}>
+          {numField('Instagram followers', editingAttrs.instagram_followers, v => setEditingAttrs(p => ({...p, instagram_followers: v})))}
         </div>
 
         <label style={{ ...sans,fontSize:9,color:C.terra,letterSpacing:'.07em',display:'block',marginBottom:8 }}>CATEGORY DETAILS</label>

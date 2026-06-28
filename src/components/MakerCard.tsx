@@ -25,9 +25,15 @@ interface MakerCardProps {
       years_experience: number; team_size: number
       min_guests: number; max_guests: number
       offers_trial: boolean; home_service: boolean
+      instagram_followers?: number
       category_details: Record<string, any>
     }
   }
+}
+
+function formatFollowers(n: number): string {
+  if (n >= 1000) return `${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}k`
+  return `${n}`
 }
 
 export default function MakerCard({ maker }: MakerCardProps) {
@@ -140,6 +146,9 @@ export default function MakerCard({ maker }: MakerCardProps) {
             <a href={maker.instagram_url} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10, padding: '8px 10px', background: '#fdf0eb', borderRadius: 6, textDecoration: 'none' }}>
               <div style={{ width: 16, height: 16, borderRadius: 4, background: 'linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)', flexShrink: 0 }}/>
               <span style={{ ...sans, fontSize: 11, color: C.terra, fontWeight: 500 }}>{maker.instagram_url.replace(/https?:\/\/(www\.)?instagram\.com\//, '@').replace(/\/$/, '')}</span>
+              {!!attrs?.instagram_followers && attrs.instagram_followers > 0 && (
+                <span style={{ ...sans, fontSize: 10, color: C.muted, fontWeight: 300 }}>· {formatFollowers(attrs.instagram_followers)} followers</span>
+              )}
               <span style={{ ...sans, fontSize: 9, color: C.terra, marginLeft: 'auto' }}>View work →</span>
             </a>
           )}

@@ -33,7 +33,7 @@ interface Maker {
   phone: string; whatsapp: string
   instagram_url: string; facebook_url: string
   price_guide: string
-  years_experience: number; team_size: number
+  years_experience: number; team_size: number; instagram_followers: number
   min_guests: number; max_guests: number
   offers_trial: boolean; home_service: boolean
   category_details: Record<string, any>
@@ -70,6 +70,7 @@ function buildExportObject(m: Maker, category: string, districtIds: string[], di
     photos: (m.selected_images ?? []).filter(Boolean),
     years_experience: n(m.years_experience),
     team_size: n(m.team_size),
+    instagram_followers: n(m.instagram_followers),
     min_guests: n(m.min_guests),
     max_guests: n(m.max_guests),
     offers_trial: !!m.offers_trial,
@@ -332,6 +333,7 @@ export default function MakerAgentPage() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                   <NumField label="Years experience" val={m.years_experience} onChange={v => update(m.id, 'years_experience', v)}/>
                   <NumField label="Team size" val={m.team_size} onChange={v => update(m.id, 'team_size', v)}/>
+                  <NumField label="Instagram followers" val={m.instagram_followers} onChange={v => update(m.id, 'instagram_followers', v)}/>
                 </div>
                 <div>
                   <label style={{ ...sans, fontSize: 9, color: C.terra, letterSpacing: '.07em', display: 'block', marginBottom: 8 }}>CATEGORY DETAILS</label>
