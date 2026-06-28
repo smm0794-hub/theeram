@@ -19,8 +19,33 @@ const CATEGORY_COLOR: Record<string,string> = {
 
 interface Stats { enquiries_7d:number; enquiries_30d:number; enquiries_all:number; views_7d:number; views_30d:number; views_all:number }
 interface TrendDay { date:string; label:string; enquiries:number; views:number }
-interface MakerStat { name:string; slug:string; category:string; is_featured:boolean; enquiries:number; views:number }
+interface MakerStat { name:string; slug:string; category:string; is_featured:boolean; enquiries:number; views:number; photo_count:number; conversion_pct:number }
 interface CategoryStat { category:string; enquiries:number; views:number }
+interface PitchInsights {
+  bestConverter: MakerStat | null
+  mostEnquired: MakerStat | null
+  momentum: { this_week:number; last_week:number; multiplier:number|null }
+}
+
+function PitchCard({ icon, eyebrow, headline, sub }: { icon: string; eyebrow: string; headline: string; sub: string }) {
+  return (
+    <div style={{ background: C.green, padding: '22px 20px', position: 'relative', overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', right: -16, top: -16, opacity: .08 }}>
+        <svg viewBox="0 0 100 100" width={100} height={100}><circle cx="50" cy="50" r="45" stroke="white" strokeWidth={1} fill="none"/></svg>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+        <span style={{ fontSize: 16 }}>{icon}</span>
+        <span style={{ ...sans, fontSize: 10, color: C.gold, letterSpacing: '.08em' }}>{eyebrow}</span>
+      </div>
+      <div style={{ ...serif, fontSize: 19, color: 'white', fontWeight: 300, lineHeight: 1.35, marginBottom: 8 }}>{headline}</div>
+      <div style={{ ...sans, fontSize: 12, color: 'rgba(255,255,255,.6)', fontWeight: 300, lineHeight: 1.5 }}>{sub}</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 16, paddingTop: 14, borderTop: '1px solid rgba(255,255,255,.1)' }}>
+        <span style={{ ...serif, fontSize: 12, color: C.gold }}>തീരം</span>
+        <span style={{ ...sans, fontSize: 10, color: 'rgba(255,255,255,.4)' }}>theeram · theeramspaces.in</span>
+      </div>
+    </div>
+  )
+}
 
 export default function MakerAnalyticsPage() {
   const [loading, setLoading] = useState(true)
@@ -29,6 +54,7 @@ export default function MakerAnalyticsPage() {
   const [topMakers, setTopMakers] = useState<MakerStat[]>([])
   const [categoryBreakdown, setCategoryBreakdown] = useState<CategoryStat[]>([])
   const [totalMakers, setTotalMakers] = useState(0)
+  const [pitch, setPitch] = useState<PitchInsights | null>(null)
 
   useEffect(() => { load() }, [])
 
@@ -39,12 +65,13 @@ export default function MakerAnalyticsPage() {
     if (r.ok) {
       setStats(data.stats); setTrend(data.trend); setTopMakers(data.topMakers)
       setCategoryBreakdown(data.categoryBreakdown); setTotalMakers(data.totalMakers)
+      setPitch(data.pitchInsights)
     }
     setLoading(false)
   }
 
   const maxTrend = Math.max(...trend.map(d => Math.max(d.enquiries, d.views)), 1)
-  const maxCat = Math.max(...categoryBreakdown.map(c => c.enquiries + c.views), 1)
+  const hasPitchData = pitch && (pitch.mostEnquired || pitch.bestConverter || (pitch.momentum.multiplier && pitch.momentum.multiplier >= 1.3))
 
   return (
     <div style={{ minHeight:'100vh', background:C.cream, paddingBottom:48 }}>
@@ -65,6 +92,51 @@ export default function MakerAnalyticsPage() {
           </div>
         ) : stats && (
           <>
+            {/* ── Pitch section — real cards if data exists, honest placeholder if not ── */}
+            <div style={{ marginBottom: 24 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:9, marginBottom:12 }}>
+                <div style={{ width:14, height:1, background:C.terra }}/>
+                <span style={{ ...sans, fontSize:10, color:C.terra, letterSpacing:'.08em' }}>PITCH-READY · SCREENSHOT TO SHARE</span>
+              </div>
+
+              {hasPitchData ? (
+                <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+                  {pitch!.mostEnquired && (
+                    <PitchCard icon="🔥" eyebrow="PROOF OF DEMAND"
+                      headline={`${pitch!.mostEnquired.enquiries} people enquired about ${pitch!.mostEnquired.name} on Theeram`}
+                      sub={`${pitch!.mostEnquired.views} page views in the same period · ${CATEGORY_LABEL[pitch!.mostEnquired.category] ?? pitch!.mostEnquired.category}`}/>
+                  )}
+                  {pitch!.bestConverter && pitch!.bestConverter.conversion_pct > 0 && (
+                    <PitchCard icon="⭐" eyebrow="TOP CONVERTER"
+                      headline={`${pitch!.bestConverter.name} converts ${pitch!.bestConverter.conversion_pct}% of viewers into enquiries`}
+                      sub="Strong proof that quality makers get noticed on Theeram."/>
+                  )}
+                  {pitch!.momentum.multiplier && pitch!.momentum.multiplier >= 1.3 && (
+                    <PitchCard icon="📈" eyebrow="GROWING FAST"
+                      headline={`Maker enquiries up ${pitch!.momentum.multiplier}× this week`}
+                      sub={`${pitch!.momentum.this_week} enquiries this week, up from ${pitch!.momentum.last_week} last week.`}/>
+                  )}
+                </div>
+              ) : (
+                <div style={{ background:'white', border:`1px dashed ${C.cream3}`, padding:'24px 20px', textAlign:'center' }}>
+                  <div style={{ fontSize: 22, marginBottom: 10 }}>🌱</div>
+                  <p style={{ ...serif, fontSize: 15, color: C.text, fontWeight: 300, marginBottom: 6 }}>Not enough maker activity yet</p>
+                  <p style={{ ...sans, fontSize: 12, color: C.muted, fontWeight: 300, lineHeight: 1.6, maxWidth: 320, margin: '0 auto' }}>
+                    Once makers start getting views and enquiries, shareable proof-of-demand cards will appear here — the same way they already do for spaces.
+                    {totalMakers <= 2 && ' Run the maker agent to add more listings first.'}
+                  </p>
+                  {totalMakers <= 2 && (
+                    <Link href="/curator/maker-agent" style={{ ...sans, display: 'inline-block', marginTop: 14, fontSize: 12, color: C.terra, textDecoration: 'underline' }}>Run maker agent →</Link>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div style={{ display:'flex', alignItems:'center', gap:9, marginBottom:12 }}>
+              <div style={{ width:14, height:1, background:C.terra }}/>
+              <span style={{ ...sans, fontSize:10, color:C.terra, letterSpacing:'.08em' }}>RAW NUMBERS</span>
+            </div>
+
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:16 }}>
               {[
                 ['Enquiries · 7 days', stats.enquiries_7d, C.terra],
@@ -109,7 +181,7 @@ export default function MakerAnalyticsPage() {
                       <div style={{ ...sans, fontSize:11, color:C.muted }}>{c.enquiries}e · {c.views}v</div>
                     </div>
                     <div style={{ display:'flex', gap:3 }}>
-                      <div style={{ flex:1, background:C.cream2, borderRadius:2, overflow:'hidden' }}><div style={{ height:5, background:C.terra, width:`${((c.enquiries+c.views)/maxCat)*100}%`, transition:'width .3s' }}/></div>
+                      <div style={{ flex:1, background:C.cream2, borderRadius:2, overflow:'hidden' }}><div style={{ height:5, background:C.terra, width:`${((c.enquiries+c.views)/Math.max(categoryBreakdown[0].enquiries+categoryBreakdown[0].views,1))*100}%`, transition:'width .3s' }}/></div>
                     </div>
                   </div>
                 ))}
@@ -129,7 +201,10 @@ export default function MakerAnalyticsPage() {
                         </div>
                         <div style={{ ...sans, fontSize:10, color:C.muted }}>{CATEGORY_LABEL[m.category] ?? m.category}</div>
                       </div>
-                      <div style={{ ...sans, fontSize:10, color:C.muted }}>{m.enquiries}e · {m.views}v</div>
+                      <div style={{ textAlign:'right' as const }}>
+                        <div style={{ ...sans, fontSize:10, color:C.muted }}>{m.enquiries}e · {m.views}v</div>
+                        {m.views > 0 && <div style={{ ...sans, fontSize:10, color: m.conversion_pct >= 15 ? '#2D7A4F' : C.muted, fontWeight:600 }}>{m.conversion_pct}% conv.</div>}
+                      </div>
                     </div>
                     <div style={{ paddingLeft:24, display:'flex', gap:6 }}>
                       <div style={{ flex:1 }}>
@@ -144,8 +219,10 @@ export default function MakerAnalyticsPage() {
               </div>
             )}
 
-            {stats.enquiries_all === 0 && stats.views_all === 0 && (
-              <p style={{ ...sans, fontSize:14, color:C.muted, textAlign:'center', padding:'20px 0' }}>No maker activity yet.</p>
+            {stats.enquiries_all === 0 && stats.views_all === 0 && totalMakers > 0 && (
+              <p style={{ ...sans, fontSize:13, color:C.muted, textAlign:'center', padding:'10px 0', fontStyle:'italic' as const }}>
+                {totalMakers} maker{totalMakers !== 1 ? 's' : ''} listed, no activity tracked yet. Share maker pages to start collecting data.
+              </p>
             )}
           </>
         )}

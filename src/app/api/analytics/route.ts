@@ -1,70 +1,27 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
 
-export async function GET(req: NextRequest) {
+export const dynamic = 'force-dynamic'
+
+export async function GET() {
   try {
     const db = createServiceClient()
-    const { searchParams } = new URL(req.url)
-    const townId = searchParams.get('townId') // null = all towns
 
-    // Build town filter
-    const townFilter = townId ? `AND t.id = '${townId}'` : ''
-
-    // Enquiries with property + town info
-    const { data: enquiries, error: eErr } = await db.rpc('get_analytics', {
-      p_town_id: townId ?? null
-    })
-
-    // Since we can't use RPC easily, use raw queries via execute
-    // Get enquiries
-    const enquiriesQuery = `
-      SELECT 
-        i.id, i.created_at, i.event_type,
-        p.id as property_id, p.name as property_name, p.slug as property_slug,
-        t.id as town_id, t.name as town_name, t.hero_bg_color
-      FROM inquiries i
-      JOIN properties p ON p.id = i.property_id
-      LEFT JOIN towns t ON t.id = p.town_id
-      ${townId ? `WHERE t.id = '${townId}'` : ''}
-      ORDER BY i.created_at DESC
-    `
-
-    const viewsQuery = `
-      SELECT 
-        pv.id, pv.viewed_at,
-        p.id as property_id, p.name as property_name, p.slug as property_slug,
-        t.id as town_id, t.name as town_name, t.hero_bg_color
-      FROM property_views pv
-      JOIN properties p ON p.id = pv.property_id
-      LEFT JOIN towns t ON t.id = p.town_id
-      ${townId ? `WHERE t.id = '${townId}'` : ''}
-      ORDER BY pv.viewed_at DESC
-    `
-
-    const townsQuery = `SELECT id, name, slug, hero_bg_color FROM towns WHERE is_active = true ORDER BY sort_order`
-
-    const [eResult, vResult, tResult] = await Promise.all([
-      db.from('inquiries').select('id, created_at, event_type, properties!inner(id, name, slug, town_id, towns(id, name, hero_bg_color))').order('created_at', { ascending: false }),
-      db.from('property_views').select('id, viewed_at, properties!inner(id, name, slug, town_id, towns(id, name, hero_bg_color))').order('viewed_at', { ascending: false }),
-      db.from('towns').select('id, name, slug, hero_bg_color').eq('is_active', true).order('sort_order'),
+    const [eResult, vResult, propsResult] = await Promise.all([
+      db.from('inquiries').select('id, created_at, event_type, property_id, properties(id, name, slug, town_id, is_featured, photos, towns(id, name, hero_bg_color))').order('created_at', { ascending: false }),
+      db.from('property_views').select('id, viewed_at, property_id, properties(id, name, slug, town_id, is_featured, photos, towns(id, name, hero_bg_color))').order('viewed_at', { ascending: false }),
+      db.from('properties').select('id, name, slug, town_id, is_active, is_featured, photos, towns(id, name, hero_bg_color)').eq('is_active', true),
     ])
 
-    // Filter by town if specified
-    const filterByTown = (rows: any[]) => {
-      if (!townId) return rows
-      return rows.filter((r: any) => r.properties?.town_id === townId)
-    }
-
-    const enquiryRows = filterByTown(eResult.data ?? [])
-    const viewRows = filterByTown(vResult.data ?? [])
-    const towns = tResult.data ?? []
+    const enquiryRows = eResult.data ?? []
+    const viewRows = vResult.data ?? []
+    const allProps = propsResult.data ?? []
 
     const now = Date.now()
     const day7 = 7 * 24 * 60 * 60 * 1000
     const day14 = 14 * 24 * 60 * 60 * 1000
     const day30 = 30 * 24 * 60 * 60 * 1000
 
-    // Key stats
     const stats = {
       enquiries_7d: enquiryRows.filter((r: any) => now - new Date(r.created_at).getTime() < day7).length,
       enquiries_30d: enquiryRows.filter((r: any) => now - new Date(r.created_at).getTime() < day30).length,
@@ -74,7 +31,7 @@ export async function GET(req: NextRequest) {
       views_all: viewRows.length,
     }
 
-    // 14-day trend — using UTC dates consistently
+    // 14-day trend
     const trend = []
     for (let d = 13; d >= 0; d--) {
       const date = new Date(now - d * 24 * 60 * 60 * 1000)
@@ -87,42 +44,65 @@ export async function GET(req: NextRequest) {
       })
     }
 
-    // Per property stats
-    const propMap: Record<string, { name: string; slug: string; town_name: string; town_color: string; enquiries: number; views: number }> = {}
-
-    enquiryRows.forEach((r: any) => {
-      const p = r.properties
-      if (!p) return
-      const key = p.id
-      if (!propMap[key]) propMap[key] = { name: p.name, slug: p.slug, town_name: p.towns?.name ?? '', town_color: p.towns?.hero_bg_color ?? '#1C3A2B', enquiries: 0, views: 0 }
-      propMap[key].enquiries++
+    // Per-property stats — now includes conversion rate, photo count, town
+    const propMap: Record<string, { name: string; slug: string; town_name: string; town_color: string; enquiries: number; views: number; photo_count: number; is_featured: boolean }> = {}
+    allProps.forEach((p: any) => {
+      propMap[p.id] = {
+        name: p.name, slug: p.slug,
+        town_name: p.towns?.name ?? '', town_color: p.towns?.hero_bg_color ?? '#1C3A2B',
+        enquiries: 0, views: 0,
+        photo_count: Array.isArray(p.photos) ? p.photos.length : 0,
+        is_featured: !!p.is_featured,
+      }
     })
+    enquiryRows.forEach((r: any) => { const p = r.properties; if (p && propMap[p.id]) propMap[p.id].enquiries++ })
+    viewRows.forEach((r: any) => { const p = r.properties; if (p && propMap[p.id]) propMap[p.id].views++ })
 
-    viewRows.forEach((r: any) => {
-      const p = r.properties
-      if (!p) return
-      const key = p.id
-      if (!propMap[key]) propMap[key] = { name: p.name, slug: p.slug, town_name: p.towns?.name ?? '', town_color: p.towns?.hero_bg_color ?? '#1C3A2B', enquiries: 0, views: 0 }
-      propMap[key].views++
-    })
+    const allPropertyStats = Object.values(propMap).map(p => ({
+      ...p,
+      conversion_pct: p.views > 0 ? Math.round((p.enquiries / p.views) * 1000) / 10 : 0,
+    }))
 
-    const topProperties = Object.values(propMap)
-      .sort((a, b) => (b.enquiries + b.views) - (a.enquiries + a.views))
-      .slice(0, 10)
+    const topProperties = [...allPropertyStats].sort((a, b) => (b.enquiries + b.views) - (a.enquiries + a.views)).slice(0, 10)
 
-    // By town breakdown
+    // ── Pitch-ready insights ──────────────────────────────────────────────
+    // Best converter — the strongest "proof of demand" story, min 2 views to avoid noise
+    const eligibleForBest = allPropertyStats.filter(p => p.views >= 2)
+    const bestConverter = eligibleForBest.length
+      ? [...eligibleForBest].sort((a, b) => b.conversion_pct - a.conversion_pct)[0]
+      : null
+
+    // Most enquired — simplest, most shareable "demand" stat
+    const mostEnquired = [...allPropertyStats].sort((a, b) => b.enquiries - a.enquiries)[0] ?? null
+
+    // Photo correlation — average conversion for listings with 8+ photos vs under 5
+    const wellPhotographed = allPropertyStats.filter(p => p.photo_count >= 8 && p.views > 0)
+    const underPhotographed = allPropertyStats.filter(p => p.photo_count < 5 && p.views > 0)
+    const avgConv = (arr: typeof allPropertyStats) => arr.length ? arr.reduce((s, p) => s + p.conversion_pct, 0) / arr.length : null
+    const photoInsight = {
+      well_photographed_avg: avgConv(wellPhotographed),
+      under_photographed_avg: avgConv(underPhotographed),
+      well_photographed_count: wellPhotographed.length,
+      under_photographed_count: underPhotographed.length,
+    }
+
+    // Momentum — this 7 days vs previous 7 days
+    const last7 = trend.slice(7, 14).reduce((s, d) => s + d.enquiries, 0)
+    const prev7 = trend.slice(0, 7).reduce((s, d) => s + d.enquiries, 0)
+    const momentum = {
+      this_week: last7,
+      last_week: prev7,
+      multiplier: prev7 > 0 ? Math.round((last7 / prev7) * 10) / 10 : null,
+    }
+
+    // Town breakdown
     const townMap: Record<string, { name: string; color: string; enquiries: number; views: number }> = {}
-    towns.forEach((t: any) => {
-      townMap[t.id] = { name: t.name, color: t.hero_bg_color, enquiries: 0, views: 0 }
+    allProps.forEach((p: any) => {
+      const t = p.towns
+      if (t && !townMap[t.id]) townMap[t.id] = { name: t.name, color: t.hero_bg_color, enquiries: 0, views: 0 }
     })
-    enquiryRows.forEach((r: any) => {
-      const tid = r.properties?.town_id
-      if (tid && townMap[tid]) townMap[tid].enquiries++
-    })
-    viewRows.forEach((r: any) => {
-      const tid = r.properties?.town_id
-      if (tid && townMap[tid]) townMap[tid].views++
-    })
+    enquiryRows.forEach((r: any) => { const tid = r.properties?.town_id; if (tid && townMap[tid]) townMap[tid].enquiries++ })
+    viewRows.forEach((r: any) => { const tid = r.properties?.town_id; if (tid && townMap[tid]) townMap[tid].views++ })
     const townBreakdown = Object.values(townMap).sort((a, b) => (b.enquiries + b.views) - (a.enquiries + a.views))
 
     // Event type breakdown
@@ -130,7 +110,10 @@ export async function GET(req: NextRequest) {
     enquiryRows.forEach((r: any) => { etMap[r.event_type] = (etMap[r.event_type] || 0) + 1 })
     const eventTypes = Object.entries(etMap).sort((a, b) => b[1] - a[1])
 
-    return NextResponse.json({ stats, trend, topProperties, townBreakdown, eventTypes, towns })
+    return NextResponse.json({
+      stats, trend, topProperties, townBreakdown, eventTypes,
+      pitchInsights: { bestConverter, mostEnquired, photoInsight, momentum },
+    })
 
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 })

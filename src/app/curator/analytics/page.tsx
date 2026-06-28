@@ -1,62 +1,86 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 
 const C = { green:'#1C3A2B', cream:'#F5F0E8', cream2:'#EDE8DC', cream3:'#E5DFD0', gold:'#C9A84C', terra:'#9B3D1E', text:'#1C1C1A', muted:'#6B5E4E' }
 const sans = { fontFamily:'system-ui,sans-serif' } as const
 const serif = { fontFamily:'Georgia,serif' } as const
 
-interface Stats {
-  enquiries_7d: number; enquiries_30d: number; enquiries_all: number
-  views_7d: number; views_30d: number; views_all: number
+interface Stats { enquiries_7d:number; enquiries_30d:number; enquiries_all:number; views_7d:number; views_30d:number; views_all:number }
+interface TrendDay { date:string; label:string; enquiries:number; views:number }
+interface PropStat { name:string; slug:string; town_name:string; town_color:string; enquiries:number; views:number; photo_count:number; is_featured:boolean; conversion_pct:number }
+interface TownStat { name:string; color:string; enquiries:number; views:number }
+interface PitchInsights {
+  bestConverter: PropStat | null
+  mostEnquired: PropStat | null
+  photoInsight: { well_photographed_avg:number|null; under_photographed_avg:number|null; well_photographed_count:number; under_photographed_count:number }
+  momentum: { this_week:number; last_week:number; multiplier:number|null }
 }
-interface TrendDay { date: string; label: string; enquiries: number; views: number }
-interface PropStat { name: string; slug: string; town_name: string; town_color: string; enquiries: number; views: number }
-interface TownStat { name: string; color: string; enquiries: number; views: number }
-interface Town { id: string; name: string; slug: string; hero_bg_color: string }
+
+// A single shareable, screenshot-ready pitch card. Designed to look complete and
+// branded on its own — this is the unit you'd actually screenshot and send to an owner.
+function PitchCard({ icon, eyebrow, headline, sub, cardRef }: { icon: string; eyebrow: string; headline: string; sub: string; cardRef?: React.Ref<HTMLDivElement> }) {
+  return (
+    <div ref={cardRef} style={{ background: C.green, padding: '22px 20px', position: 'relative', overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', right: -16, top: -16, opacity: .08 }}>
+        <svg viewBox="0 0 100 100" width={100} height={100}><circle cx="50" cy="50" r="45" stroke="white" strokeWidth={1} fill="none"/></svg>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+        <span style={{ fontSize: 16 }}>{icon}</span>
+        <span style={{ ...sans, fontSize: 10, color: C.gold, letterSpacing: '.08em' }}>{eyebrow}</span>
+      </div>
+      <div style={{ ...serif, fontSize: 19, color: 'white', fontWeight: 300, lineHeight: 1.35, marginBottom: 8 }}>{headline}</div>
+      <div style={{ ...sans, fontSize: 12, color: 'rgba(255,255,255,.6)', fontWeight: 300, lineHeight: 1.5 }}>{sub}</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 16, paddingTop: 14, borderTop: '1px solid rgba(255,255,255,.1)' }}>
+        <span style={{ ...serif, fontSize: 12, color: C.gold }}>തീരം</span>
+        <span style={{ ...sans, fontSize: 10, color: 'rgba(255,255,255,.4)' }}>theeram · theeramspaces.in</span>
+      </div>
+    </div>
+  )
+}
+
+async function downloadCard(ref: React.RefObject<HTMLDivElement>, filename: string) {
+  if (!ref.current) return
+  try {
+    // Lightweight approach: use the browser's built-in capability via html-to-canvas-free method —
+    // since we can't guarantee html2canvas is installed, fall back to prompting a manual screenshot.
+    alert('Tip: use your device\\'s screenshot tool to capture this card, or right-click → "Save as image" on supported browsers.')
+  } catch {}
+}
 
 export default function AnalyticsPage() {
-  const [towns, setTowns] = useState<Town[]>([])
-  const [selectedTown, setSelectedTown] = useState<string>('all')
+  const [towns, setTowns] = useState<{ id: string; name: string; hero_bg_color: string }[]>([])
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState<Stats | null>(null)
   const [trend, setTrend] = useState<TrendDay[]>([])
   const [topProperties, setTopProperties] = useState<PropStat[]>([])
   const [townBreakdown, setTownBreakdown] = useState<TownStat[]>([])
   const [eventTypes, setEventTypes] = useState<[string, number][]>([])
+  const [pitch, setPitch] = useState<PitchInsights | null>(null)
 
-  useEffect(() => {
-    // Load towns for filter
-    fetch('/api/towns').then(r => r.json()).then(d => { if (d.data) setTowns(d.data) })
-  }, [])
+  const bestConverterRef = useRef<HTMLDivElement>(null)
+  const mostEnquiredRef = useRef<HTMLDivElement>(null)
+  const momentumRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    loadAnalytics()
-  }, [selectedTown])
+  useEffect(() => { load() }, [])
 
-  async function loadAnalytics() {
+  async function load() {
     setLoading(true)
-    const url = selectedTown === 'all' ? '/api/analytics' : `/api/analytics?townId=${selectedTown}`
-    const r = await fetch(url)
+    const r = await fetch('/api/analytics')
     const data = await r.json()
     if (!r.ok) { setLoading(false); return }
-    setStats(data.stats)
-    setTrend(data.trend)
-    setTopProperties(data.topProperties)
-    setTownBreakdown(data.townBreakdown)
-    setEventTypes(data.eventTypes)
+    setStats(data.stats); setTrend(data.trend); setTopProperties(data.topProperties)
+    setTownBreakdown(data.townBreakdown); setEventTypes(data.eventTypes)
+    setPitch(data.pitchInsights)
     setLoading(false)
   }
 
-  const selectedTownObj = towns.find(t => t.id === selectedTown)
   const maxTrend = Math.max(...trend.map(d => Math.max(d.enquiries, d.views)), 1)
 
   return (
     <div style={{ minHeight:'100vh', background:C.cream, paddingBottom:48 }}>
-      <div style={{ background:C.green, padding:'6px 16px' }}>
-        <span style={{ ...sans, fontSize:10, color:'rgba(255,255,255,.5)' }}>theeram</span>
-      </div>
+      <div style={{ background:C.green, padding:'6px 16px' }}><span style={{ ...sans, fontSize:10, color:'rgba(255,255,255,.5)' }}>theeram</span></div>
       <div style={{ background:C.cream, borderBottom:`1px solid ${C.cream3}`, padding:'13px 16px', display:'flex', justifyContent:'space-between', alignItems:'center', position:'sticky', top:0, zIndex:40 }}>
         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
           <Link href="/curator" style={{ ...sans, fontSize:12, color:C.muted, textDecoration:'none' }}>← Curator</Link>
@@ -65,18 +89,6 @@ export default function AnalyticsPage() {
       </div>
 
       <div style={{ padding:'16px 16px 0' }}>
-
-        {/* Town filter */}
-        <div style={{ marginBottom:18 }}>
-          <div style={{ ...sans, fontSize:9, color:C.terra, letterSpacing:'.08em', marginBottom:8 }}>FILTER BY TOWN</div>
-          <div style={{ display:'flex', gap:6, overflowX:'auto', paddingBottom:4 }} className="no-scrollbar">
-            <button onClick={() => setSelectedTown('all')} style={{ ...sans, flexShrink:0, padding:'7px 14px', border:`1px solid ${selectedTown==='all'?C.green:C.cream3}`, background:selectedTown==='all'?C.green:'white', color:selectedTown==='all'?'white':C.muted, fontSize:11, cursor:'pointer', fontWeight:selectedTown==='all'?600:400 }}>All towns</button>
-            {towns.map(t => (
-              <button key={t.id} onClick={() => setSelectedTown(t.id)} style={{ ...sans, flexShrink:0, padding:'7px 14px', border:`1px solid ${selectedTown===t.id?t.hero_bg_color:C.cream3}`, background:selectedTown===t.id?t.hero_bg_color:'white', color:selectedTown===t.id?'white':C.muted, fontSize:11, cursor:'pointer', fontWeight:selectedTown===t.id?600:400 }}>{t.name}</button>
-            ))}
-          </div>
-        </div>
-
         {loading ? (
           <div style={{ textAlign:'center', padding:'40px 0' }}>
             <div style={{ width:28, height:28, border:`2px solid ${C.terra}`, borderTopColor:'transparent', borderRadius:'50%', animation:'spin .8s linear infinite', margin:'0 auto' }}/>
@@ -84,11 +96,64 @@ export default function AnalyticsPage() {
           </div>
         ) : stats && (
           <>
-            <div style={{ ...serif, fontSize:16, color:C.text, marginBottom:16 }}>
-              {selectedTown === 'all' ? 'All towns' : selectedTownObj?.name}
+            {/* ── Pitch-ready cards — screenshot and send to owners ──────────── */}
+            {pitch && (pitch.bestConverter || pitch.mostEnquired || pitch.momentum.multiplier) && (
+              <div style={{ marginBottom: 24 }}>
+                <div style={{ display:'flex', alignItems:'center', gap:9, marginBottom:12 }}>
+                  <div style={{ width:14, height:1, background:C.terra }}/>
+                  <span style={{ ...sans, fontSize:10, color:C.terra, letterSpacing:'.08em' }}>PITCH-READY · SCREENSHOT TO SHARE</span>
+                </div>
+
+                <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+                  {pitch.mostEnquired && pitch.mostEnquired.enquiries > 0 && (
+                    <PitchCard
+                      cardRef={mostEnquiredRef}
+                      icon="🔥"
+                      eyebrow="PROOF OF DEMAND"
+                      headline={`${pitch.mostEnquired.enquiries} people enquired about ${pitch.mostEnquired.name} on Theeram`}
+                      sub={`${pitch.mostEnquired.views} page views in the same period · ${pitch.mostEnquired.town_name}`}
+                    />
+                  )}
+
+                  {pitch.bestConverter && pitch.bestConverter.conversion_pct > 0 && (
+                    <PitchCard
+                      cardRef={bestConverterRef}
+                      icon="⭐"
+                      eyebrow="TOP CONVERTER"
+                      headline={`${pitch.bestConverter.name} converts ${pitch.bestConverter.conversion_pct}% of viewers into enquiries`}
+                      sub={`With ${pitch.bestConverter.photo_count} photos and a complete listing — this is what great performance looks like on Theeram.`}
+                    />
+                  )}
+
+                  {pitch.momentum.multiplier && pitch.momentum.multiplier >= 1.3 && (
+                    <PitchCard
+                      cardRef={momentumRef}
+                      icon="📈"
+                      eyebrow="GROWING FAST"
+                      headline={`Enquiries up ${pitch.momentum.multiplier}× this week`}
+                      sub={`${pitch.momentum.this_week} enquiries this week, up from ${pitch.momentum.last_week} last week. Theeram's traffic is accelerating.`}
+                    />
+                  )}
+                </div>
+
+                {pitch.photoInsight.well_photographed_avg !== null && pitch.photoInsight.under_photographed_avg !== null && pitch.photoInsight.well_photographed_avg > pitch.photoInsight.under_photographed_avg && (
+                  <div style={{ background:'white', border:`1px solid ${C.cream3}`, padding:'14px', marginTop:12 }}>
+                    <div style={{ ...sans, fontSize:10, color:C.terra, letterSpacing:'.07em', marginBottom:8 }}>💡 INSIGHT — USE THIS TO COACH OWNERS</div>
+                    <p style={{ ...sans, fontSize:13, color:C.text, lineHeight:1.6, margin:0 }}>
+                      Listings with <strong>8+ photos</strong> convert at <strong>{pitch.photoInsight.well_photographed_avg.toFixed(1)}%</strong> on average ({pitch.photoInsight.well_photographed_count} listings),
+                      versus <strong>{pitch.photoInsight.under_photographed_avg.toFixed(1)}%</strong> for listings with under 5 photos ({pitch.photoInsight.under_photographed_count} listings).
+                      Encourage owners with thin photo sets to add more.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div style={{ display:'flex', alignItems:'center', gap:9, marginBottom:12 }}>
+              <div style={{ width:14, height:1, background:C.terra }}/>
+              <span style={{ ...sans, fontSize:10, color:C.terra, letterSpacing:'.08em' }}>RAW NUMBERS</span>
             </div>
 
-            {/* Key stats — 2x2 grid */}
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:16 }}>
               {[
                 ['Enquiries · 7 days', stats.enquiries_7d, C.terra],
@@ -103,7 +168,6 @@ export default function AnalyticsPage() {
               ))}
             </div>
 
-            {/* 14-day trend — shows both enquiries and views */}
             <div style={{ background:'white', border:`1px solid ${C.cream3}`, padding:'16px 14px', marginBottom:16 }}>
               <div style={{ ...sans, fontSize:10, color:C.muted, letterSpacing:'.07em', marginBottom:4 }}>LAST 14 DAYS</div>
               <div style={{ display:'flex', gap:12, marginBottom:10 }}>
@@ -123,8 +187,7 @@ export default function AnalyticsPage() {
               </div>
             </div>
 
-            {/* Town breakdown — only in all towns view */}
-            {selectedTown === 'all' && townBreakdown.length > 0 && (
+            {townBreakdown.length > 0 && (
               <div style={{ background:'white', border:`1px solid ${C.cream3}`, padding:'14px', marginBottom:16 }}>
                 <div style={{ ...sans, fontSize:10, color:C.muted, letterSpacing:'.07em', marginBottom:12 }}>BY TOWN</div>
                 {townBreakdown.map(t => (
@@ -147,19 +210,23 @@ export default function AnalyticsPage() {
               </div>
             )}
 
-            {/* Top properties */}
             {topProperties.length > 0 && (
               <div style={{ background:'white', border:`1px solid ${C.cream3}`, padding:'14px', marginBottom:16 }}>
-                <div style={{ ...sans, fontSize:10, color:C.muted, letterSpacing:'.07em', marginBottom:12 }}>TOP SPACES</div>
+                <div style={{ ...sans, fontSize:10, color:C.muted, letterSpacing:'.07em', marginBottom:12 }}>TOP SPACES · CONVERSION</div>
                 {topProperties.map((p, i) => (
                   <div key={p.slug} style={{ marginBottom:14 }}>
                     <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
                       <div style={{ ...sans, fontSize:11, color:C.muted, width:16, textAlign:'right' as const }}>{i+1}</div>
                       <div style={{ flex:1 }}>
-                        <div style={{ ...sans, fontSize:12, color:C.text, fontWeight:500 }}>{p.name}</div>
-                        {selectedTown === 'all' && p.town_name && <div style={{ ...sans, fontSize:10, color:C.muted }}>{p.town_name}</div>}
+                        <div style={{ ...sans, fontSize:12, color:C.text, fontWeight:500, display:'flex', alignItems:'center', gap:6 }}>
+                          {p.name}{p.is_featured && <span style={{ fontSize:9, background:C.gold, color:C.text, padding:'1px 6px', fontWeight:700 }}>PICK</span>}
+                        </div>
+                        <div style={{ ...sans, fontSize:10, color:C.muted }}>{p.town_name} · {p.photo_count} photos</div>
                       </div>
-                      <div style={{ ...sans, fontSize:10, color:C.muted }}>{p.enquiries}e · {p.views}v</div>
+                      <div style={{ textAlign:'right' as const }}>
+                        <div style={{ ...sans, fontSize:11, color:C.muted }}>{p.enquiries}e · {p.views}v</div>
+                        {p.views > 0 && <div style={{ ...sans, fontSize:10, color: p.conversion_pct >= 15 ? '#2D7A4F' : C.muted, fontWeight:600 }}>{p.conversion_pct}% conv.</div>}
+                      </div>
                     </div>
                     <div style={{ paddingLeft:24, display:'flex', gap:6 }}>
                       <div style={{ flex:1 }}>
@@ -180,7 +247,6 @@ export default function AnalyticsPage() {
               </div>
             )}
 
-            {/* Event type breakdown */}
             {eventTypes.length > 0 && (
               <div style={{ background:'white', border:`1px solid ${C.cream3}`, padding:'14px', marginBottom:16 }}>
                 <div style={{ ...sans, fontSize:10, color:C.muted, letterSpacing:'.07em', marginBottom:12 }}>BY EVENT TYPE</div>
@@ -197,7 +263,7 @@ export default function AnalyticsPage() {
             )}
 
             {stats.enquiries_all === 0 && stats.views_all === 0 && (
-              <p style={{ ...sans, fontSize:14, color:C.muted, textAlign:'center', padding:'20px 0' }}>No data yet{selectedTown !== 'all' ? ` for ${selectedTownObj?.name}` : ''}.</p>
+              <p style={{ ...sans, fontSize:14, color:C.muted, textAlign:'center', padding:'20px 0' }}>No data yet.</p>
             )}
           </>
         )}
