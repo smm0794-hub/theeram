@@ -644,7 +644,7 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
           propertyName={modalProperty.name}
           whatsappUrl={`https://wa.me/${modalProperty.owner_whatsapp}?text=${encodeURIComponent(`Hi! I found ${modalProperty.name} on Theeram (theeramspaces.in) and I'm interested in booking. Could you share availability and pricing?`)}`}
           reviewUrl="https://g.page/r/Cav0otb1aGpEEBM/review"
-          upiUrl="upi://pay?pa=smm0794@okhdfcbank&pn=Theeram&tn=Theeram+chai"
+          upiUrl="upi://pay?pa=smm0794@okhdfcbank&pn=Theeram&am=20&cu=INR&tn=Theeram+chai"
           onClose={() => { setShowModal(false); setModalProperty(null) }}
         />
       )}

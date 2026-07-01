@@ -178,7 +178,7 @@ export default function MakerCard({ maker }: MakerCardProps) {
           propertyName={maker.name}
           whatsappUrl={waUrl}
           reviewUrl="https://g.page/r/Cav0otb1aGpEEBM/review"
-          upiUrl="upi://pay?pa=smm0794@okhdfcbank&pn=Theeram&tn=Theeram+chai"
+          upiUrl="upi://pay?pa=smm0794@okhdfcbank&pn=Theeram&am=20&cu=INR&tn=Theeram+chai"
           onClose={() => setShowModal(false)}
         />
       )}

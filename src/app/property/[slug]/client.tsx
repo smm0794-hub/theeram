@@ -22,6 +22,23 @@ const CARD_BG: Record<string, string> = {
   lodging: '#1C3A2B', resort: '#2E5C4E',
 }
 
+// One random ID per browser tab/visit — cleared when the tab closes, never
+// written to a persistent cookie or localStorage. Used only to group views
+// within a single browsing session (e.g. "did this visitor look at 1 listing
+// or 5") — not tied to any personal identity.
+function getSessionId(): string {
+  try {
+    let id = sessionStorage.getItem('theeram_session_id')
+    if (!id) {
+      id = crypto.randomUUID()
+      sessionStorage.setItem('theeram_session_id', id)
+    }
+    return id
+  } catch {
+    return 'unknown'
+  }
+}
+
 export default function PropertyDetailClient({ slug }: { slug: string }) {
   const router = useRouter()
   const [property, setProperty] = useState<Property | null>(null)
@@ -29,6 +46,7 @@ export default function PropertyDetailClient({ slug }: { slug: string }) {
   const [showModal, setShowModal] = useState(false)
   const [activePhoto, setActivePhoto] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [currentViewId, setCurrentViewId] = useState<string | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -45,10 +63,13 @@ export default function PropertyDetailClient({ slug }: { slug: string }) {
           const res = await fetch('/api/track-view', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ property_id: data.id }),
+            body: JSON.stringify({ property_id: data.id, session_id: getSessionId() }),
           })
           const { view_id } = await res.json()
-          if (view_id) startDurationTracking(view_id)
+          if (view_id) {
+            setCurrentViewId(view_id)
+            startDurationTracking(view_id)
+          }
         } catch {}
       }
     }
@@ -91,11 +112,13 @@ export default function PropertyDetailClient({ slug }: { slug: string }) {
 
   async function handleWhatsApp() {
     if (!property) return
-    // Log enquiry
+    // Log enquiry — linked to the specific view that led to it, so analytics can
+    // compare time-on-page for views that converted vs. views that didn't.
     try {
       await supabase.from('inquiries').insert({
         property_id: property.id,
         event_type: property.property_event_types?.[0]?.event_type ?? 'general',
+        view_id: currentViewId,
       })
     } catch {}
     // Show gratitude modal — it handles WhatsApp opening internally
@@ -333,7 +356,7 @@ export default function PropertyDetailClient({ slug }: { slug: string }) {
           propertyName={property.name}
           whatsappUrl={waUrl}
           reviewUrl="https://g.page/r/Cav0otb1aGpEEBM/review"
-          upiUrl={`upi://pay?pa=smm0794@okhdfcbank&pn=Theeram&tn=Theeram+chai`}
+          upiUrl={`upi://pay?pa=smm0794@okhdfcbank&pn=Theeram&am=20&cu=INR&tn=Theeram+chai`}
           onClose={() => setShowModal(false)}
         />
       )}
