@@ -81,7 +81,7 @@ export async function GET() {
     }
 
     // ── 14-day daily trend (reusable — also used per-property below) ────────
-    function dailyTrend(views: any[], enquiries: any[]) {
+    const dailyTrend = (views: any[], enquiries: any[]) => {
       const arr = []
       for (let d = 13; d >= 0; d--) {
         const date = new Date(now - d * 24 * 60 * 60 * 1000)
@@ -98,7 +98,7 @@ export async function GET() {
     const trend = dailyTrend(viewRows, enquiryRows)
 
     // ── Weekly buckets, trailing WEEKS_WINDOW weeks (0 = most recent 7 days) ─
-    function weeklyBuckets(rows: any[], dateField: string) {
+    const weeklyBuckets = (rows: any[], dateField: string) => {
       const buckets = new Array(WEEKS_WINDOW).fill(0)
       rows.forEach((r: any) => {
         const age = now - new Date(r[dateField]).getTime()
