@@ -12,7 +12,7 @@ export async function GET() {
 
     const [eResult, vResult, propsResult] = await Promise.all([
       db.from('inquiries').select('id, created_at, property_id, view_id, properties(id, name, slug, town_id, is_featured, photos, towns(id, name, hero_bg_color))').order('created_at', { ascending: false }),
-      db.from('property_views').select('id, viewed_at, duration_seconds, property_id, session_id, properties(id, name, slug, town_id, is_featured, photos, towns(id, name, hero_bg_color))').order('viewed_at', { ascending: false }),
+      db.from('property_views').select('id, viewed_at, duration_seconds, property_id, session_id, visitor_country, visitor_region, properties(id, name, slug, town_id, is_featured, photos, towns(id, name, hero_bg_color))').order('viewed_at', { ascending: false }),
       db.from('properties').select('id, name, slug, town_id, is_active, is_featured, photos, created_at, towns(id, name, hero_bg_color)').eq('is_active', true),
     ])
 
@@ -69,6 +69,32 @@ export async function GET() {
       avg_properties_per_session: totalSessions > 0 ? Math.round((sessionSizes.reduce((s, n) => s + n, 0) / totalSessions) * 10) / 10 : 0,
     }
 
+    // ── Location breakdown: country, and region within India ────────────────
+    // City-level geo-IP is unreliable for smaller Kerala towns (often resolves
+    // to the nearest major POP like Kochi/Bengaluru), so we stop at region —
+    // this is precise enough to tell "local Kerala traffic" apart from
+    // "diaspora searching from abroad" without pretending to know the town.
+    const countryMap: Record<string, { country: string; views: number }> = {}
+    const regionMap: Record<string, { region: string; country: string; views: number }> = {}
+    let viewsWithLocation = 0
+    viewRows.forEach((r: any) => {
+      if (!r.visitor_country) return
+      viewsWithLocation++
+      const c = r.visitor_country
+      countryMap[c] = countryMap[c] ?? { country: c, views: 0 }
+      countryMap[c].views++
+      if (r.visitor_region) {
+        const key = `${c}::${r.visitor_region}`
+        regionMap[key] = regionMap[key] ?? { region: r.visitor_region, country: c, views: 0 }
+        regionMap[key].views++
+      }
+    })
+    const locationStats = {
+      views_with_location: viewsWithLocation,
+      by_country: Object.values(countryMap).sort((a, b) => b.views - a.views),
+      by_region: Object.values(regionMap).sort((a, b) => b.views - a.views).slice(0, 8),
+    }
+
     const stats = {
       enquiries_7d: enquiryRows.filter((r: any) => now - new Date(r.created_at).getTime() < day7).length,
       enquiries_30d: enquiryRows.filter((r: any) => now - new Date(r.created_at).getTime() < day30).length,
@@ -109,10 +135,20 @@ export async function GET() {
     }
     const siteViewBuckets = weeklyBuckets(viewRows, 'viewed_at')
     const siteEnqBuckets = weeklyBuckets(enquiryRows, 'created_at')
+    const avgEnquiriesPerWeek = Math.round((siteEnqBuckets.reduce((s, n) => s + n, 0) / WEEKS_WINDOW) * 10) / 10
     const weeklyStats = {
       avg_views_per_week: Math.round((siteViewBuckets.reduce((s, n) => s + n, 0) / WEEKS_WINDOW) * 10) / 10,
-      avg_enquiries_per_week: Math.round((siteEnqBuckets.reduce((s, n) => s + n, 0) / WEEKS_WINDOW) * 10) / 10,
+      avg_enquiries_per_week: avgEnquiriesPerWeek,
       weeks_window: WEEKS_WINDOW,
+    }
+
+    // ── Vendor-fee readiness: your own threshold, avg 100 enquiries/week ────
+    const VENDOR_FEE_THRESHOLD = 100
+    const readinessStats = {
+      threshold: VENDOR_FEE_THRESHOLD,
+      current: avgEnquiriesPerWeek,
+      pct_of_threshold: Math.min(999, Math.round((avgEnquiriesPerWeek / VENDOR_FEE_THRESHOLD) * 100)),
+      ready: avgEnquiriesPerWeek >= VENDOR_FEE_THRESHOLD,
     }
 
     // ── Per-property stats ──────────────────────────────────────────────────
@@ -201,7 +237,7 @@ export async function GET() {
     return NextResponse.json({
       stats, trend, topProperties, townBreakdown,
       movement: { topGainer, topDecliner },
-      durationStats, sessionStats, weeklyStats,
+      durationStats, sessionStats, weeklyStats, locationStats, readinessStats,
     })
 
   } catch (err: any) {

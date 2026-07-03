@@ -15,6 +15,8 @@ interface MovementItem { name:string; slug:string; last7:number; prev7:number; d
 interface DurationStats { avg_all:number|null; avg_viewed_only:number|null; avg_viewed_and_enquired:number|null; count_viewed_only:number; count_viewed_and_enquired:number }
 interface SessionStats { total_sessions:number; single_property_sessions:number; multi_property_sessions:number; single_pct:number; multi_pct:number; avg_properties_per_session:number }
 interface WeeklyStats { avg_views_per_week:number; avg_enquiries_per_week:number; weeks_window:number }
+interface LocationStats { views_with_location:number; by_country:{country:string;views:number}[]; by_region:{region:string;country:string;views:number}[] }
+interface ReadinessStats { threshold:number; current:number; pct_of_threshold:number; ready:boolean }
 
 // Catmull-Rom → cubic Bézier conversion, so lines render as smooth curves
 // instead of straight polyline segments.
@@ -96,6 +98,8 @@ export default function AnalyticsPage() {
   const [durationStats, setDurationStats] = useState<DurationStats | null>(null)
   const [sessionStats, setSessionStats] = useState<SessionStats | null>(null)
   const [weeklyStats, setWeeklyStats] = useState<WeeklyStats | null>(null)
+  const [locationStats, setLocationStats] = useState<LocationStats | null>(null)
+  const [readinessStats, setReadinessStats] = useState<ReadinessStats | null>(null)
   const [expandedSlug, setExpandedSlug] = useState<string | null>(null)
 
   useEffect(() => { load() }, [])
@@ -112,6 +116,8 @@ export default function AnalyticsPage() {
     setDurationStats(data.durationStats ?? null)
     setSessionStats(data.sessionStats ?? null)
     setWeeklyStats(data.weeklyStats ?? null)
+    setLocationStats(data.locationStats ?? null)
+    setReadinessStats(data.readinessStats ?? null)
     setLoading(false)
   }
 
@@ -133,6 +139,28 @@ export default function AnalyticsPage() {
           </div>
         ) : stats && (
           <>
+            {/* ── Vendor-fee readiness — your own bar: avg 100 enquiries/week ── */}
+            {readinessStats && (
+              <div style={{
+                background: readinessStats.ready ? '#eaf5ee' : 'white',
+                border: `1px solid ${readinessStats.ready ? '#b8e0c4' : C.cream3}`,
+                padding:'14px', marginBottom:16,
+              }}>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
+                  <span style={{ ...sans, fontSize:10, color:C.muted, letterSpacing:'.07em' }}>VENDOR-FEE READINESS</span>
+                  <span style={{ ...sans, fontSize:11, color: readinessStats.ready ? '#2D7A4F' : C.muted, fontWeight:600 }}>
+                    {readinessStats.ready ? '✓ THRESHOLD REACHED' : `${readinessStats.pct_of_threshold}% OF GOAL`}
+                  </span>
+                </div>
+                <div style={{ background:C.cream2, borderRadius:2, overflow:'hidden', marginBottom:8 }}>
+                  <div style={{ height:6, background: readinessStats.ready ? '#2D7A4F' : C.gold, width:`${Math.min(100, readinessStats.pct_of_threshold)}%`, transition:'width .3s' }}/>
+                </div>
+                <div style={{ ...sans, fontSize:12, color:C.text }}>
+                  {readinessStats.current} avg enquiries/week <span style={{ color:C.muted }}>· target {readinessStats.threshold}/week before approaching vendors</span>
+                </div>
+              </div>
+            )}
+
             {/* ── Key numbers ───────────────────────────────────────────────── */}
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:8 }}>
               {[
@@ -216,6 +244,45 @@ export default function AnalyticsPage() {
                 <div style={{ ...sans, fontSize:10, color:C.muted, textAlign:'center' }}>
                   {sessionStats.total_sessions} sessions tracked · avg {sessionStats.avg_properties_per_session} listings viewed per session
                 </div>
+              </div>
+            )}
+
+            {/* ── Views by location: country + region within India ───────────── */}
+            {locationStats && locationStats.views_with_location > 0 && (
+              <div style={{ background:'white', border:`1px solid ${C.cream3}`, padding:'14px', marginBottom:16 }}>
+                <div style={{ ...sans, fontSize:10, color:C.muted, letterSpacing:'.07em', marginBottom:4 }}>VIEWS BY LOCATION</div>
+                <div style={{ ...sans, fontSize:9, color:C.muted, marginBottom:12, fontStyle:'italic' as const }}>
+                  {locationStats.views_with_location} of {stats.views_all} views have location data
+                </div>
+                {locationStats.by_country.map(c => (
+                  <div key={c.country} style={{ marginBottom:8 }}>
+                    <div style={{ display:'flex', justifyContent:'space-between', marginBottom:3 }}>
+                      <span style={{ ...sans, fontSize:12, color:C.text }}>{c.country}</span>
+                      <span style={{ ...sans, fontSize:11, color:C.muted }}>{c.views} views</span>
+                    </div>
+                    <div style={{ background:C.cream2, borderRadius:2, overflow:'hidden' }}>
+                      <div style={{ height:5, background:'#2D7A4F', width:`${(c.views/locationStats.by_country[0].views)*100}%`, transition:'width .3s' }}/>
+                    </div>
+                  </div>
+                ))}
+                {locationStats.by_region.length > 0 && (
+                  <>
+                    <div style={{ ...sans, fontSize:9, color:C.muted, letterSpacing:'.05em', marginTop:14, marginBottom:8 }}>TOP REGIONS</div>
+                    {locationStats.by_region.map(r => (
+                      <div key={`${r.country}-${r.region}`} style={{ display:'flex', justifyContent:'space-between', padding:'4px 0' }}>
+                        <span style={{ ...sans, fontSize:11, color:C.text }}>{r.region}, {r.country}</span>
+                        <span style={{ ...sans, fontSize:11, color:C.muted }}>{r.views}</span>
+                      </div>
+                    ))}
+                  </>
+                )}
+              </div>
+            )}
+            {locationStats && locationStats.views_with_location === 0 && (
+              <div style={{ background:C.cream2, border:`1px dashed ${C.cream3}`, padding:'12px 14px', marginBottom:16 }}>
+                <p style={{ ...sans, fontSize:11, color:C.muted, lineHeight:1.6, margin:0 }}>
+                  📍 Location tracking is set up but not capturing yet — needs the geo headers wired into <code>/api/track-view</code>. New visits will start appearing here once that's connected.
+                </p>
               </div>
             )}
 
