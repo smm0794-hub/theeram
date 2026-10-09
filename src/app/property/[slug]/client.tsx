@@ -171,7 +171,7 @@ export default function PropertyDetailClient({ slug }: { slug: string }) {
   ]
 
   return (
-    <div style={{ background: C.cream, minHeight: '100vh', paddingBottom: 90 }}>
+    <div style={{ background: C.cream, minHeight: '100vh', paddingBottom: 112 }}>
       <Header/>
 
       {/* JSON-LD structured data */}
@@ -313,7 +313,7 @@ export default function PropertyDetailClient({ slug }: { slug: string }) {
 
         {/* Price */}
         <div style={{ borderTop: `1px solid ${C.cream3}`, paddingTop: 16 }}>
-          <p style={{ ...sans, fontSize: 13, color: C.muted, fontStyle: 'italic', fontWeight: 300 }}>{property.price_guide} · Contact owner for full details</p>
+          <p style={{ ...sans, fontSize: 13, color: C.muted, fontStyle: 'italic', fontWeight: 300 }}>{property.price_guide ? `Typically ${property.price_guide}. Owner confirms the exact price for your date.` : 'Ask the owner for pricing for your date.'}</p>
           <p style={{ ...sans, fontSize: 11, color: C.muted, lineHeight: 1.6, marginTop: 10, fontWeight: 300, borderTop: `1px solid ${C.cream3}`, paddingTop: 10 }}>
             Details reviewed and curated at time of listing. Facilities, pricing, and availability may change — please confirm directly with the owner before booking. Theeram Spaces is a discovery directory and is not party to any booking arrangement.
           </p>
@@ -335,8 +335,12 @@ export default function PropertyDetailClient({ slug }: { slug: string }) {
         <Link href="/" style={{ width: 44, height: 44, border: `1px solid ${C.cream3}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.muted, textDecoration: 'none', flexShrink: 0 }}>
           <svg viewBox="0 0 20 20" fill="none" width={18} height={18} stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M12 5L7 10l5 5"/></svg>
         </Link>
-        <button onClick={handleWhatsApp} style={{ ...sans, flex: 1, background: C.green, color: 'white', fontSize: 11, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', padding: '0 16px', height: 44, border: 'none', cursor: 'pointer' }}>
-          Talk to owner on WhatsApp
+        <button onClick={handleWhatsApp} style={{ ...sans, flex: 1, background: C.green, color: 'white', padding: '0 16px', height: 52, border: 'none', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase' }}>
+            <svg viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}><path d="M12 3a9 9 0 00-7.8 13.5L3 21l4.6-1.2A9 9 0 1012 3z"/></svg>
+            Check availability &amp; price
+          </span>
+          <span style={{ fontSize: 10, fontWeight: 300, letterSpacing: '.02em', opacity: .85 }}>Message ready on WhatsApp · No commission</span>
         </button>
       </div>
 

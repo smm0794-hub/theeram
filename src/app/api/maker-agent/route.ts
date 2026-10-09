@@ -113,7 +113,7 @@ Each object must have exactly these fields:
   "instagram_url": "full Instagram URL or empty string",
   "instagram_followers": 0,
   "facebook_url": "full Facebook URL or empty string",
-  "price_guide": "specific range if found, else 'Contact for pricing'",
+  "price_guide": "specific range if found, else 'Ask for price'",
   "years_experience": 0,
   "team_size": 0,
   "min_guests": 0,

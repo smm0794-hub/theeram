@@ -169,7 +169,7 @@ Each object must have exactly these fields:
   "description": "2-3 sentences, warm local tone, mention specific features if known",
   "phone": "country code format e.g. 919447000000 — empty string if not found, NEVER invent",
   "whatsapp": "same format — empty string if not found",
-  "price_guide": "Contact owner for pricing — or Rs.X/day if explicitly found",
+  "price_guide": "Ask owner for price — or Rs.X/day if explicitly found",
   "location": "specific area or ward within ${townName}",
   "instagram": "full URL or empty string",
   "maps_url": "Google Maps URL or empty string",

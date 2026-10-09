@@ -155,21 +155,20 @@ export default function MakerCard({ maker }: MakerCardProps) {
 
           <div style={{ width: '100%', height: 1, background: C.cream3, marginBottom: 10 }}/>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <div style={{ ...sans, fontSize: 14, fontWeight: 600, color: C.text }}>{maker.price_guide || 'Contact for pricing'}</div>
-            </div>
-            <button
-              onClick={handleContact}
-              style={{
-                ...sans, background: C.green, color: 'white', fontSize: 10, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase' as const,
-                padding: '9px 13px', border: 'none', cursor: 'pointer',
-                boxShadow: maker.is_featured ? undefined : '0 3px 10px rgba(28,58,43,.25)',
-                animation: maker.is_featured ? 'makerPickPulse 1.8s ease-in-out infinite' : 'none',
-              }}>
-              Contact owner
-            </button>
+          <div>
+            <div style={{ ...sans, fontSize: 14, fontWeight: 600, color: C.text }}>{maker.price_guide || 'Ask for price'}</div>
           </div>
+          <button
+            onClick={handleContact}
+            style={{
+              ...sans, width: '100%', height: 44, marginTop: 10, background: C.green, color: 'white', fontSize: 12, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase' as const,
+              border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              boxShadow: maker.is_featured ? undefined : '0 3px 10px rgba(28,58,43,.25)',
+              animation: maker.is_featured ? 'makerPickPulse 1.8s ease-in-out infinite' : 'none',
+            }}>
+            <svg viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}><path d="M12 3a9 9 0 00-7.8 13.5L3 21l4.6-1.2A9 9 0 1012 3z"/></svg>
+            Check availability &amp; price
+          </button>
         </div>
       </div>
 

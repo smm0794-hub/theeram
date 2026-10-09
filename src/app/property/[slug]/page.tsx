@@ -26,7 +26,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     const town = (p as any).towns
     const location = town ? `${town.name}, ${town.district} district, Kerala` : 'Kerala'
     const title = `${p.name} — ${typeLabel} in ${location}`
-    const desc = `${p.tagline} · ${p.price_guide ?? 'Contact owner for pricing'} · Ideal for ${eventTypes}. Book directly on WhatsApp — no commission, no middleman.`
+    const desc = `${p.tagline} · ${p.price_guide ?? 'Ask owner for pricing'} · Ideal for ${eventTypes}. Book directly on WhatsApp — no commission, no middleman.`
     const firstPhoto = (p as any).photos?.[0]
 
     return {

@@ -536,23 +536,25 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
                     </div>}
                     <div style={{ width: '100%', height: 1, background: C.cream3, marginBottom: 10 }}/>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      {/* Price — full range shown as stored, e.g. "₹20,000 - ₹23,000" or "Contact owner" */}
-                      <span style={{ ...sans, fontSize: 14, fontWeight: 600, color: C.text }}>{p.price_guide || 'Contact owner'}</span>
+                      {/* Price — full range shown as stored, e.g. "₹20,000 - ₹23,000" or "Ask for price" */}
+                      <span style={{ ...sans, fontSize: 14, fontWeight: 600, color: C.text }}>{p.price_guide || 'Ask for price'}</span>
                       <div style={{ display: 'flex', gap: 7 }}>
                         <button onClick={() => share(p.slug, p.name)} className="tap-press" style={{ width: 32, height: 32, border: `1px solid ${C.cream3}`, background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.muted }}>
                           <svg viewBox="0 0 14 14" fill="none" width={12} height={12} stroke="currentColor" strokeWidth={1.3} strokeLinecap="round"><circle cx="11" cy="2.5" r="1.5"/><circle cx="3" cy="7" r="1.5"/><circle cx="11" cy="11.5" r="1.5"/><path d="M4.5 6.3l5-3.2M4.5 7.7l5 3.2"/></svg>
                         </button>
-                        <button onClick={() => handleWhatsApp(p)} className="tap-press"
-                          style={{
-                            ...sans, background: C.green, color: 'white', fontSize: 10, fontWeight: 700, letterSpacing: '.09em', textTransform: 'uppercase' as const, padding: '9px 13px', border: 'none', cursor: 'pointer',
-                            boxShadow: isPick ? undefined : '0 3px 10px rgba(28,58,43,.25)',
-                            animation: isPick ? 'pickPulse 1.8s ease-in-out infinite' : 'none',
-                            transformOrigin: 'center',
-                          }}>
-                          Talk to owner
-                        </button>
                       </div>
                     </div>
+                    <button onClick={() => handleWhatsApp(p)} className="tap-press"
+                      style={{
+                        ...sans, width: '100%', height: 44, marginTop: 10, background: C.green, color: 'white', fontSize: 12, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase' as const, border: 'none', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                        boxShadow: isPick ? undefined : '0 3px 10px rgba(28,58,43,.25)',
+                        animation: isPick ? 'pickPulse 1.8s ease-in-out infinite' : 'none',
+                        transformOrigin: 'center',
+                      }}>
+                      <svg viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}><path d="M12 3a9 9 0 00-7.8 13.5L3 21l4.6-1.2A9 9 0 1012 3z"/></svg>
+                      Check availability
+                    </button>
                   </div>
                 </div>
               )
