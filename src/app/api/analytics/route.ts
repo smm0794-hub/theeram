@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
+import { fetchAll } from '@/lib/fetch-all'
 
 export const dynamic = 'force-dynamic'
 
@@ -10,14 +11,13 @@ export async function GET() {
   try {
     const db = createServiceClient()
 
-    const [eResult, vResult, propsResult] = await Promise.all([
-      db.from('inquiries').select('id, created_at, property_id, view_id, properties(id, name, slug, town_id, is_featured, photos, towns(id, name, hero_bg_color))').order('created_at', { ascending: false }),
-      db.from('property_views').select('id, viewed_at, duration_seconds, property_id, session_id, visitor_country, visitor_region, properties(id, name, slug, town_id, is_featured, photos, towns(id, name, hero_bg_color))').order('viewed_at', { ascending: false }),
+    // fetchAll pages past Supabase's 1000-row response cap (this was why totals stuck at 1000)
+    const [enquiryRows, viewRows, propsResult] = await Promise.all([
+      fetchAll((from, to) => db.from('inquiries').select('id, created_at, property_id, view_id, properties(id, name, slug, town_id, is_featured, photos, towns(id, name, hero_bg_color))').order('created_at', { ascending: false }).order('id').range(from, to)),
+      fetchAll((from, to) => db.from('property_views').select('id, viewed_at, duration_seconds, property_id, session_id, visitor_country, visitor_region, properties(id, name, slug, town_id, is_featured, photos, towns(id, name, hero_bg_color))').order('viewed_at', { ascending: false }).order('id').range(from, to)),
       db.from('properties').select('id, name, slug, town_id, is_active, is_featured, photos, created_at, towns(id, name, hero_bg_color)').eq('is_active', true),
     ])
 
-    const enquiryRows = eResult.data ?? []
-    const viewRows = vResult.data ?? []
     const allProps = propsResult.data ?? []
 
     const now = Date.now()
@@ -106,22 +106,55 @@ export async function GET() {
       views_with_duration_count: viewsWithDuration.length,
     }
 
+    // ── Day bucketing in IST (UTC+5:30) ─────────────────────────────────────
+    // Your visitors are in Kerala, so a "day" should roll over at midnight IST,
+    // not midnight UTC (which would split an evening's traffic across two days).
+    const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000
+    const DAY_MS = 24 * 60 * 60 * 1000
+    const istDay = (t: number | string) => new Date(new Date(t).getTime() + IST_OFFSET_MS).toISOString().slice(0, 10)
+    const lastNDays = (n: number) => Array.from({ length: n }, (_, i) => istDay(now - (n - 1 - i) * DAY_MS)) // oldest → newest
+
     // ── 14-day daily trend (reusable — also used per-property below) ────────
     const dailyTrend = (views: any[], enquiries: any[]) => {
-      const arr = []
-      for (let d = 13; d >= 0; d--) {
-        const date = new Date(now - d * 24 * 60 * 60 * 1000)
-        const dateStr = date.toISOString().slice(0, 10)
-        arr.push({
-          date: dateStr,
-          label: date.toISOString().slice(5, 10).replace('-', '/'),
-          views: views.filter((r: any) => new Date(r.viewed_at).toISOString().slice(0, 10) === dateStr).length,
-          enquiries: enquiries.filter((r: any) => new Date(r.created_at).toISOString().slice(0, 10) === dateStr).length,
-        })
-      }
-      return arr
+      const vCount: Record<string, number> = {}
+      const eCount: Record<string, number> = {}
+      views.forEach((r: any) => { const k = istDay(r.viewed_at); vCount[k] = (vCount[k] ?? 0) + 1 })
+      enquiries.forEach((r: any) => { const k = istDay(r.created_at); eCount[k] = (eCount[k] ?? 0) + 1 })
+      return lastNDays(14).map(date => ({
+        date,
+        label: date.slice(5).replace('-', '/'),
+        views: vCount[date] ?? 0,
+        enquiries: eCount[date] ?? 0,
+      }))
     }
     const trend = dailyTrend(viewRows, enquiryRows)
+
+    // ── Day-by-day detail: which listings were viewed / enquired each day ───
+    type DayRow = { slug: string; name: string; count: number }
+    const dayKeys = lastNDays(14)
+    const dayMap: Record<string, { views: Record<string, DayRow>; enqs: Record<string, DayRow> }> = {}
+    dayKeys.forEach(k => { dayMap[k] = { views: {}, enqs: {} } })
+    const tally = (bucket: Record<string, DayRow>, p: any) => {
+      if (!bucket[p.id]) bucket[p.id] = { slug: p.slug, name: p.name, count: 0 }
+      bucket[p.id].count++
+    }
+    viewRows.forEach((r: any) => { const d = dayMap[istDay(r.viewed_at)]; if (d && r.properties) tally(d.views, r.properties) })
+    enquiryRows.forEach((r: any) => { const d = dayMap[istDay(r.created_at)]; if (d && r.properties) tally(d.enqs, r.properties) })
+    const byCount = (a: DayRow, b: DayRow) => b.count - a.count || a.name.localeCompare(b.name)
+    const daily = [...dayKeys].reverse().map(date => { // newest first
+      const viewed = Object.values(dayMap[date].views).sort(byCount)
+      const enquired = Object.values(dayMap[date].enqs).sort(byCount)
+      const dt = new Date(date + 'T00:00:00Z')
+      return {
+        date,
+        weekday: dt.toLocaleDateString('en-GB', { weekday: 'short', timeZone: 'UTC' }),
+        label: dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }),
+        total_views: viewed.reduce((s, x) => s + x.count, 0),
+        total_enquiries: enquired.reduce((s, x) => s + x.count, 0),
+        viewed,
+        enquired,
+      }
+    })
 
     // ── Weekly buckets, trailing WEEKS_WINDOW weeks (0 = most recent 7 days) ─
     const weeklyBuckets = (rows: any[], dateField: string) => {
@@ -235,7 +268,7 @@ export async function GET() {
     const townBreakdown = Object.values(townMap).sort((a, b) => (b.enquiries + b.views) - (a.enquiries + a.views))
 
     return NextResponse.json({
-      stats, trend, topProperties, townBreakdown,
+      stats, trend, daily, topProperties, townBreakdown,
       movement: { topGainer, topDecliner },
       durationStats, sessionStats, weeklyStats, locationStats, readinessStats,
     })

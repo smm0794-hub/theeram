@@ -17,6 +17,8 @@ interface SessionStats { total_sessions:number; single_property_sessions:number;
 interface WeeklyStats { avg_views_per_week:number; avg_enquiries_per_week:number; weeks_window:number }
 interface LocationStats { views_with_location:number; by_country:{country:string;views:number}[]; by_region:{region:string;country:string;views:number}[] }
 interface ReadinessStats { threshold:number; current:number; pct_of_threshold:number; ready:boolean }
+interface DayListing { slug:string; name:string; count:number }
+interface DailyDetail { date:string; weekday:string; label:string; total_views:number; total_enquiries:number; viewed:DayListing[]; enquired:DayListing[] }
 
 // Catmull-Rom → cubic Bézier conversion, so lines render as smooth curves
 // instead of straight polyline segments.
@@ -87,6 +89,143 @@ function formatDuration(seconds: number): string {
   return s > 0 ? `${m}m ${s}s` : `${m}m`
 }
 
+
+// Listing × day grid — rows are listings, columns are the last 14 days (oldest → newest,
+// same direction as the line chart). Green intensity = page views, red badge = enquiries.
+function ListingDayMatrix({ days }: { days: DailyDetail[] }) {
+  const cols = [...days].reverse()
+  type Row = { slug:string; name:string; views:number[]; enqs:number[]; score:number }
+  const rows: Record<string, Row> = {}
+  const rowFor = (l: DayListing): Row => {
+    if (!rows[l.slug]) rows[l.slug] = { slug:l.slug, name:l.name, views:Array(cols.length).fill(0), enqs:Array(cols.length).fill(0), score:0 }
+    return rows[l.slug]
+  }
+  cols.forEach((d, ci) => {
+    d.viewed.forEach(l => { const r = rowFor(l); r.views[ci] = l.count; r.score += l.count })
+    d.enquired.forEach(l => { const r = rowFor(l); r.enqs[ci] = l.count; r.score += l.count * 3 })
+  })
+  const list = Object.values(rows).sort((a, b) => b.score - a.score || a.name.localeCompare(b.name))
+  const maxV = Math.max(1, ...list.flatMap(r => r.views))
+  const NAME_W = 108, CELL = 24
+
+  if (list.length === 0) return <div style={{ ...sans, fontSize:11, color:C.muted }}>No views or enquiries in the last 14 days.</div>
+
+  return (
+    <div>
+      <div style={{ display:'flex', gap:14, marginBottom:10, flexWrap:'wrap' as const }}>
+        <div style={{ display:'flex', alignItems:'center', gap:5 }}>
+          <div style={{ width:12, height:12, background:'rgba(45,122,79,.25)' }}/><div style={{ width:12, height:12, background:'rgba(45,122,79,.9)' }}/>
+          <span style={{ ...sans, fontSize:10, color:C.muted }}>Views (darker = more)</span>
+        </div>
+        <div style={{ display:'flex', alignItems:'center', gap:5 }}>
+          <div style={{ width:11, height:11, borderRadius:6, background:C.terra }}/><span style={{ ...sans, fontSize:10, color:C.muted }}>Enquiries</span>
+        </div>
+      </div>
+      <div style={{ overflowX:'auto', paddingTop:4 }}>
+        <div style={{ display:'inline-block', minWidth:'100%' }}>
+          <div style={{ display:'flex', alignItems:'flex-end', marginBottom:3 }}>
+            <div style={{ width:NAME_W, flexShrink:0, position:'sticky' as const, left:0, background:'white', zIndex:2, ...sans, fontSize:9, color:C.muted, letterSpacing:'.05em' }}>LISTING</div>
+            {cols.map((d, ci) => (
+              <div key={d.date} style={{ width:CELL, marginLeft:2, flexShrink:0, textAlign:'center' as const, ...sans, fontSize:9, color: ci === cols.length - 1 ? C.text : C.muted, fontWeight: ci === cols.length - 1 ? 700 : 400 }}>
+                {d.date.slice(8)}
+              </div>
+            ))}
+          </div>
+          {list.map(r => (
+            <div key={r.slug} style={{ display:'flex', alignItems:'center', marginBottom:2 }}>
+              <div title={r.name} style={{ width:NAME_W, flexShrink:0, position:'sticky' as const, left:0, background:'white', zIndex:1, paddingRight:6, ...sans, fontSize:11, color:C.text, whiteSpace:'nowrap' as const, overflow:'hidden', textOverflow:'ellipsis' }}>{r.name}</div>
+              {r.views.map((v, ci) => {
+                const e = r.enqs[ci]
+                const k = v > 0 ? 0.18 + 0.82 * (v / maxV) : 0
+                return (
+                  <div key={ci} style={{ width:CELL, height:CELL, marginLeft:2, flexShrink:0, position:'relative' as const, background: v > 0 ? `rgba(45,122,79,${k})` : C.cream2, display:'flex', alignItems:'center', justifyContent:'center', ...sans, fontSize:9, color: k > 0.55 ? 'white' : C.text }}>
+                    {v > 0 ? v : ''}
+                    {e > 0 && <span style={{ position:'absolute' as const, top:-4, right:-3, minWidth:12, height:12, borderRadius:6, background:C.terra, color:'white', fontSize:8, lineHeight:'12px', textAlign:'center' as const, padding:'0 2px', fontWeight:700, boxShadow:'0 0 0 1.5px white' }}>{e}</span>}
+                  </div>
+                )
+              })}
+            </div>
+          ))}
+        </div>
+      </div>
+      <div style={{ ...sans, fontSize:9, color:C.muted, marginTop:8, fontStyle:'italic' as const }}>Swipe sideways if the grid is wider than your screen · day numbers are dates of the month (IST)</div>
+    </div>
+  )
+}
+
+// Day-by-day accordion — tap a day to see exactly which listings were viewed and enquired.
+function DailyBreakdown({ days, openDate, onToggle }: { days: DailyDetail[]; openDate: string | null; onToggle: (date: string) => void }) {
+  return (
+    <div>
+      {days.map((d, i) => {
+        const has = d.total_views + d.total_enquiries > 0
+        const isOpen = openDate === d.date && has
+        const maxC = Math.max(1, ...d.viewed.map(l => l.count))
+        const enqBySlug: Record<string, number> = {}
+        d.enquired.forEach(l => { enqBySlug[l.slug] = l.count })
+        return (
+          <div key={d.date} style={{ borderTop: i === 0 ? 'none' : `1px solid ${C.cream2}` }}>
+            <div
+              onClick={() => has && onToggle(d.date)}
+              style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'11px 0', cursor: has ? 'pointer' : 'default', opacity: has ? 1 : 0.5 }}
+            >
+              <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                <span style={{ fontSize:9, color:C.muted, transform: isOpen ? 'rotate(90deg)' : 'none', display:'inline-block', transition:'transform .15s', width:8 }}>{has ? '▸' : ''}</span>
+                <span style={{ ...sans, fontSize:12, color:C.text, fontWeight:500 }}>{d.weekday} {d.label}</span>
+                {i === 0 && <span style={{ fontSize:8, background:C.gold, color:C.text, padding:'1px 5px', fontWeight:700 }}>TODAY</span>}
+              </div>
+              <div style={{ ...sans, fontSize:11 }}>
+                <span style={{ color:'#2D7A4F' }}>{d.total_views} views</span>
+                <span style={{ color:C.muted }}> · </span>
+                <span style={{ color: d.total_enquiries > 0 ? C.terra : C.muted, fontWeight: d.total_enquiries > 0 ? 700 : 400 }}>{d.total_enquiries} enq.</span>
+              </div>
+            </div>
+            {isOpen && (
+              <div style={{ background:C.cream, padding:'12px 12px 4px', marginBottom:10 }}>
+                {d.enquired.length > 0 && (
+                  <div style={{ marginBottom:12 }}>
+                    <div style={{ ...sans, fontSize:9, color:C.terra, letterSpacing:'.07em', marginBottom:6, fontWeight:700 }}>ENQUIRED ON WHATSAPP</div>
+                    {d.enquired.map(l => (
+                      <div key={l.slug} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'6px 8px', marginBottom:4, background:'white', borderLeft:`3px solid ${C.terra}` }}>
+                        <span style={{ ...sans, fontSize:12, color:C.text }}>{l.name}</span>
+                        <span style={{ ...sans, fontSize:11, color:C.terra, fontWeight:700 }}>{l.count > 1 ? `×${l.count}` : '✓'}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {d.viewed.length > 0 && (
+                  <div style={{ marginBottom:8 }}>
+                    <div style={{ ...sans, fontSize:9, color:'#2D7A4F', letterSpacing:'.07em', marginBottom:6, fontWeight:700 }}>VIEWED</div>
+                    {d.viewed.map(l => (
+                      <div key={l.slug} style={{ marginBottom:8 }}>
+                        <div style={{ display:'flex', justifyContent:'space-between', marginBottom:3 }}>
+                          <span style={{ ...sans, fontSize:12, color:C.text }}>
+                            {l.name}
+                            {enqBySlug[l.slug] > 0 && <span style={{ color:C.terra, fontSize:10, fontWeight:700 }}> · enquired</span>}
+                          </span>
+                          <span style={{ ...sans, fontSize:11, color:C.muted }}>{l.count}</span>
+                        </div>
+                        <div style={{ background:C.cream2, borderRadius:2, overflow:'hidden' }}>
+                          <div style={{ height:5, background:'#2D7A4F', width:`${(l.count / maxC) * 100}%`, transition:'width .3s' }}/>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {d.enquired.some(l => !d.viewed.find(v => v.slug === l.slug)) && (
+                  <div style={{ ...sans, fontSize:9, color:C.muted, fontStyle:'italic' as const, marginBottom:8 }}>
+                    Enquiries with no view that day came straight from the town-page card, without opening the listing.
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState<Stats | null>(null)
@@ -101,6 +240,8 @@ export default function AnalyticsPage() {
   const [locationStats, setLocationStats] = useState<LocationStats | null>(null)
   const [readinessStats, setReadinessStats] = useState<ReadinessStats | null>(null)
   const [expandedSlug, setExpandedSlug] = useState<string | null>(null)
+  const [daily, setDaily] = useState<DailyDetail[]>([])
+  const [openDay, setOpenDay] = useState<string | null>(null)
 
   useEffect(() => { load() }, [])
 
@@ -118,6 +259,8 @@ export default function AnalyticsPage() {
     setWeeklyStats(data.weeklyStats ?? null)
     setLocationStats(data.locationStats ?? null)
     setReadinessStats(data.readinessStats ?? null)
+    setDaily(data.daily ?? [])
+    setOpenDay(data.daily?.[0]?.date ?? null)
     setLoading(false)
   }
 
@@ -295,6 +438,24 @@ export default function AnalyticsPage() {
                 <span style={{ ...sans, fontSize:9, color:C.muted }}>{trend[trend.length-1]?.label}</span>
               </div>
             </div>
+
+            {/* ── Listings × days grid: which listings got views/enquiries each day ── */}
+            {daily.length > 0 && (
+              <div style={{ background:'white', border:`1px solid ${C.cream3}`, padding:'16px 14px', marginBottom:16 }}>
+                <div style={{ ...sans, fontSize:10, color:C.muted, letterSpacing:'.07em', marginBottom:4 }}>LISTINGS BY DAY — LAST 14 DAYS</div>
+                <div style={{ ...sans, fontSize:9, color:C.muted, marginBottom:12, fontStyle:'italic' as const }}>Each row is a listing, each column a day</div>
+                <ListingDayMatrix days={daily}/>
+              </div>
+            )}
+
+            {/* ── Day-by-day detail: exact listings viewed & enquired ──────── */}
+            {daily.length > 0 && (
+              <div style={{ background:'white', border:`1px solid ${C.cream3}`, padding:'14px 14px 6px', marginBottom:16 }}>
+                <div style={{ ...sans, fontSize:10, color:C.muted, letterSpacing:'.07em', marginBottom:4 }}>DAY-BY-DAY DETAIL</div>
+                <div style={{ ...sans, fontSize:9, color:C.muted, marginBottom:6, fontStyle:'italic' as const }}>Tap a day to see which listings were viewed and enquired · days in IST</div>
+                <DailyBreakdown days={daily} openDate={openDay} onToggle={d => setOpenDay(openDay === d ? null : d)}/>
+              </div>
+            )}
 
             {/* ── Growth & decline ────────────────────────────────────────────── */}
             {(topGainer || topDecliner) && (

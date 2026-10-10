@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
+import { fetchAll } from '@/lib/fetch-all'
 
 export const dynamic = 'force-dynamic'
 
@@ -7,14 +8,12 @@ export async function GET() {
   try {
     const db = createServiceClient()
 
-    const [eResult, vResult, vendorsResult] = await Promise.all([
-      db.from('vendor_inquiries').select('id, created_at, vendor_id, vendors(id, name, slug, category, is_featured)').order('created_at', { ascending: false }),
-      db.from('vendor_views').select('id, viewed_at, vendor_id, vendors(id, name, slug, category, is_featured)').order('viewed_at', { ascending: false }),
+    const [enquiryRows, viewRows, vendorsResult] = await Promise.all([
+      fetchAll((from, to) => db.from('vendor_inquiries').select('id, created_at, vendor_id, vendors(id, name, slug, category, is_featured)').order('created_at', { ascending: false }).order('id').range(from, to)),
+      fetchAll((from, to) => db.from('vendor_views').select('id, viewed_at, vendor_id, vendors(id, name, slug, category, is_featured)').order('viewed_at', { ascending: false }).order('id').range(from, to)),
       db.from('vendors').select('id, name, slug, category, is_active, is_featured, photos').eq('is_active', true),
     ])
 
-    const enquiryRows = eResult.data ?? []
-    const viewRows = vResult.data ?? []
     const vendors = vendorsResult.data ?? []
 
     const now = Date.now()
