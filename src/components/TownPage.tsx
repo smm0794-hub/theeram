@@ -158,7 +158,7 @@ function FilterRow({ filters, active, onSelect }: { filters: typeof FEEL_FILTERS
   return (
     <>
       <div ref={ref} onScroll={() => ref.current && setDot(Math.round(ref.current.scrollLeft / 158))}
-        style={{ display: 'flex', gap: 10, overflowX: 'auto', padding: '0 16px 14px', scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}
+        style={{ display: 'flex', gap: 9, overflowX: 'auto', padding: '0 16px 14px', scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}
         className="no-scrollbar">
         {filters.map((f, i) => (
           <div key={f.id} onClick={() => onSelect(f.id)}
@@ -166,11 +166,11 @@ function FilterRow({ filters, active, onSelect }: { filters: typeof FEEL_FILTERS
             style={{
               minWidth: 148, flexShrink: 0,
               background: active === f.id ? '#fdf0eb' : 'white',
-              border: active === f.id ? `2px solid ${C.terra}` : `1px solid ${C.cream3}`,
-              borderRadius: 18,
-              padding: '14px 14px', cursor: 'pointer', scrollSnapAlign: 'start',
+              border: active === f.id ? `1.5px solid ${C.terra}` : `1px solid ${C.cream3}`,
+              borderRadius: 12,
+              padding: '13px 13px', cursor: 'pointer', scrollSnapAlign: 'start',
               transition: 'all .15s',
-              boxShadow: active === f.id ? '0 3px 10px rgba(155,61,30,.12)' : '0 1px 3px rgba(0,0,0,.03)',
+              boxShadow: active === f.id ? '0 2px 8px rgba(155,61,30,.12)' : '0 1px 3px rgba(0,0,0,.04)',
               opacity: 0, animation: 'cardFadeUp .4s ease forwards', animationDelay: `${i * 0.05}s`,
             }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 5 }}>
@@ -178,7 +178,7 @@ function FilterRow({ filters, active, onSelect }: { filters: typeof FEEL_FILTERS
               <span style={{ ...sans, fontSize: 9, color: C.terra, letterSpacing: '.06em' }}>{f.ml}</span>
               <div style={{ width: 8, height: 1, background: C.terra }}/>
             </div>
-            <div style={{ ...serif, fontSize: 15, color: C.text, marginBottom: 3 }}>{f.en}</div>
+            <div style={{ ...serif, fontSize: 14, color: C.text, marginBottom: 3 }}>{f.en}</div>
             <div style={{ ...sans, fontSize: 11, color: C.muted, fontWeight: 300 }}>{f.desc}</div>
           </div>
         ))}
@@ -209,8 +209,6 @@ export default function TownPage({ town, allTowns, initialProperties, initialVen
   const [vendors, setVendors] = useState<Vendor[]>(initialVendors ?? [])
   const [loading, setLoading] = useState(!initialProperties)
   const [spaceFilter, setSpaceFilter] = useState('all')
-  const [capFilter, setCapFilter] = useState<'all' | 'under_100' | '100_plus' | '250_plus'>('all')
-  const [facilityChips, setFacilityChips] = useState<{ ac: boolean; pool: boolean; stay: boolean }>({ ac: false, pool: false, stay: false })
   const [modalProperty, setModalProperty] = useState<Property | null>(null)
   const [showModal, setShowModal] = useState(false)
   const [makerFilter, setMakerFilter] = useState('all')
@@ -292,23 +290,9 @@ export default function TownPage({ town, allTowns, initialProperties, initialVen
     } catch {}
   }
 
-  function matchesPhysicalFit(p: Property): boolean {
-    const rawAttrs = (p as any).property_attributes
-    const attrs = Array.isArray(rawAttrs) ? rawAttrs[0] : rawAttrs
-    const cap = attrs?.max_guests_day_event ?? 0
-    if (capFilter === 'under_100' && !(cap > 0 && cap <= 100)) return false
-    if (capFilter === '100_plus' && cap < 100) return false
-    if (capFilter === '250_plus' && cap < 250) return false
-    if (facilityChips.ac && !attrs?.has_ac_hall) return false
-    if (facilityChips.pool && !attrs?.has_pool) return false
-    if (facilityChips.stay && !((attrs?.room_count ?? 0) > 0 || (attrs?.max_guests_overnight ?? 0) > 0)) return false
-    return true
-  }
-
   const hasPhotos = (p: Property) => Array.isArray(p.photos) && p.photos.length > 0
   const filteredProps = properties.filter(p => {
     if (!matchesFilter(p.property_type, spaceFilter)) return false
-    if (!matchesPhysicalFit(p)) return false
     if (search.trim()) return p.name.toLowerCase().includes(search.toLowerCase()) || p.tagline?.toLowerCase().includes(search.toLowerCase())
     return true
   })
@@ -321,14 +305,6 @@ export default function TownPage({ town, allTowns, initialProperties, initialVen
   })
 
   const hasWhyContent = !!(town.why_here_text || town.why_here_heading)
-  const hasActiveFilters = spaceFilter !== 'all' || capFilter !== 'all' || facilityChips.ac || facilityChips.pool || facilityChips.stay || !!search.trim()
-
-  function clearAllFilters() {
-    setSpaceFilter('all')
-    setCapFilter('all')
-    setFacilityChips({ ac: false, pool: false, stay: false })
-    setSearch('')
-  }
 
   return (
     <div style={{ background: C.cream, minHeight: '100vh' }}>
@@ -338,6 +314,8 @@ export default function TownPage({ town, allTowns, initialProperties, initialVen
         .why-expand.open { max-height: 600px; opacity: 1; margin-top: 22px; }
         .why-chevron { display:inline-block; transition: transform .35s ease; }
         .why-chevron.rotated { transform: rotate(180deg); }
+        @keyframes trustPulse { 0%,100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.4); opacity: 0.6; } }
+        @keyframes tickerScroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
         @keyframes cardFadeUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
         .tap-press { transition: transform .12s ease; }
         .tap-press:active { transform: scale(0.97); }
@@ -359,8 +337,8 @@ export default function TownPage({ town, allTowns, initialProperties, initialVen
         <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${scrollPct}%`, background: C.gold, transition: 'width .1s linear' }}/>
       </div>
 
-      {/* Hero with Rounded Bottom Arch */}
-      <section style={{ background: heroBg, padding: '24px 20px 44px', position: 'relative', overflow: 'hidden', borderRadius: '0 0 32px 32px', boxShadow: '0 6px 24px rgba(0,0,0,.08)' }}>
+      {/* Hero */}
+      <section style={{ background: heroBg, padding: '24px 20px 52px', position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', right: -20, top: -20, opacity: .06, pointerEvents: 'none' }}>
           <svg viewBox="0 0 200 200" fill="none" width={220} height={220}>
             <circle cx="100" cy="100" r="90" stroke="white" strokeWidth={1}/>
@@ -373,48 +351,26 @@ export default function TownPage({ town, allTowns, initialProperties, initialVen
         <div style={{ position: 'absolute', left: -60, bottom: -60, width: 220, height: 220, borderRadius: '50%', background: 'radial-gradient(circle, rgba(201,168,76,.10), transparent 70%)', pointerEvents: 'none' }}/>
 
         <div style={{ maxWidth: 1020, margin: '0 auto', position: 'relative', zIndex: 2 }}>
-          {/* Top row — wordmark left, town pills + hamburger right */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, gap: 12 }}>
-            <Link href="/" style={{ display: 'flex', alignItems: 'baseline', gap: 8, textDecoration: 'none' }}>
-              <span style={{ ...serif, fontSize: 15, color: 'rgba(255,255,255,.65)' }}>തീരം</span>
-              <span style={{ color: C.gold, fontSize: 12 }}>·</span>
-              <span style={{ ...serif, fontSize: 15, color: 'rgba(255,255,255,.85)', letterSpacing: '.03em' }}>theeram</span>
-            </Link>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              {allTowns.length > 1 && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(255,255,255,.07)', padding: 4, borderRadius: 999, border: '1px solid rgba(255,255,255,.12)', overflowX: 'auto' }} className="no-scrollbar">
-                  {allTowns.map(t => {
-                    const active = t.slug === town.slug
-                    return (
-                      <Link key={t.slug} href={`/${t.slug}`}
-                        style={{
-                          ...sans, fontSize: 11, padding: '5px 12px', borderRadius: 999, textDecoration: 'none', whiteSpace: 'nowrap',
-                          background: active ? C.gold : 'transparent',
-                          color: active ? C.text : 'rgba(255,255,255,.72)',
-                          fontWeight: active ? 600 : 400,
-                        }}>
-                        {t.name}
-                      </Link>
-                    )
-                  })}
-                </div>
-              )}
-
-              <button onClick={() => setNavOpen(v => !v)} aria-label="Menu" className="tap-press" style={{ background: 'rgba(255,255,255,.08)', border: 'none', cursor: 'pointer', padding: 8, borderRadius: 10 }}>
-                {navOpen ? (
-                  <svg viewBox="0 0 20 20" fill="none" width={18} height={18} stroke="white" strokeWidth={1.4} strokeLinecap="round"><path d="M5 5l10 10M15 5L5 15"/></svg>
-                ) : (
-                  <svg viewBox="0 0 20 20" fill="none" width={18} height={18} stroke="white" strokeWidth={1.4} strokeLinecap="round">
-                    <line x1="3" y1="6" x2="17" y2="6"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="14" x2="17" y2="14"/>
-                  </svg>
-                )}
-              </button>
+          {/* Top row — wordmark left, hamburger right */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 22 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+              <span style={{ ...serif, fontSize: 14, color: 'rgba(255,255,255,.55)' }}>തീരം</span>
+              <span style={{ color: 'rgba(255,255,255,.3)', fontSize: 12 }}>·</span>
+              <span style={{ ...serif, fontSize: 14, color: 'rgba(255,255,255,.55)', letterSpacing: '.03em' }}>theeram</span>
             </div>
+            <button onClick={() => setNavOpen(v => !v)} aria-label="Menu" className="tap-press" style={{ background: 'rgba(255,255,255,.08)', border: 'none', cursor: 'pointer', padding: 8, borderRadius: 8 }}>
+              {navOpen ? (
+                <svg viewBox="0 0 20 20" fill="none" width={18} height={18} stroke="white" strokeWidth={1.4} strokeLinecap="round"><path d="M5 5l10 10M15 5L5 15"/></svg>
+              ) : (
+                <svg viewBox="0 0 20 20" fill="none" width={18} height={18} stroke="white" strokeWidth={1.4} strokeLinecap="round">
+                  <line x1="3" y1="6" x2="17" y2="6"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="14" x2="17" y2="14"/>
+                </svg>
+              )}
+            </button>
           </div>
 
           {navOpen && (
-            <div style={{ background: 'rgba(0,0,0,.22)', borderRadius: 16, padding: '6px 16px', marginBottom: 20 }}>
+            <div style={{ background: 'rgba(0,0,0,.18)', borderRadius: 12, padding: '6px 16px', marginBottom: 20 }}>
               {[
                 { label: 'Spaces', href: '/', note: null },
                 { label: 'Makers', href: '/?tab=makers', note: null },
@@ -425,49 +381,38 @@ export default function TownPage({ town, allTowns, initialProperties, initialVen
                 <Link key={label} href={href} onClick={() => setNavOpen(false)}
                   style={{ ...sans, fontSize: 13, color: 'white', textDecoration: 'none', fontWeight: 300, padding: '11px 0', borderBottom: i < 4 ? '1px solid rgba(255,255,255,.1)' : 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   {label}
-                  {note && <span style={{ fontSize: 9, color: C.gold, letterSpacing: '.06em', border: `1px solid ${C.gold}`, padding: '2px 8px', borderRadius: 999 }}>{note}</span>}
+                  {note && <span style={{ fontSize: 9, color: C.gold, letterSpacing: '.06em', border: `1px solid ${C.gold}`, padding: '2px 7px', borderRadius: 6 }}>{note}</span>}
                 </Link>
               ))}
             </div>
           )}
 
-          {/* Town badge pill */}
-          <div style={{ display: 'inline-flex', alignItems: 'baseline', gap: 8, marginBottom: 16, padding: '5px 14px', borderRadius: 999, background: 'rgba(255,255,255,.07)', border: '1px solid rgba(201,168,76,.3)' }}>
-            <span style={{ ...serif, fontSize: 16, color: C.gold, fontWeight: 400 }}>{town.name}</span>
-            <span style={{ ...sans, fontSize: 11, color: 'rgba(255,255,255,.65)', letterSpacing: '.03em' }}>· {town.district} District · Kerala</span>
+          {/* Town name — prominent */}
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 9, marginBottom: 18, flexWrap: 'wrap' as const }}>
+            <span style={{ ...serif, fontSize: 22, color: C.gold, fontWeight: 400 }}>{town.name}</span>
+            <span style={{ ...sans, fontSize: 11, color: 'rgba(255,255,255,.55)', letterSpacing: '.03em' }}>{town.district} District · Kerala</span>
           </div>
 
           {/* Hero headline */}
-          <h1 style={{ ...serif, fontSize: 36, lineHeight: 1.15, color: 'white', marginBottom: 14, fontWeight: 300, maxWidth: 640 }}
+          <h1 style={{ ...serif, fontSize: 36, lineHeight: 1.15, color: 'white', marginBottom: 16, fontWeight: 300 }}
             dangerouslySetInnerHTML={{ __html: town.hero_headline || `Event spaces in <em style="color:${C.gold}">${town.name}</em>` }}/>
-          <div style={{ width: 36, height: 2, borderRadius: 2, background: C.gold, marginBottom: 16 }}/>
-          <p style={{ ...sans, fontSize: 13.5, color: 'rgba(255,255,255,.74)', lineHeight: 1.75, maxWidth: 540, marginBottom: 24, fontWeight: 300 }}>
+          <div style={{ width: 34, height: 2, background: C.gold, marginBottom: 18 }}/>
+          <p style={{ ...sans, fontSize: 13, color: 'rgba(255,255,255,.68)', lineHeight: 1.75, maxWidth: 420, marginBottom: 28, fontWeight: 300 }}>
             {town.hero_subtext}
           </p>
 
-          {/* Rounded Buttons + Calm Trust Row */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              {hasWhyContent && (
-                <button onClick={() => setWhyOpen(o => !o)} className="tap-press"
-                  style={{ ...sans, background: whyOpen ? C.green : C.gold, color: whyOpen ? C.gold : C.text, fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', padding: '11px 20px', borderRadius: 999, border: `1px solid ${C.gold}`, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  Why {town.name} <span className={`why-chevron${whyOpen ? ' rotated' : ''}`} style={{ fontSize: 11 }}>⌄</span>
-                </button>
-              )}
-              <button onClick={() => document.getElementById('other-locations')?.scrollIntoView({ behavior: 'smooth' })} className="tap-press"
-                style={{ ...sans, background: 'rgba(255,255,255,.06)', color: C.gold, fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', padding: '11px 18px', borderRadius: 999, border: `1px solid rgba(201,168,76,.45)`, cursor: 'pointer' }}>
-                Other locations
+          {/* Buttons — "Why Town" first, "Other locations" second */}
+          <div style={{ display: 'flex', gap: 12 }}>
+            {hasWhyContent && (
+              <button onClick={() => setWhyOpen(o => !o)} className="tap-press"
+                style={{ ...sans, background: whyOpen ? C.green : C.gold, color: whyOpen ? C.gold : C.text, fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', padding: '12px 20px', borderRadius: 8, border: `1px solid ${C.gold}`, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+                Why {town.name} <span className={`why-chevron${whyOpen ? ' rotated' : ''}`} style={{ fontSize: 11 }}>⌄</span>
               </button>
-            </div>
-
-            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 16 }}>
-              {['No middlemen', 'Direct owner WhatsApp & phone', 'Individually reviewed'].map(text => (
-                <div key={text} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <div style={{ width: 5, height: 5, borderRadius: '50%', background: C.gold }}/>
-                  <span style={{ ...sans, fontSize: 11, color: 'rgba(255,255,255,.78)', fontWeight: 300 }}>{text}</span>
-                </div>
-              ))}
-            </div>
+            )}
+            <button onClick={() => document.getElementById('other-locations')?.scrollIntoView({ behavior: 'smooth' })} className="tap-press"
+              style={{ ...sans, background: 'transparent', color: C.gold, fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', padding: '12px 18px', borderRadius: 8, border: `1px solid ${C.gold}`, cursor: 'pointer' }}>
+              Other locations
+            </button>
           </div>
 
           {hasWhyContent && (
@@ -477,24 +422,24 @@ export default function TownPage({ town, allTowns, initialProperties, initialVen
                 <div style={{ ...serif, fontSize: 21, fontWeight: 300, color: 'white', marginBottom: 12, lineHeight: 1.3 }}>
                   {town.why_here_heading || `Why ${town.name}?`}
                 </div>
-                <p style={{ ...sans, fontSize: 13, color: 'rgba(255,255,255,.7)', lineHeight: 1.75, fontWeight: 300, marginBottom: 20, maxWidth: 640 }}>
+                <p style={{ ...sans, fontSize: 12.5, color: 'rgba(255,255,255,.65)', lineHeight: 1.75, fontWeight: 300, marginBottom: 20 }}>
                   {town.why_here_text}
                 </p>
                 {(town.stat_1_value || town.stat_2_value || town.stat_3_value) && (
                   <>
                     <div style={{ width: '100%', height: 1, background: 'rgba(255,255,255,.1)', marginBottom: 18 }}/>
-                    <div style={{ display: 'flex', maxWidth: 460 }}>
+                    <div style={{ display: 'flex' }}>
                       {[[town.stat_1_value, town.stat_1_label], [town.stat_2_value, town.stat_2_label], [town.stat_3_value, town.stat_3_label]].map(([val, label], i) => val ? (
                         <div key={i} style={{ flex: 1, borderLeft: i > 0 ? '1px solid rgba(255,255,255,.1)' : 'none', paddingLeft: i > 0 ? 14 : 0 }}>
                           <div style={{ ...serif, fontSize: 21, color: C.gold, marginBottom: 2, fontWeight: 300 }}>{val}</div>
-                          <div style={{ ...sans, fontSize: 8.5, color: 'rgba(255,255,255,.45)', letterSpacing: '.08em' }}>{label}</div>
+                          <div style={{ ...sans, fontSize: 8.5, color: 'rgba(255,255,255,.4)', letterSpacing: '.08em' }}>{label}</div>
                         </div>
                       ) : null)}
                     </div>
                   </>
                 )}
                 <button onClick={() => setWhyOpen(false)} className="tap-press"
-                  style={{ ...sans, marginTop: 18, background: 'none', border: 'none', color: 'rgba(255,255,255,.55)', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
+                  style={{ ...sans, marginTop: 18, background: 'none', border: 'none', color: 'rgba(255,255,255,.45)', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
                   ↑ Collapse
                 </button>
               </div>
@@ -503,19 +448,29 @@ export default function TownPage({ town, allTowns, initialProperties, initialVen
         </div>
       </section>
 
-      {/* Filter section — constrained on desktop */}
-      <section style={{ background: C.cream, paddingTop: 26, maxWidth: 1052, margin: '0 auto' }}>
-        <div style={{ padding: '0 16px', marginBottom: 14 }}>
-          <SectionDivider label={tab === 'spaces' ? 'ഭാവം · SETTING & ARCHITECTURE' : 'കൈവഴക്കം · LOCAL CRAFT'} variant="line-left" fill/>
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-            <div style={{ ...serif, fontSize: 22, fontWeight: 400, color: C.text }}>
-              {tab === 'spaces' ? 'Find a space by feel' : 'Find by craft'}
+      {/* Trust bar — running ticker */}
+      <div style={{ background: C.green2, padding: '11px 0', overflow: 'hidden', boxShadow: 'inset 0 2px 8px rgba(0,0,0,.12)', position: 'relative' }}>
+        <div style={{ display: 'flex', width: 'max-content', animation: 'tickerScroll 22s linear infinite' }}>
+          {[0, 1].map(rep => (
+            <div key={rep} style={{ display: 'flex', alignItems: 'center', gap: 28, paddingRight: 28 }}>
+              {['No middlemen', 'Best price', 'Individually reviewed', 'No login required'].map(text => (
+                <div key={text} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                  <div style={{ width: 5, height: 5, borderRadius: '50%', background: C.gold, animation: 'trustPulse 2s ease-in-out infinite' }}/>
+                  <span style={{ ...sans, fontSize: 10.5, color: 'rgba(255,255,255,.8)', fontWeight: 400, whiteSpace: 'nowrap' as const }}>{text}</span>
+                  <span style={{ color: 'rgba(255,255,255,.2)', fontSize: 10, marginLeft: 8 }}>·</span>
+                </div>
+              ))}
             </div>
-            {tab === 'spaces' && (
-              <span style={{ ...sans, fontSize: 11, color: C.muted, fontWeight: 300 }}>
-                Every space welcomes weddings, engagements, baptisms &amp; family gatherings
-              </span>
-            )}
+          ))}
+        </div>
+      </div>
+
+      {/* Filter section */}
+      <section style={{ background: C.cream, paddingTop: 24, maxWidth: 1052, margin: '0 auto' }}>
+        <div style={{ padding: '0 16px', marginBottom: 14 }}>
+          <SectionDivider label={tab === 'spaces' ? 'ഭാവം' : 'കൈവഴക്കം'} variant="line-left" fill/>
+          <div style={{ ...serif, fontSize: 20, fontWeight: 400, color: C.text }}>
+            {tab === 'spaces' ? 'Find a space by feel' : 'Find by craft'}
           </div>
         </div>
         {tab === 'spaces'
@@ -523,119 +478,57 @@ export default function TownPage({ town, allTowns, initialProperties, initialVen
           : <FilterRow filters={MAKER_FILTERS} active={makerFilter} onSelect={setMakerFilter}/>}
       </section>
 
-      {/* Toggle + listing — Rounded Top Arch on Sage Canvas */}
-      <section id="main-listing" style={{ background: C.sage, borderRadius: '32px 32px 0 0', paddingTop: 20, paddingBottom: 48 }}>
-        <div style={{ maxWidth: 1052, margin: '0 auto', padding: '0 16px' }}>
-
-          {/* Rounded Filter Control Box */}
-          <div style={{ background: C.cream, borderRadius: 20, padding: 14, border: `1px solid ${C.cream3}`, boxShadow: '0 2px 8px rgba(0,0,0,.04)', marginBottom: 20 }}>
-            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10 }}>
-              {/* Spaces / Makers segmented pill */}
-              <div style={{ display: 'inline-flex', background: C.cream2, padding: 4, borderRadius: 12, border: `1px solid ${C.cream3}` }}>
-                {(['spaces', 'makers'] as const).map(t => (
-                  <button key={t} onClick={() => { setTab(t); setSearch('') }} className="tap-press"
-                    style={{
-                      padding: '7px 18px', fontSize: 12, fontWeight: 500, cursor: 'pointer', border: 'none',
-                      borderRadius: 9, fontFamily: 'system-ui,sans-serif', letterSpacing: '.02em', transition: 'all .15s',
-                      background: tab === t ? C.green : 'transparent',
-                      color: tab === t ? 'white' : C.muted,
-                    }}>
-                    {t === 'spaces' ? `Spaces (${properties.length})` : 'Makers'}
-                  </button>
-                ))}
-              </div>
-
-              {/* Search box */}
-              <div style={{ flex: 1, minWidth: 190, position: 'relative' }}>
-                <svg viewBox="0 0 16 16" fill="none" width={13} height={13} stroke={C.muted} strokeWidth={1.4} strokeLinecap="round"
-                  style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }}>
-                  <circle cx="7" cy="7" r="5"/><path d="M11 11l2 2"/>
-                </svg>
-                <input value={search} onChange={e => setSearch(e.target.value)}
-                  placeholder={tab === 'spaces' ? `Search spaces in ${town.name}...` : 'Search makers...'}
+      {/* Toggle + listing */}
+      <section id="main-listing" style={{ background: C.sage }}>
+        <div style={{ background: C.sage, borderBottom: `1px solid rgba(0,0,0,.07)` }}>
+          <div style={{ maxWidth: 1052, margin: '0 auto', display: 'flex', alignItems: 'center', padding: '12px 16px', gap: 10 }}>
+            <div style={{ flex: 1, display: 'flex', background: 'rgba(255,255,255,.55)', border: `1px solid ${C.cream3}`, borderRadius: 10, padding: 3, overflow: 'hidden' }}>
+              {(['spaces', 'makers'] as const).map(t => (
+                <button key={t} onClick={() => { setTab(t); setSearch('') }} className="tap-press"
                   style={{
-                    width: '100%', border: `1px solid ${C.cream3}`, borderRadius: 12,
-                    padding: '9px 12px 9px 34px', fontSize: 13, fontFamily: 'system-ui,sans-serif',
-                    background: 'white', outline: 'none', color: C.text, fontWeight: 300, boxSizing: 'border-box',
-                  }}/>
-              </div>
-
-              <Link href={tab === 'spaces' ? '/list' : '/join'} className="tap-press"
-                style={{ ...sans, fontSize: 11, color: C.muted, border: `1px solid ${C.cream3}`, borderRadius: 12, padding: '8px 13px', whiteSpace: 'nowrap', background: 'white', textDecoration: 'none' }}>
-                + List yours
-              </Link>
-            </div>
-
-            {/* Physical Fit Filters: Guest Capacity & Facilities ONLY (no celebration-type clutter) */}
-            {tab === 'spaces' && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflowX: 'auto', marginTop: 12, paddingTop: 10, borderTop: `1px solid ${C.cream3}` }} className="no-scrollbar">
-                <span style={{ ...sans, fontSize: 10, color: C.muted, letterSpacing: '.06em', textTransform: 'uppercase', marginRight: 4, flexShrink: 0 }}>
-                  Guests &amp; Facilities:
-                </span>
-                {([
-                  { id: 'all', label: 'Any size' },
-                  { id: 'under_100', label: 'Up to 100 guests' },
-                  { id: '100_plus', label: '100+ guests' },
-                  { id: '250_plus', label: '250+ guests' },
-                ] as const).map(c => {
-                  const active = capFilter === c.id
-                  return (
-                    <button key={c.id} onClick={() => setCapFilter(active && c.id !== 'all' ? 'all' : c.id)}
-                      style={{
-                        ...sans, flexShrink: 0, fontSize: 11, padding: '5px 12px', borderRadius: 999, cursor: 'pointer',
-                        border: `1px solid ${active ? C.green : C.cream3}`,
-                        background: active ? C.green : 'white',
-                        color: active ? 'white' : C.text, fontWeight: active ? 500 : 300,
-                        transition: 'all .12s',
-                      }}>
-                      {c.label}
-                    </button>
-                  )
-                })}
-                <span style={{ color: C.cream3, margin: '0 2px' }}>|</span>
-                {([
-                  { key: 'ac', label: 'AC Hall' },
-                  { key: 'pool', label: 'Pool' },
-                  { key: 'stay', label: 'Overnight Rooms' },
-                ] as const).map(f => {
-                  const active = facilityChips[f.key]
-                  return (
-                    <button key={f.key} onClick={() => setFacilityChips(prev => ({ ...prev, [f.key]: !prev[f.key] }))}
-                      style={{
-                        ...sans, flexShrink: 0, fontSize: 11, padding: '5px 12px', borderRadius: 999, cursor: 'pointer',
-                        border: `1px solid ${active ? C.green : C.cream3}`,
-                        background: active ? C.green : 'white',
-                        color: active ? 'white' : C.muted, fontWeight: active ? 500 : 300,
-                        transition: 'all .12s',
-                      }}>
-                      {f.label}
-                    </button>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Count & Reset Bar */}
-          {tab === 'spaces' && !loading && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, padding: '0 4px' }}>
-              <span style={{ ...serif, fontSize: 15, color: C.text, fontStyle: 'italic' }}>
-                Showing {filteredProps.length} {filteredProps.length === 1 ? 'space' : 'spaces'} in {town.name}
-              </span>
-              {hasActiveFilters && (
-                <button onClick={clearAllFilters} style={{ ...sans, fontSize: 12, color: C.terra, background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>
-                  Clear filters
+                    flex: 1, padding: '8px 0', fontSize: 12, fontWeight: 500, textAlign: 'center', cursor: 'pointer', border: 'none',
+                    borderRadius: 7, fontFamily: 'system-ui,sans-serif', letterSpacing: '.02em', transition: 'all .15s',
+                    background: tab === t ? C.green : 'transparent',
+                    color: tab === t ? 'white' : C.muted,
+                    boxShadow: tab === t ? '0 2px 6px rgba(28,58,43,.28)' : 'none',
+                  }}>
+                  {t === 'spaces' ? 'Spaces' : 'Makers'}
                 </button>
-              )}
+              ))}
             </div>
-          )}
+            <Link href={tab === 'spaces' ? '/list' : '/join'} className="tap-press"
+              style={{ ...sans, fontSize: 10.5, color: C.muted, border: `1px solid ${C.cream3}`, borderRadius: 10, padding: '8px 12px', whiteSpace: 'nowrap', background: 'white', textDecoration: 'none' }}>
+              + List yours
+            </Link>
+          </div>
+        </div>
 
+        <div style={{ position: 'sticky', top: 5, zIndex: 40, background: C.sage, borderBottom: `1px solid rgba(0,0,0,.07)`, boxShadow: '0 2px 6px rgba(0,0,0,.04)' }}>
+          <div style={{ maxWidth: 1052, margin: '0 auto', padding: '12px 16px' }}>
+            <div style={{ position: 'relative' }}>
+              <svg viewBox="0 0 16 16" fill="none" width={13} height={13} stroke={C.muted} strokeWidth={1.4} strokeLinecap="round"
+                style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }}>
+                <circle cx="7" cy="7" r="5"/><path d="M11 11l2 2"/>
+              </svg>
+              <input value={search} onChange={e => setSearch(e.target.value)}
+                placeholder={tab === 'spaces' ? `Search spaces in ${town.name}...` : 'Search makers...'}
+                style={{
+                  width: '100%', border: `1px solid rgba(0,0,0,.11)`, borderRadius: 10,
+                  padding: '10px 12px 10px 34px', fontSize: 13, fontFamily: 'system-ui,sans-serif',
+                  background: 'rgba(255,255,255,.88)', outline: 'none', color: C.text, fontWeight: 300,
+                  boxSizing: 'border-box' as const, boxShadow: 'inset 0 1px 3px rgba(0,0,0,.04)',
+                }}/>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ maxWidth: 1052, margin: '0 auto', padding: '14px 16px 44px' }}>
           {/* Spaces panel */}
           {tab === 'spaces' && (
             loading ? (
               <div className="theeram-grid">
                 {[1,2,3,4].map(i => (
-                  <div key={i} style={{ height: 340, background: 'rgba(255,255,255,.45)', borderRadius: 24, border: `1px solid ${C.cream3}`, position: 'relative', overflow: 'hidden' }}>
+                  <div key={i} style={{ height: 340, background: 'rgba(255,255,255,.45)', borderRadius: 20, border: `1px solid ${C.cream3}`, position: 'relative', overflow: 'hidden' }}>
                     <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 8 }}>
                       <span style={{ ...serif, fontSize: 13, color: C.muted, fontStyle: 'italic' }}>ഇടം തേടുന്നു...</span>
                       <span style={{ ...sans, fontSize: 10, color: C.muted }}>finding spaces</span>
@@ -644,16 +537,16 @@ export default function TownPage({ town, allTowns, initialProperties, initialVen
                 ))}
               </div>
             ) : filteredProps.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '44px 20px', background: C.cream, borderRadius: 24, border: `1px solid ${C.cream3}` }}>
+              <div style={{ textAlign: 'center', padding: '40px 16px' }}>
                 <svg viewBox="0 0 70 56" fill="none" width={56} height={45} stroke={C.cream3} strokeWidth={1} style={{ margin: '0 auto 14px' }}>
                   <path d="M8 28L35 10L62 28V50H8Z"/><rect x="26" y="34" width="18" height="16"/><line x1="12" y1="28" x2="58" y2="28"/>
                 </svg>
-                <p style={{ ...serif, fontSize: 19, color: C.text, marginBottom: 8, fontWeight: 400 }}>
+                <p style={{ ...serif, fontSize: 18, color: C.muted, marginBottom: 8, fontWeight: 300 }}>
                   {properties.length === 0 ? `No spaces listed in ${town.name} yet.` : 'No spaces match your filter.'}
                 </p>
                 {properties.length === 0
                   ? <Link href="/list" style={{ ...sans, fontSize: 13, color: C.terra, textDecoration: 'underline' }}>Be the first to list →</Link>
-                  : <button onClick={clearAllFilters} style={{ ...sans, fontSize: 12, color: 'white', background: C.green, border: 'none', borderRadius: 12, padding: '9px 18px', cursor: 'pointer' }}>Clear filters</button>
+                  : <button onClick={() => { setSpaceFilter('all'); setSearch('') }} style={{ ...sans, fontSize: 12, color: C.terra, background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>Clear filters</button>
                 }
               </div>
             ) : (

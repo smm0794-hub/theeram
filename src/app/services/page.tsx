@@ -46,61 +46,59 @@ export default function ServicesPage() {
         }
       `}</style>
 
-      {/* Hero strip with rounded bottom arch */}
-      <div style={{ background: C.green, padding: '36px 20px 36px', borderRadius: '0 0 32px 32px' }}>
+      {/* Hero strip */}
+      <div style={{ background: C.green, padding: '36px 20px 32px' }}>
         <div style={{ maxWidth: 1020, margin: '0 auto' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
             <div style={{ width: 16, height: 1, background: C.gold }}/>
-            <span style={{ ...sans, fontSize: 10, color: C.gold, letterSpacing: '.08em' }}>കൂട്ട് · LOCAL MAKERS</span>
+            <span style={{ ...sans, fontSize: 10, color: C.gold, letterSpacing: '.08em' }}>കൂട്ട്</span>
             <div style={{ width: 16, height: 1, background: C.gold }}/>
           </div>
-          <h1 style={{ ...serif, fontSize: 30, color: 'white', fontWeight: 300, lineHeight: 1.2, marginBottom: 10 }}>
-            The people who make it happen.
+          <h1 style={{ ...serif, fontSize: 28, color: 'white', fontWeight: 300, lineHeight: 1.2, marginBottom: 10 }}>
+            The people who<br/>make it happen.
           </h1>
-          <p style={{ ...sans, fontSize: 13.5, color: 'rgba(255,255,255,.7)', lineHeight: 1.7, fontWeight: 300, maxWidth: 460, marginBottom: 20 }}>
+          <p style={{ ...sans, fontSize: 13, color: 'rgba(255,255,255,.65)', lineHeight: 1.7, fontWeight: 300, maxWidth: 360, marginBottom: 20 }}>
             From the photographer who has shot every wedding in your family to the cook who knows your grandmother’s avial recipe.
           </p>
-          <Link href="/join" style={{ ...sans, display: 'inline-block', background: C.gold, color: C.text, fontSize: 10.5, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', padding: '10px 20px', borderRadius: 999, textDecoration: 'none' }}>
+          <Link href="/join" style={{ ...sans, display: 'inline-block', background: 'transparent', color: C.gold, fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', padding: '10px 18px', border: `1px solid ${C.gold}`, borderRadius: 8, textDecoration: 'none' }}>
             + List your service
           </Link>
         </div>
       </div>
 
-      <div style={{ maxWidth: 1052, margin: '0 auto', padding: '20px 16px 56px' }}>
-        {/* Category filter pills + search */}
-        <div style={{ background: 'white', borderRadius: 20, border: `1px solid ${C.cream3}`, padding: 14, marginBottom: 18 }}>
-          <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 10, borderBottom: `1px solid ${C.cream3}` }} className="no-scrollbar">
-            {[{ id: 'all', label: 'All makers' }, ...VENDOR_CATEGORIES.map(c => ({ id: c, label: VENDOR_CATEGORY_LABELS[c] }))].map(({ id, label }) => {
-              const active = activeCategory === id
-              return (
-                <button
-                  key={id}
-                  onClick={() => setActiveCategory(id as any)}
-                  style={{
-                    ...sans, flexShrink: 0, padding: '6px 14px', fontSize: 11.5, fontWeight: active ? 600 : 400,
-                    background: active ? C.green : C.cream,
-                    color: active ? 'white' : C.text,
-                    border: `1px solid ${active ? C.green : C.cream3}`,
-                    borderRadius: 999, cursor: 'pointer', transition: 'all .15s',
-                  }}
-                >
-                  {label}
-                </button>
-              )
-            })}
-          </div>
+      {/* Category filter — sleek horizontal tab strip */}
+      <div style={{ background: C.cream2, borderBottom: `1px solid ${C.cream3}`, overflowX: 'auto' }} className="no-scrollbar">
+        <div style={{ maxWidth: 1052, margin: '0 auto', display: 'flex', padding: '0 16px' }}>
+          {[{ id: 'all', label: 'All makers' }, ...VENDOR_CATEGORIES.map(c => ({ id: c, label: VENDOR_CATEGORY_LABELS[c] }))].map(({ id, label }) => (
+            <button
+              key={id}
+              onClick={() => setActiveCategory(id as any)}
+              style={{
+                ...sans, flexShrink: 0, padding: '12px 14px', fontSize: 12, fontWeight: 500,
+                background: 'none', border: 'none', cursor: 'pointer',
+                borderBottom: activeCategory === id ? `2px solid ${C.terra}` : '2px solid transparent',
+                color: activeCategory === id ? C.terra : C.muted,
+                letterSpacing: '.01em', transition: 'all .15s',
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
 
-          <div style={{ position: 'relative', marginTop: 10 }}>
-            <svg viewBox="0 0 16 16" fill="none" width={13} height={13} stroke={C.muted} strokeWidth={1.4} strokeLinecap="round" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }}>
-              <circle cx="7" cy="7" r="5"/><path d="M11 11l2 2"/>
-            </svg>
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search makers..." style={{ width: '100%', border: `1px solid ${C.cream3}`, borderRadius: 12, padding: '9px 12px 9px 34px', fontSize: 13, fontFamily: 'system-ui,sans-serif', background: C.cream, outline: 'none', color: C.text, fontWeight: 300, boxSizing: 'border-box' as const }}/>
-          </div>
+      <div style={{ maxWidth: 1052, margin: '0 auto', padding: '14px 16px 56px' }}>
+        {/* Search */}
+        <div style={{ position: 'relative', marginBottom: 12 }}>
+          <svg viewBox="0 0 16 16" fill="none" width={13} height={13} stroke={C.muted} strokeWidth={1.4} strokeLinecap="round" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }}>
+            <circle cx="7" cy="7" r="5"/><path d="M11 11l2 2"/>
+          </svg>
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search makers..." style={{ width: '100%', border: `1px solid ${C.cream3}`, borderRadius: 10, padding: '10px 12px 10px 34px', fontSize: 13, fontFamily: 'system-ui,sans-serif', background: 'white', outline: 'none', color: C.text, fontWeight: 300, boxSizing: 'border-box' as const }}/>
         </div>
 
         {/* Count */}
-        <p style={{ ...serif, fontSize: 15, fontStyle: 'italic', color: C.text, padding: '0 4px 12px', margin: 0 }}>
-          {loading ? 'Loading makers...' : `Showing ${filtered.length} ${filtered.length === 1 ? 'maker' : 'makers'}${activeCategory !== 'all' ? ` in ${VENDOR_CATEGORY_LABELS[activeCategory as VendorCategory]}` : ''}`}
+        <p style={{ ...sans, fontSize: 11, color: C.muted, padding: '0 2px 10px', margin: 0 }}>
+          {loading ? 'Loading...' : `${filtered.length} ${filtered.length === 1 ? 'maker' : 'makers'}${activeCategory !== 'all' ? ` in ${VENDOR_CATEGORY_LABELS[activeCategory as VendorCategory]}` : ''}`}
         </p>
 
         {/* Maker cards */}
