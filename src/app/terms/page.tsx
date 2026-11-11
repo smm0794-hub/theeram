@@ -53,27 +53,31 @@ const sections = [
 
 export default function TermsPage() {
   return (
-    <div style={{ background:C.cream, minHeight:'100vh', paddingBottom:48 }}>
+    <div style={{ background:C.cream, minHeight:'100vh', paddingBottom:56 }}>
       <Header/>
-      <div style={{ background:C.green2, padding:'32px 20px 28px' }}>
-        <h1 style={{ ...serif, fontSize:26, color:'white', fontWeight:300 }}>Terms of Service</h1>
+      <div style={{ background:C.green2, padding:'34px 20px 30px', borderRadius:'0 0 32px 32px' }}>
+        <div style={{ maxWidth:640, margin:'0 auto' }}>
+          <h1 style={{ ...serif, fontSize:28, color:'white', fontWeight:300 }}>Terms of Service</h1>
+        </div>
       </div>
       <div style={{ padding:'24px 16px 0', maxWidth:640, margin:'0 auto' }}>
-        <p style={{ ...sans, fontSize:11, color:C.muted, marginBottom:24 }}>
+        <p style={{ ...sans, fontSize:11, color:C.muted, marginBottom:16 }}>
           Last updated: {new Date().toLocaleDateString('en-IN', { year:'numeric', month:'long', day:'numeric' })}
         </p>
-        <p style={{ ...sans, fontSize:14, color:C.muted, lineHeight:1.8, marginBottom:28, fontWeight:300 }}>
-          By using Theeram Spaces, you agree to the following terms. Please read them carefully. If you do not agree, please do not use this directory.
-        </p>
-        {sections.map(({ title, body }) => (
-          <section key={title} style={{ marginBottom:22, borderTop:`1px solid ${C.cream3}`, paddingTop:18 }}>
-            <h2 style={{ ...serif, fontSize:17, color:C.text, marginBottom:8, fontWeight:400 }}>{title}</h2>
-            <p style={{ ...sans, fontSize:13, color:C.muted, lineHeight:1.85, fontWeight:300 }}>{body}</p>
-          </section>
-        ))}
-        <div style={{ borderTop:`1px solid ${C.cream3}`, paddingTop:16, display:'flex', gap:20 }}>
-          <Link href="/privacy" style={{ ...sans, fontSize:12, color:C.terra, textDecoration:'none', borderBottom:`1px solid ${C.terra}`, paddingBottom:1 }}>Privacy Policy</Link>
-          <Link href="/" style={{ ...sans, fontSize:12, color:C.muted, textDecoration:'none' }}>← Back to site</Link>
+        <div style={{ background:'white', borderRadius:24, border:`1px solid ${C.cream3}`, padding:'22px 22px' }}>
+          <p style={{ ...sans, fontSize:14, color:C.muted, lineHeight:1.8, marginBottom:22, fontWeight:300 }}>
+            By using Theeram Spaces, you agree to the following terms. Please read them carefully. If you do not agree, please do not use this directory.
+          </p>
+          {sections.map(({ title, body }) => (
+            <section key={title} style={{ marginBottom:20, borderTop:`1px solid ${C.cream3}`, paddingTop:18 }}>
+              <h2 style={{ ...serif, fontSize:17, color:C.text, marginBottom:8, fontWeight:400 }}>{title}</h2>
+              <p style={{ ...sans, fontSize:13, color:C.muted, lineHeight:1.85, fontWeight:300, margin:0 }}>{body}</p>
+            </section>
+          ))}
+          <div style={{ borderTop:`1px solid ${C.cream3}`, paddingTop:16, display:'flex', gap:20 }}>
+            <Link href="/privacy" style={{ ...sans, fontSize:12, color:C.terra, textDecoration:'none', borderBottom:`1px solid ${C.terra}`, paddingBottom:1 }}>Privacy Policy</Link>
+            <Link href="/" style={{ ...sans, fontSize:12, color:C.muted, textDecoration:'none' }}>← Back to site</Link>
+          </div>
         </div>
       </div>
     </div>

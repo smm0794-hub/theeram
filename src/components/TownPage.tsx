@@ -2,9 +2,9 @@
 
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
-import { supabase, Property, Vendor, Town, VENDOR_CATEGORY_LABELS, VendorCategory } from '@/lib/supabase'
+import { supabase, Property, Vendor, Town } from '@/lib/supabase'
 import { C, sans, serif } from '@/lib/design'
-import EnquirySheet from '@/components/EnquirySheet'
+import GratitudeModal from '@/components/GratitudeModal'
 import MakerCard from '@/components/MakerCard'
 
 const CARD_BG: Record<string, string> = {
@@ -21,10 +21,10 @@ const TYPE_LABEL: Record<string, string> = {
   lodging: 'Lodging', resort: 'Resort',
 }
 
-function PropIllustration({ type, photos }: { type: string; photos: string[] }) {
+function PropIllustration({ type, photos, name }: { type: string; photos: string[]; name: string }) {
   const isPlaceholder = !photos || photos.length === 0
   if (!isPlaceholder) {
-    return <img src={photos[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', position: 'absolute', inset: 0 }}/>
+    return <img src={photos[0]} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', position: 'absolute', inset: 0 }}/>
   }
   const stroke = 'rgba(255,255,255,0.45)'
   const sw = 1
@@ -88,7 +88,6 @@ function PropIllustration({ type, photos }: { type: string; photos: string[] }) 
     )
   })()
 
-  // Subtle tinted texture overlay so placeholder cards read as "intentionally minimal" not "incomplete"
   return (
     <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{
@@ -119,8 +118,6 @@ const MAKER_FILTERS = [
   { id: 'beauty_styling', ml: 'ഭംഗി', en: 'Beauty', desc: 'Bridal & styling' },
 ]
 
-// Section divider — alternates line side and occasionally swaps the glyph, so the
-// repeated motif doesn't feel templated across every section.
 function SectionDivider({ label, variant = 'line-left', fill = false, accent = C.terra }: { label: string; variant?: 'line-left' | 'line-right' | 'glyph'; fill?: boolean; accent?: string }) {
   if (variant === 'glyph') {
     return (
@@ -169,8 +166,9 @@ function FilterRow({ filters, active, onSelect }: { filters: typeof FEEL_FILTERS
             style={{
               minWidth: 148, flexShrink: 0,
               background: active === f.id ? '#fdf0eb' : 'white',
-              border: active === f.id ? `1.5px solid ${C.terra}` : `1px solid ${C.cream3}`,
-              padding: '14px 12px', cursor: 'pointer', scrollSnapAlign: 'start',
+              border: active === f.id ? `2px solid ${C.terra}` : `1px solid ${C.cream3}`,
+              borderRadius: 18,
+              padding: '14px 14px', cursor: 'pointer', scrollSnapAlign: 'start',
               transition: 'all .15s',
               boxShadow: active === f.id ? '0 3px 10px rgba(155,61,30,.12)' : '0 1px 3px rgba(0,0,0,.03)',
               opacity: 0, animation: 'cardFadeUp .4s ease forwards', animationDelay: `${i * 0.05}s`,
@@ -180,7 +178,7 @@ function FilterRow({ filters, active, onSelect }: { filters: typeof FEEL_FILTERS
               <span style={{ ...sans, fontSize: 9, color: C.terra, letterSpacing: '.06em' }}>{f.ml}</span>
               <div style={{ width: 8, height: 1, background: C.terra }}/>
             </div>
-            <div style={{ ...serif, fontSize: 14, color: C.text, marginBottom: 3 }}>{f.en}</div>
+            <div style={{ ...serif, fontSize: 15, color: C.text, marginBottom: 3 }}>{f.en}</div>
             <div style={{ ...sans, fontSize: 11, color: C.muted, fontWeight: 300 }}>{f.desc}</div>
           </div>
         ))}
@@ -192,7 +190,14 @@ function FilterRow({ filters, active, onSelect }: { filters: typeof FEEL_FILTERS
   )
 }
 
-export default function TownPage({ town, allTowns }: { town: Town; allTowns: Town[] }) {
+interface TownPageProps {
+  town: Town
+  allTowns: Town[]
+  initialProperties?: Property[]
+  initialVendors?: Vendor[]
+}
+
+export default function TownPage({ town, allTowns, initialProperties, initialVendors }: TownPageProps) {
   const [tab, setTab] = useState<'spaces' | 'makers'>(() => {
     if (typeof window !== 'undefined') {
       const p = new URLSearchParams(window.location.search)
@@ -200,11 +205,12 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
     }
     return 'spaces'
   })
-  const [properties, setProperties] = useState<Property[]>([])
-  const [vendors, setVendors] = useState<Vendor[]>([])
-  const [loading, setLoading] = useState(true)
+  const [properties, setProperties] = useState<Property[]>(initialProperties ?? [])
+  const [vendors, setVendors] = useState<Vendor[]>(initialVendors ?? [])
+  const [loading, setLoading] = useState(!initialProperties)
   const [spaceFilter, setSpaceFilter] = useState('all')
-  const [quickFilter, setQuickFilter] = useState('all')
+  const [capFilter, setCapFilter] = useState<'all' | 'under_100' | '100_plus' | '250_plus'>('all')
+  const [facilityChips, setFacilityChips] = useState<{ ac: boolean; pool: boolean; stay: boolean }>({ ac: false, pool: false, stay: false })
   const [modalProperty, setModalProperty] = useState<Property | null>(null)
   const [showModal, setShowModal] = useState(false)
   const [makerFilter, setMakerFilter] = useState('all')
@@ -216,6 +222,11 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
   const otherTowns = allTowns.filter(t => t.slug !== town.slug)
 
   useEffect(() => {
+    // If server already passed initialProperties for this town, skip client re-fetch
+    if (initialProperties && initialProperties.length > 0) {
+      setLoading(false)
+      return
+    }
     async function load() {
       const [pr, vr] = await Promise.all([
         supabase.from('properties').select('*, property_attributes(*), property_event_types(event_type)')
@@ -226,8 +237,6 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
       ])
       if (!pr.error && pr.data) setProperties(pr.data as Property[])
       if (!vr.error && vr.data) {
-        // Supabase returns joined one-to-one relations as an array — normalise to
-        // a single object so MakerCard's vendor_attributes?.field access works.
         const normalised = vr.data.map((v: any) => ({
           ...v,
           vendor_attributes: Array.isArray(v.vendor_attributes) ? v.vendor_attributes[0] : v.vendor_attributes,
@@ -238,9 +247,8 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
     }
     load()
     setWhyOpen(false)
-  }, [town.id])
+  }, [town.id, initialProperties])
 
-  // Scroll progress — drives the thin top indicator
   useEffect(() => {
     function onScroll() {
       const h = document.documentElement
@@ -252,7 +260,26 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
+  function logPropertyInquiry(p: Property) {
+    supabase.from('inquiries').insert({
+      property_id: p.id,
+      event_type: p.property_event_types?.[0]?.event_type ?? 'general',
+    }).then(() => {}, () => {})
+  }
+
+  function buildWaUrl(p: Property) {
+    const phone = (p.owner_whatsapp ?? '').replace(/\D/g, '')
+    const msg = `Hi! I found ${p.name} on Theeram (theeramspaces.in) and I'm interested in booking. Could you share availability and pricing?`
+    return `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`
+  }
+
+  // 1-Tap Direct WhatsApp: opens WhatsApp immediately on tap (zero 4-second delay)
+  // and shows the post-enquiry gratitude card in the background for when they return.
   function handleWhatsApp(p: Property) {
+    logPropertyInquiry(p)
+    const url = buildWaUrl(p)
+    const w = window.open(url, '_blank', 'noopener,noreferrer')
+    if (!w) window.location.href = url
     setModalProperty(p)
     setShowModal(true)
   }
@@ -265,28 +292,26 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
     } catch {}
   }
 
-  function matchesQuickFilter(p: Property, qf: string): boolean {
-    if (qf === 'all') return true
-    const attrs = p.property_attributes
+  function matchesPhysicalFit(p: Property): boolean {
+    const rawAttrs = (p as any).property_attributes
+    const attrs = Array.isArray(rawAttrs) ? rawAttrs[0] : rawAttrs
     const cap = attrs?.max_guests_day_event ?? 0
-    if (qf === 'under_100') return cap > 0 && cap <= 100
-    if (qf === '100_250') return cap >= 100
-    if (qf === '250_plus') return cap >= 250
-    if (qf === 'ac_hall') return !!attrs?.has_ac_hall
-    if (qf === 'pool') return !!attrs?.has_pool
-    if (qf === 'wedding') return (p.property_event_types ?? []).some(e => e.event_type === 'wedding')
+    if (capFilter === 'under_100' && !(cap > 0 && cap <= 100)) return false
+    if (capFilter === '100_plus' && cap < 100) return false
+    if (capFilter === '250_plus' && cap < 250) return false
+    if (facilityChips.ac && !attrs?.has_ac_hall) return false
+    if (facilityChips.pool && !attrs?.has_pool) return false
+    if (facilityChips.stay && !((attrs?.room_count ?? 0) > 0 || (attrs?.max_guests_overnight ?? 0) > 0)) return false
     return true
   }
 
   const hasPhotos = (p: Property) => Array.isArray(p.photos) && p.photos.length > 0
   const filteredProps = properties.filter(p => {
     if (!matchesFilter(p.property_type, spaceFilter)) return false
-    if (!matchesQuickFilter(p, quickFilter)) return false
+    if (!matchesPhysicalFit(p)) return false
     if (search.trim()) return p.name.toLowerCase().includes(search.toLowerCase()) || p.tagline?.toLowerCase().includes(search.toLowerCase())
     return true
   })
-    // Listings with real photos first — placeholder illustrations erode trust,
-    // so they sink to the bottom. Array.sort is stable, so sort_order is preserved.
     .sort((a, b) => Number(hasPhotos(b)) - Number(hasPhotos(a)))
 
   const filteredVendors = vendors.filter(v => {
@@ -296,6 +321,14 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
   })
 
   const hasWhyContent = !!(town.why_here_text || town.why_here_heading)
+  const hasActiveFilters = spaceFilter !== 'all' || capFilter !== 'all' || facilityChips.ac || facilityChips.pool || facilityChips.stay || !!search.trim()
+
+  function clearAllFilters() {
+    setSpaceFilter('all')
+    setCapFilter('all')
+    setFacilityChips({ ac: false, pool: false, stay: false })
+    setSearch('')
+  }
 
   return (
     <div style={{ background: C.cream, minHeight: '100vh' }}>
@@ -305,23 +338,29 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
         .why-expand.open { max-height: 600px; opacity: 1; margin-top: 22px; }
         .why-chevron { display:inline-block; transition: transform .35s ease; }
         .why-chevron.rotated { transform: rotate(180deg); }
-        @keyframes trustPulse { 0%,100% { opacity: 1; } 50% { opacity: .55; } }
-        @keyframes trustFadeUp { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
         @keyframes cardFadeUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
-        @keyframes pickPulse { 0%,100% { transform: scale(1); box-shadow: 0 3px 10px rgba(28,58,43,.3); } 50% { transform: scale(1.045); box-shadow: 0 6px 22px rgba(45,122,79,.6); } }
-        @keyframes tickerScroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
         .tap-press { transition: transform .12s ease; }
         .tap-press:active { transform: scale(0.97); }
+        .theeram-grid {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 18px;
+        }
+        @media (min-width: 720px) {
+          .theeram-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 20px;
+          }
+        }
       `}</style>
 
-      {/* Thin accent strip — beige, sticky so the scroll progress fill stays visible throughout */}
+      {/* Thin accent strip */}
       <div style={{ height: 5, background: C.cream2, position: 'sticky', top: 0, zIndex: 60 }}>
-        {/* Scroll progress indicator — thin gold fill on top of the beige strip */}
         <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${scrollPct}%`, background: C.gold, transition: 'width .1s linear' }}/>
       </div>
 
-      {/* Hero */}
-      <section style={{ background: heroBg, padding: '24px 20px 48px', position: 'relative', overflow: 'hidden' }}>
+      {/* Hero with Rounded Bottom Arch */}
+      <section style={{ background: heroBg, padding: '24px 20px 44px', position: 'relative', overflow: 'hidden', borderRadius: '0 0 32px 32px', boxShadow: '0 6px 24px rgba(0,0,0,.08)' }}>
         <div style={{ position: 'absolute', right: -20, top: -20, opacity: .06, pointerEvents: 'none' }}>
           <svg viewBox="0 0 200 200" fill="none" width={220} height={220}>
             <circle cx="100" cy="100" r="90" stroke="white" strokeWidth={1}/>
@@ -333,125 +372,150 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
         </div>
         <div style={{ position: 'absolute', left: -60, bottom: -60, width: 220, height: 220, borderRadius: '50%', background: 'radial-gradient(circle, rgba(201,168,76,.10), transparent 70%)', pointerEvents: 'none' }}/>
 
-        {/* Top row — wordmark left, hamburger right */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 22, position: 'relative', zIndex: 2 }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-            <span style={{ ...serif, fontSize: 14, color: 'rgba(255,255,255,.55)' }}>തീരം</span>
-            <span style={{ color: 'rgba(255,255,255,.3)', fontSize: 12 }}>·</span>
-            <span style={{ ...serif, fontSize: 14, color: 'rgba(255,255,255,.55)', letterSpacing: '.03em' }}>theeram</span>
-          </div>
-          <button onClick={() => setNavOpen(v => !v)} className="tap-press" style={{ background: 'rgba(255,255,255,.08)', border: 'none', cursor: 'pointer', padding: 8, borderRadius: 6 }}>
-            {navOpen ? (
-              <svg viewBox="0 0 20 20" fill="none" width={18} height={18} stroke="white" strokeWidth={1.4} strokeLinecap="round"><path d="M5 5l10 10M15 5L5 15"/></svg>
-            ) : (
-              <svg viewBox="0 0 20 20" fill="none" width={18} height={18} stroke="white" strokeWidth={1.4} strokeLinecap="round">
-                <line x1="3" y1="6" x2="17" y2="6"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="14" x2="17" y2="14"/>
-              </svg>
-            )}
-          </button>
-        </div>
+        <div style={{ maxWidth: 1020, margin: '0 auto', position: 'relative', zIndex: 2 }}>
+          {/* Top row — wordmark left, town pills + hamburger right */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, gap: 12 }}>
+            <Link href="/" style={{ display: 'flex', alignItems: 'baseline', gap: 8, textDecoration: 'none' }}>
+              <span style={{ ...serif, fontSize: 15, color: 'rgba(255,255,255,.65)' }}>തീരം</span>
+              <span style={{ color: C.gold, fontSize: 12 }}>·</span>
+              <span style={{ ...serif, fontSize: 15, color: 'rgba(255,255,255,.85)', letterSpacing: '.03em' }}>theeram</span>
+            </Link>
 
-        {navOpen && (
-          <div style={{ background: 'rgba(0,0,0,.18)', borderRadius: 8, padding: '6px 16px', marginBottom: 20, position: 'relative', zIndex: 2 }}>
-            {[
-              { label: 'Spaces', href: '/', note: null },
-              { label: 'Makers', href: '/?tab=makers', note: null },
-              { label: 'About', href: '/about', note: null },
-              { label: 'List your space', href: '/list', note: 'Owner' },
-              { label: 'List your service', href: '/join', note: 'Maker' },
-            ].map(({ label, href, note }, i) => (
-              <Link key={label} href={href} onClick={() => setNavOpen(false)}
-                style={{ ...sans, fontSize: 13, color: 'white', textDecoration: 'none', fontWeight: 300, padding: '11px 0', borderBottom: i < 4 ? '1px solid rgba(255,255,255,.1)' : 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                {label}
-                {note && <span style={{ fontSize: 9, color: C.gold, letterSpacing: '.06em', border: `1px solid ${C.gold}`, padding: '2px 7px', borderRadius: 3 }}>{note}</span>}
-              </Link>
-            ))}
-          </div>
-        )}
-
-        {/* Town name — prominent */}
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 9, marginBottom: 18, flexWrap: 'wrap' as const, position: 'relative', zIndex: 2 }}>
-          <span style={{ ...serif, fontSize: 22, color: C.gold, fontWeight: 400 }}>{town.name}</span>
-          <span style={{ ...sans, fontSize: 11, color: 'rgba(255,255,255,.55)', letterSpacing: '.03em' }}>{town.district} District · Kerala</span>
-        </div>
-
-        {/* Hero headline — bumped up for clearer hierarchy vs section headers */}
-        <h1 style={{ ...serif, fontSize: 36, lineHeight: 1.15, color: 'white', marginBottom: 16, fontWeight: 300, position: 'relative', zIndex: 2 }}
-          dangerouslySetInnerHTML={{ __html: town.hero_headline || `Event spaces in <em style="color:${C.gold}">${town.name}</em>` }}/>
-        <div style={{ width: 34, height: 2, background: C.gold, marginBottom: 18, position: 'relative', zIndex: 2 }}/>
-        <p style={{ ...sans, fontSize: 13, color: 'rgba(255,255,255,.68)', lineHeight: 1.75, maxWidth: 300, marginBottom: 28, fontWeight: 300, position: 'relative', zIndex: 2 }}>
-          {town.hero_subtext}
-        </p>
-
-        {/* Buttons — "Why Town" first (most differentiated), "Other locations" second (scrolls to bottom) */}
-        <div style={{ display: 'flex', gap: 12, position: 'relative', zIndex: 2 }}>
-          {hasWhyContent && (
-            <button onClick={() => setWhyOpen(o => !o)} className="tap-press"
-              style={{ ...sans, background: whyOpen ? C.green : C.gold, color: whyOpen ? C.gold : C.text, fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', padding: '12px 20px', border: `1px solid ${C.gold}`, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-              Why {town.name} <span className={`why-chevron${whyOpen ? ' rotated' : ''}`} style={{ fontSize: 11 }}>⌄</span>
-            </button>
-          )}
-          <button onClick={() => document.getElementById('other-locations')?.scrollIntoView({ behavior: 'smooth' })} className="tap-press"
-            style={{ ...sans, background: 'transparent', color: C.gold, fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', padding: '12px 18px', border: `1px solid ${C.gold}`, cursor: 'pointer' }}>
-            Other locations
-          </button>
-        </div>
-
-        {hasWhyContent && (
-          <div className={`why-expand${whyOpen ? ' open' : ''}`} style={{ position: 'relative', zIndex: 2 }}>
-            <div style={{ borderTop: '1px solid rgba(255,255,255,.12)', paddingTop: 20 }}>
-              <SectionDivider label={`എന്തുകൊണ്ട് ${town.name}?`} variant="line-left" accent={C.gold}/>
-              <div style={{ ...serif, fontSize: 21, fontWeight: 300, color: 'white', marginBottom: 12, lineHeight: 1.3 }}>
-                {town.why_here_heading || `Why ${town.name}?`}
-              </div>
-              <p style={{ ...sans, fontSize: 12.5, color: 'rgba(255,255,255,.65)', lineHeight: 1.75, fontWeight: 300, marginBottom: 20 }}>
-                {town.why_here_text}
-              </p>
-              {(town.stat_1_value || town.stat_2_value || town.stat_3_value) && (
-                <>
-                  <div style={{ width: '100%', height: 1, background: 'rgba(255,255,255,.1)', marginBottom: 18 }}/>
-                  <div style={{ display: 'flex' }}>
-                    {[[town.stat_1_value, town.stat_1_label], [town.stat_2_value, town.stat_2_label], [town.stat_3_value, town.stat_3_label]].map(([val, label], i) => val ? (
-                      <div key={i} style={{ flex: 1, borderLeft: i > 0 ? '1px solid rgba(255,255,255,.1)' : 'none', paddingLeft: i > 0 ? 14 : 0 }}>
-                        <div style={{ ...serif, fontSize: 21, color: C.gold, marginBottom: 2, fontWeight: 300 }}>{val}</div>
-                        <div style={{ ...sans, fontSize: 8.5, color: 'rgba(255,255,255,.4)', letterSpacing: '.08em' }}>{label}</div>
-                      </div>
-                    ) : null)}
-                  </div>
-                </>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {allTowns.length > 1 && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(255,255,255,.07)', padding: 4, borderRadius: 999, border: '1px solid rgba(255,255,255,.12)', overflowX: 'auto' }} className="no-scrollbar">
+                  {allTowns.map(t => {
+                    const active = t.slug === town.slug
+                    return (
+                      <Link key={t.slug} href={`/${t.slug}`}
+                        style={{
+                          ...sans, fontSize: 11, padding: '5px 12px', borderRadius: 999, textDecoration: 'none', whiteSpace: 'nowrap',
+                          background: active ? C.gold : 'transparent',
+                          color: active ? C.text : 'rgba(255,255,255,.72)',
+                          fontWeight: active ? 600 : 400,
+                        }}>
+                        {t.name}
+                      </Link>
+                    )
+                  })}
+                </div>
               )}
-              <button onClick={() => setWhyOpen(false)} className="tap-press"
-                style={{ ...sans, marginTop: 18, background: 'none', border: 'none', color: 'rgba(255,255,255,.45)', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
-                ↑ Collapse
+
+              <button onClick={() => setNavOpen(v => !v)} aria-label="Menu" className="tap-press" style={{ background: 'rgba(255,255,255,.08)', border: 'none', cursor: 'pointer', padding: 8, borderRadius: 10 }}>
+                {navOpen ? (
+                  <svg viewBox="0 0 20 20" fill="none" width={18} height={18} stroke="white" strokeWidth={1.4} strokeLinecap="round"><path d="M5 5l10 10M15 5L5 15"/></svg>
+                ) : (
+                  <svg viewBox="0 0 20 20" fill="none" width={18} height={18} stroke="white" strokeWidth={1.4} strokeLinecap="round">
+                    <line x1="3" y1="6" x2="17" y2="6"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="14" x2="17" y2="14"/>
+                  </svg>
+                )}
               </button>
             </div>
           </div>
-        )}
-      </section>
 
-      {/* Trust bar — running ticker instead of static row */}
-      <div style={{ background: C.green2, padding: '11px 0', overflow: 'hidden', boxShadow: 'inset 0 2px 8px rgba(0,0,0,.12)', position: 'relative' }}>
-        <div style={{ display: 'flex', width: 'max-content', animation: 'tickerScroll 22s linear infinite' }}>
-          {[0, 1].map(rep => (
-            <div key={rep} style={{ display: 'flex', alignItems: 'center', gap: 28, paddingRight: 28 }}>
-              {['No middlemen', 'Best price', 'Individually reviewed', 'No login required'].map(text => (
-                <div key={text} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                  <div style={{ width: 5, height: 5, borderRadius: '50%', background: C.gold, animation: 'trustPulse 2s ease-in-out infinite' }}/>
-                  <span style={{ ...sans, fontSize: 10.5, color: 'rgba(255,255,255,.8)', fontWeight: 400, whiteSpace: 'nowrap' as const }}>{text}</span>
-                  <span style={{ color: 'rgba(255,255,255,.2)', fontSize: 10, marginLeft: 8 }}>·</span>
+          {navOpen && (
+            <div style={{ background: 'rgba(0,0,0,.22)', borderRadius: 16, padding: '6px 16px', marginBottom: 20 }}>
+              {[
+                { label: 'Spaces', href: '/', note: null },
+                { label: 'Makers', href: '/?tab=makers', note: null },
+                { label: 'About', href: '/about', note: null },
+                { label: 'List your space', href: '/list', note: 'Owner' },
+                { label: 'List your service', href: '/join', note: 'Maker' },
+              ].map(({ label, href, note }, i) => (
+                <Link key={label} href={href} onClick={() => setNavOpen(false)}
+                  style={{ ...sans, fontSize: 13, color: 'white', textDecoration: 'none', fontWeight: 300, padding: '11px 0', borderBottom: i < 4 ? '1px solid rgba(255,255,255,.1)' : 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  {label}
+                  {note && <span style={{ fontSize: 9, color: C.gold, letterSpacing: '.06em', border: `1px solid ${C.gold}`, padding: '2px 8px', borderRadius: 999 }}>{note}</span>}
+                </Link>
+              ))}
+            </div>
+          )}
+
+          {/* Town badge pill */}
+          <div style={{ display: 'inline-flex', alignItems: 'baseline', gap: 8, marginBottom: 16, padding: '5px 14px', borderRadius: 999, background: 'rgba(255,255,255,.07)', border: '1px solid rgba(201,168,76,.3)' }}>
+            <span style={{ ...serif, fontSize: 16, color: C.gold, fontWeight: 400 }}>{town.name}</span>
+            <span style={{ ...sans, fontSize: 11, color: 'rgba(255,255,255,.65)', letterSpacing: '.03em' }}>· {town.district} District · Kerala</span>
+          </div>
+
+          {/* Hero headline */}
+          <h1 style={{ ...serif, fontSize: 36, lineHeight: 1.15, color: 'white', marginBottom: 14, fontWeight: 300, maxWidth: 640 }}
+            dangerouslySetInnerHTML={{ __html: town.hero_headline || `Event spaces in <em style="color:${C.gold}">${town.name}</em>` }}/>
+          <div style={{ width: 36, height: 2, borderRadius: 2, background: C.gold, marginBottom: 16 }}/>
+          <p style={{ ...sans, fontSize: 13.5, color: 'rgba(255,255,255,.74)', lineHeight: 1.75, maxWidth: 540, marginBottom: 24, fontWeight: 300 }}>
+            {town.hero_subtext}
+          </p>
+
+          {/* Rounded Buttons + Calm Trust Row */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              {hasWhyContent && (
+                <button onClick={() => setWhyOpen(o => !o)} className="tap-press"
+                  style={{ ...sans, background: whyOpen ? C.green : C.gold, color: whyOpen ? C.gold : C.text, fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', padding: '11px 20px', borderRadius: 999, border: `1px solid ${C.gold}`, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  Why {town.name} <span className={`why-chevron${whyOpen ? ' rotated' : ''}`} style={{ fontSize: 11 }}>⌄</span>
+                </button>
+              )}
+              <button onClick={() => document.getElementById('other-locations')?.scrollIntoView({ behavior: 'smooth' })} className="tap-press"
+                style={{ ...sans, background: 'rgba(255,255,255,.06)', color: C.gold, fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', padding: '11px 18px', borderRadius: 999, border: `1px solid rgba(201,168,76,.45)`, cursor: 'pointer' }}>
+                Other locations
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 16 }}>
+              {['No middlemen', 'Direct owner WhatsApp & phone', 'Individually reviewed'].map(text => (
+                <div key={text} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div style={{ width: 5, height: 5, borderRadius: '50%', background: C.gold }}/>
+                  <span style={{ ...sans, fontSize: 11, color: 'rgba(255,255,255,.78)', fontWeight: 300 }}>{text}</span>
                 </div>
               ))}
             </div>
-          ))}
-        </div>
-      </div>
+          </div>
 
-      {/* Filter section */}
-      <section style={{ background: C.cream, paddingTop: 24 }}>
+          {hasWhyContent && (
+            <div className={`why-expand${whyOpen ? ' open' : ''}`}>
+              <div style={{ borderTop: '1px solid rgba(255,255,255,.12)', paddingTop: 20 }}>
+                <SectionDivider label={`എന്തുകൊണ്ട് ${town.name}?`} variant="line-left" accent={C.gold}/>
+                <div style={{ ...serif, fontSize: 21, fontWeight: 300, color: 'white', marginBottom: 12, lineHeight: 1.3 }}>
+                  {town.why_here_heading || `Why ${town.name}?`}
+                </div>
+                <p style={{ ...sans, fontSize: 13, color: 'rgba(255,255,255,.7)', lineHeight: 1.75, fontWeight: 300, marginBottom: 20, maxWidth: 640 }}>
+                  {town.why_here_text}
+                </p>
+                {(town.stat_1_value || town.stat_2_value || town.stat_3_value) && (
+                  <>
+                    <div style={{ width: '100%', height: 1, background: 'rgba(255,255,255,.1)', marginBottom: 18 }}/>
+                    <div style={{ display: 'flex', maxWidth: 460 }}>
+                      {[[town.stat_1_value, town.stat_1_label], [town.stat_2_value, town.stat_2_label], [town.stat_3_value, town.stat_3_label]].map(([val, label], i) => val ? (
+                        <div key={i} style={{ flex: 1, borderLeft: i > 0 ? '1px solid rgba(255,255,255,.1)' : 'none', paddingLeft: i > 0 ? 14 : 0 }}>
+                          <div style={{ ...serif, fontSize: 21, color: C.gold, marginBottom: 2, fontWeight: 300 }}>{val}</div>
+                          <div style={{ ...sans, fontSize: 8.5, color: 'rgba(255,255,255,.45)', letterSpacing: '.08em' }}>{label}</div>
+                        </div>
+                      ) : null)}
+                    </div>
+                  </>
+                )}
+                <button onClick={() => setWhyOpen(false)} className="tap-press"
+                  style={{ ...sans, marginTop: 18, background: 'none', border: 'none', color: 'rgba(255,255,255,.55)', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
+                  ↑ Collapse
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Filter section — constrained on desktop */}
+      <section style={{ background: C.cream, paddingTop: 26, maxWidth: 1052, margin: '0 auto' }}>
         <div style={{ padding: '0 16px', marginBottom: 14 }}>
-          <SectionDivider label={tab === 'spaces' ? 'ഭാവം' : 'കൈവഴക്കം'} variant="line-left" fill/>
-          <div style={{ ...serif, fontSize: 20, fontWeight: 400, color: C.text }}>
-            {tab === 'spaces' ? 'Find a space by feel' : 'Find by craft'}
+          <SectionDivider label={tab === 'spaces' ? 'ഭാവം · SETTING & ARCHITECTURE' : 'കൈവഴക്കം · LOCAL CRAFT'} variant="line-left" fill/>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+            <div style={{ ...serif, fontSize: 22, fontWeight: 400, color: C.text }}>
+              {tab === 'spaces' ? 'Find a space by feel' : 'Find by craft'}
+            </div>
+            {tab === 'spaces' && (
+              <span style={{ ...sans, fontSize: 11, color: C.muted, fontWeight: 300 }}>
+                Every space welcomes weddings, engagements, baptisms &amp; family gatherings
+              </span>
+            )}
           </div>
         </div>
         {tab === 'spaces'
@@ -459,199 +523,296 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
           : <FilterRow filters={MAKER_FILTERS} active={makerFilter} onSelect={setMakerFilter}/>}
       </section>
 
-      {/* Toggle + listing */}
-      <section id="main-listing" style={{ background: C.sage }}>
-        <div style={{ display: 'flex', alignItems: 'center', padding: '12px 16px', gap: 10, background: C.sage, borderBottom: `1px solid rgba(0,0,0,.07)` }}>
-          <div style={{ flex: 1, display: 'flex', background: 'rgba(255,255,255,.5)', border: `1px solid ${C.cream3}`, borderRadius: 3, overflow: 'hidden' }}>
-            {(['spaces', 'makers'] as const).map(t => (
-              <button key={t} onClick={() => { setTab(t); setSearch('') }} className="tap-press"
-                style={{ flex: 1, padding: '9px 0', fontSize: 12, fontWeight: 500, textAlign: 'center', cursor: 'pointer', border: 'none', fontFamily: 'system-ui,sans-serif', letterSpacing: '.02em', transition: 'all .15s', background: tab === t ? C.green : 'transparent', color: tab === t ? 'white' : C.muted, boxShadow: tab === t ? '0 2px 6px rgba(28,58,43,.3)' : 'none' }}>
-                {t === 'spaces' ? 'Spaces' : 'Makers'}
-              </button>
-            ))}
-          </div>
-          <Link href={tab === 'spaces' ? '/list' : '/join'} className="tap-press"
-            style={{ ...sans, fontSize: 10, color: C.muted, border: `1px solid ${C.cream3}`, padding: '7px 10px', whiteSpace: 'nowrap', background: 'white', textDecoration: 'none' }}>
-            + List yours
-          </Link>
-        </div>
+      {/* Toggle + listing — Rounded Top Arch on Sage Canvas */}
+      <section id="main-listing" style={{ background: C.sage, borderRadius: '32px 32px 0 0', paddingTop: 20, paddingBottom: 48 }}>
+        <div style={{ maxWidth: 1052, margin: '0 auto', padding: '0 16px' }}>
 
-        <div style={{ padding: '12px 16px', position: 'sticky', top: 5, zIndex: 40, background: C.sage, borderBottom: `1px solid rgba(0,0,0,.07)`, boxShadow: '0 2px 6px rgba(0,0,0,.04)' }}>
-          <div style={{ position: 'relative' }}>
-            <svg viewBox="0 0 16 16" fill="none" width={13} height={13} stroke={C.muted} strokeWidth={1.4} strokeLinecap="round"
-              style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }}>
-              <circle cx="7" cy="7" r="5"/><path d="M11 11l2 2"/>
-            </svg>
-            <input value={search} onChange={e => setSearch(e.target.value)}
-              placeholder={tab === 'spaces' ? `Search spaces in ${town.name}...` : 'Search makers...'}
-              style={{ width: '100%', border: `1px solid rgba(0,0,0,.12)`, padding: '10px 12px 10px 34px', fontSize: 13, fontFamily: 'system-ui,sans-serif', background: 'rgba(255,255,255,.85)', outline: 'none', color: C.text, fontWeight: 300, boxSizing: 'border-box' as const, boxShadow: 'inset 0 1px 3px rgba(0,0,0,.04)' }}/>
-          </div>
-          {tab === 'spaces' && (
-            <div style={{ display: 'flex', gap: 6, overflowX: 'auto', marginTop: 9 }} className="no-scrollbar">
-              {[
-                { id: 'all', label: 'All capacities' },
-                { id: 'under_100', label: '≤ 100 guests' },
-                { id: '100_250', label: '100+ guests' },
-                { id: '250_plus', label: '250+ guests' },
-                { id: 'wedding', label: 'Wedding' },
-                { id: 'ac_hall', label: 'AC Hall' },
-                { id: 'pool', label: 'Pool' },
-              ].map(f => {
-                const active = quickFilter === f.id
-                return (
-                  <button key={f.id} onClick={() => setQuickFilter(active && f.id !== 'all' ? 'all' : f.id)}
+          {/* Rounded Filter Control Box */}
+          <div style={{ background: C.cream, borderRadius: 20, padding: 14, border: `1px solid ${C.cream3}`, boxShadow: '0 2px 8px rgba(0,0,0,.04)', marginBottom: 20 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10 }}>
+              {/* Spaces / Makers segmented pill */}
+              <div style={{ display: 'inline-flex', background: C.cream2, padding: 4, borderRadius: 12, border: `1px solid ${C.cream3}` }}>
+                {(['spaces', 'makers'] as const).map(t => (
+                  <button key={t} onClick={() => { setTab(t); setSearch('') }} className="tap-press"
                     style={{
-                      ...sans, flexShrink: 0, fontSize: 11, padding: '5px 11px', borderRadius: 16, cursor: 'pointer',
-                      border: `1px solid ${active ? C.green : 'rgba(0,0,0,.12)'}`,
-                      background: active ? C.green : 'rgba(255,255,255,.8)',
-                      color: active ? 'white' : C.text, fontWeight: active ? 500 : 300,
-                      transition: 'all .12s',
+                      padding: '7px 18px', fontSize: 12, fontWeight: 500, cursor: 'pointer', border: 'none',
+                      borderRadius: 9, fontFamily: 'system-ui,sans-serif', letterSpacing: '.02em', transition: 'all .15s',
+                      background: tab === t ? C.green : 'transparent',
+                      color: tab === t ? 'white' : C.muted,
                     }}>
-                    {f.label}
+                    {t === 'spaces' ? `Spaces (${properties.length})` : 'Makers'}
                   </button>
-                )
-              })}
+                ))}
+              </div>
+
+              {/* Search box */}
+              <div style={{ flex: 1, minWidth: 190, position: 'relative' }}>
+                <svg viewBox="0 0 16 16" fill="none" width={13} height={13} stroke={C.muted} strokeWidth={1.4} strokeLinecap="round"
+                  style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }}>
+                  <circle cx="7" cy="7" r="5"/><path d="M11 11l2 2"/>
+                </svg>
+                <input value={search} onChange={e => setSearch(e.target.value)}
+                  placeholder={tab === 'spaces' ? `Search spaces in ${town.name}...` : 'Search makers...'}
+                  style={{
+                    width: '100%', border: `1px solid ${C.cream3}`, borderRadius: 12,
+                    padding: '9px 12px 9px 34px', fontSize: 13, fontFamily: 'system-ui,sans-serif',
+                    background: 'white', outline: 'none', color: C.text, fontWeight: 300, boxSizing: 'border-box',
+                  }}/>
+              </div>
+
+              <Link href={tab === 'spaces' ? '/list' : '/join'} className="tap-press"
+                style={{ ...sans, fontSize: 11, color: C.muted, border: `1px solid ${C.cream3}`, borderRadius: 12, padding: '8px 13px', whiteSpace: 'nowrap', background: 'white', textDecoration: 'none' }}>
+                + List yours
+              </Link>
+            </div>
+
+            {/* Physical Fit Filters: Guest Capacity & Facilities ONLY (no celebration-type clutter) */}
+            {tab === 'spaces' && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflowX: 'auto', marginTop: 12, paddingTop: 10, borderTop: `1px solid ${C.cream3}` }} className="no-scrollbar">
+                <span style={{ ...sans, fontSize: 10, color: C.muted, letterSpacing: '.06em', textTransform: 'uppercase', marginRight: 4, flexShrink: 0 }}>
+                  Guests &amp; Facilities:
+                </span>
+                {([
+                  { id: 'all', label: 'Any size' },
+                  { id: 'under_100', label: 'Up to 100 guests' },
+                  { id: '100_plus', label: '100+ guests' },
+                  { id: '250_plus', label: '250+ guests' },
+                ] as const).map(c => {
+                  const active = capFilter === c.id
+                  return (
+                    <button key={c.id} onClick={() => setCapFilter(active && c.id !== 'all' ? 'all' : c.id)}
+                      style={{
+                        ...sans, flexShrink: 0, fontSize: 11, padding: '5px 12px', borderRadius: 999, cursor: 'pointer',
+                        border: `1px solid ${active ? C.green : C.cream3}`,
+                        background: active ? C.green : 'white',
+                        color: active ? 'white' : C.text, fontWeight: active ? 500 : 300,
+                        transition: 'all .12s',
+                      }}>
+                      {c.label}
+                    </button>
+                  )
+                })}
+                <span style={{ color: C.cream3, margin: '0 2px' }}>|</span>
+                {([
+                  { key: 'ac', label: 'AC Hall' },
+                  { key: 'pool', label: 'Pool' },
+                  { key: 'stay', label: 'Overnight Rooms' },
+                ] as const).map(f => {
+                  const active = facilityChips[f.key]
+                  return (
+                    <button key={f.key} onClick={() => setFacilityChips(prev => ({ ...prev, [f.key]: !prev[f.key] }))}
+                      style={{
+                        ...sans, flexShrink: 0, fontSize: 11, padding: '5px 12px', borderRadius: 999, cursor: 'pointer',
+                        border: `1px solid ${active ? C.green : C.cream3}`,
+                        background: active ? C.green : 'white',
+                        color: active ? 'white' : C.muted, fontWeight: active ? 500 : 300,
+                        transition: 'all .12s',
+                      }}>
+                      {f.label}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Count & Reset Bar */}
+          {tab === 'spaces' && !loading && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, padding: '0 4px' }}>
+              <span style={{ ...serif, fontSize: 15, color: C.text, fontStyle: 'italic' }}>
+                Showing {filteredProps.length} {filteredProps.length === 1 ? 'space' : 'spaces'} in {town.name}
+              </span>
+              {hasActiveFilters && (
+                <button onClick={clearAllFilters} style={{ ...sans, fontSize: 12, color: C.terra, background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>
+                  Clear filters
+                </button>
+              )}
             </div>
           )}
-        </div>
 
-        {/* Spaces panel */}
-        {tab === 'spaces' && (
-          <div style={{ padding: '8px 16px 40px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {loading ? [1,2,3].map(i => (
-              <div key={i} style={{ height: 340, background: 'rgba(255,255,255,.4)', border: `1px solid ${C.cream3}`, position: 'relative', overflow: 'hidden' }}>
-                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 8 }}>
-                  <span style={{ ...serif, fontSize: 13, color: C.cream3, fontStyle: 'italic' }}>ഇടം തേടുന്നു...</span>
-                  <span style={{ ...sans, fontSize: 10, color: C.cream3 }}>finding spaces</span>
-                </div>
+          {/* Spaces panel */}
+          {tab === 'spaces' && (
+            loading ? (
+              <div className="theeram-grid">
+                {[1,2,3,4].map(i => (
+                  <div key={i} style={{ height: 340, background: 'rgba(255,255,255,.45)', borderRadius: 24, border: `1px solid ${C.cream3}`, position: 'relative', overflow: 'hidden' }}>
+                    <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 8 }}>
+                      <span style={{ ...serif, fontSize: 13, color: C.muted, fontStyle: 'italic' }}>ഇടം തേടുന്നു...</span>
+                      <span style={{ ...sans, fontSize: 10, color: C.muted }}>finding spaces</span>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))
-            : filteredProps.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px 16px' }}>
+            ) : filteredProps.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '44px 20px', background: C.cream, borderRadius: 24, border: `1px solid ${C.cream3}` }}>
                 <svg viewBox="0 0 70 56" fill="none" width={56} height={45} stroke={C.cream3} strokeWidth={1} style={{ margin: '0 auto 14px' }}>
                   <path d="M8 28L35 10L62 28V50H8Z"/><rect x="26" y="34" width="18" height="16"/><line x1="12" y1="28" x2="58" y2="28"/>
                 </svg>
-                <p style={{ ...serif, fontSize: 18, color: C.muted, marginBottom: 8, fontWeight: 300 }}>
+                <p style={{ ...serif, fontSize: 19, color: C.text, marginBottom: 8, fontWeight: 400 }}>
                   {properties.length === 0 ? `No spaces listed in ${town.name} yet.` : 'No spaces match your filter.'}
                 </p>
                 {properties.length === 0
                   ? <Link href="/list" style={{ ...sans, fontSize: 13, color: C.terra, textDecoration: 'underline' }}>Be the first to list →</Link>
-                  : <button onClick={() => { setSpaceFilter('all'); setQuickFilter('all'); setSearch('') }} style={{ ...sans, fontSize: 12, color: C.terra, background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>Clear filters</button>
+                  : <button onClick={clearAllFilters} style={{ ...sans, fontSize: 12, color: 'white', background: C.green, border: 'none', borderRadius: 12, padding: '9px 18px', cursor: 'pointer' }}>Clear filters</button>
                 }
               </div>
-            ) : filteredProps.map((p, idx) => {
-              const attrs = p.property_attributes
-              const photos = Array.isArray(p.photos) ? p.photos : []
-              const chips = [
-                attrs?.has_pool && 'Pool',
-                attrs?.has_open_lawn && 'Open lawn',
-                attrs?.has_ac_hall && 'AC hall',
-                attrs?.max_guests_day_event ? `Up to ${attrs.max_guests_day_event}` : null,
-              ].filter(Boolean) as string[]
-              const isPick = (p as any).is_featured
-              return (
-                <div key={p.id} className="tap-press" style={{
-                  background: 'white',
-                  border: `1px solid ${C.cream3}`,
-                  boxShadow: '0 2px 8px rgba(0,0,0,.04)',
-                  overflow: 'hidden', position: 'relative',
-                  opacity: 0, animation: 'cardFadeUp .45s ease forwards', animationDelay: `${Math.min(idx * 0.06, 0.4)}s`,
-                }}>
-                  {isPick && <div style={{ position: 'absolute', top: 0, left: 0, background: C.gold, padding: '4px 10px', zIndex: 2, boxShadow: '0 2px 6px rgba(0,0,0,.15)' }}><span style={{ ...sans, fontSize: 9, fontWeight: 700, color: C.text }}>★ Theeram pick</span></div>}
-                  <Link href={`/property/${p.slug}`} style={{ display: 'block', height: 180, background: CARD_BG[p.property_type] ?? C.green, textDecoration: 'none', position: 'relative', overflow: 'hidden', flexShrink: 0 }}>
-                    <PropIllustration type={p.property_type} photos={photos}/>
-                    <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,.35) 0%, transparent 55%)' }}/>
-                    <div style={{ position: 'absolute', bottom: 10, left: 12, display: 'flex', alignItems: 'center', gap: 5 }}>
-                      <div style={{ width: 8, height: 1, background: C.gold }}/>
-                      <span style={{ ...serif, fontSize: 11, color: C.gold, fontStyle: 'italic' }}>{TYPE_LABEL[p.property_type] ?? p.property_type}</span>
-                    </div>
-                  </Link>
-                  <div style={{ padding: '14px 14px 12px' }}>
-                    <Link href={`/property/${p.slug}`} style={{ textDecoration: 'none' }}>
-                      <div style={{ ...serif, fontSize: 20, color: C.text, marginBottom: 3, lineHeight: 1.15 }}>{p.name}</div>
-                      <div style={{ ...sans, fontSize: 11, color: C.muted, marginBottom: 9, fontWeight: 300 }}>{town.name} · {p.tagline?.split('—')[0]?.trim()}</div>
-                    </Link>
-                    {chips.length > 0 && <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' as const, marginBottom: 10 }}>
-                      {chips.slice(0,4).map(ch => <span key={ch} style={{ ...sans, fontSize: 10, color: C.muted, background: '#F0EBE0', padding: '3px 9px', border: `1px solid ${C.cream3}`, fontWeight: 300 }}>{ch}</span>)}
-                    </div>}
-                    <div style={{ width: '100%', height: 1, background: C.cream3, marginBottom: 10 }}/>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      {/* Price — full range shown as stored, e.g. "₹20,000 - ₹23,000" or "Ask for price" */}
-                      <span style={{ ...sans, fontSize: 14, fontWeight: 600, color: C.text }}>{p.price_guide || 'Ask for price'}</span>
-                      <div style={{ display: 'flex', gap: 7 }}>
-                        <button onClick={() => share(p.slug, p.name)} className="tap-press" style={{ width: 32, height: 32, border: `1px solid ${C.cream3}`, background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.muted }}>
-                          <svg viewBox="0 0 14 14" fill="none" width={12} height={12} stroke="currentColor" strokeWidth={1.3} strokeLinecap="round"><circle cx="11" cy="2.5" r="1.5"/><circle cx="3" cy="7" r="1.5"/><circle cx="11" cy="11.5" r="1.5"/><path d="M4.5 6.3l5-3.2M4.5 7.7l5 3.2"/></svg>
-                        </button>
-                      </div>
-                    </div>
-                    <button onClick={() => handleWhatsApp(p)} className="tap-press"
-                      style={{
-                        ...sans, width: '100%', height: 44, marginTop: 10, background: C.green, color: 'white', fontSize: 12, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase' as const, border: 'none', cursor: 'pointer',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                        boxShadow: isPick ? undefined : '0 3px 10px rgba(28,58,43,.25)',
-                        animation: isPick ? 'pickPulse 1.8s ease-in-out infinite' : 'none',
-                        transformOrigin: 'center',
-                      }}>
-                      <svg viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}><path d="M12 3a9 9 0 00-7.8 13.5L3 21l4.6-1.2A9 9 0 1012 3z"/></svg>
-                      Check availability
-                    </button>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
+            ) : (
+              <div className="theeram-grid">
+                {filteredProps.map((p, idx) => {
+                  const rawAttrs = (p as any).property_attributes
+                  const attrs = Array.isArray(rawAttrs) ? rawAttrs[0] : rawAttrs
+                  const photos = Array.isArray(p.photos) ? p.photos : []
+                  const chips = [
+                    attrs?.has_pool && 'Pool',
+                    attrs?.has_open_lawn && 'Open lawn',
+                    attrs?.has_ac_hall && 'AC hall',
+                    attrs?.room_count ? `${attrs.room_count} ${attrs.room_count === 1 ? 'room' : 'rooms'}` : null,
+                    attrs?.max_guests_day_event ? `Up to ${attrs.max_guests_day_event}` : null,
+                  ].filter(Boolean) as string[]
+                  const isPick = (p as any).is_featured
+                  const ownerPhone = (p.owner_whatsapp ?? '').replace(/\D/g, '')
 
-        {/* Makers panel */}
-        {tab === 'makers' && (
-          <div style={{ padding: '8px 16px 40px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {loading ? [1,2,3].map(i => <div key={i} style={{ height: 160, background: 'rgba(255,255,255,.4)', border: `1px solid ${C.cream3}` }}/>)
-            : filteredVendors.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px 0' }}>
+                  return (
+                    <article key={p.id} style={{
+                      background: 'white',
+                      border: `1px solid ${C.cream3}`,
+                      borderRadius: 24,
+                      boxShadow: '0 2px 10px rgba(0,0,0,.04)',
+                      overflow: 'hidden', position: 'relative',
+                      display: 'flex', flexDirection: 'column',
+                      opacity: 0, animation: 'cardFadeUp .45s ease forwards', animationDelay: `${Math.min(idx * 0.05, 0.35)}s`,
+                    }}>
+                      {isPick && (
+                        <div style={{ position: 'absolute', top: 12, left: 12, background: C.gold, padding: '4px 12px', borderRadius: 999, zIndex: 2, boxShadow: '0 2px 6px rgba(0,0,0,.15)' }}>
+                          <span style={{ ...sans, fontSize: 9.5, fontWeight: 700, color: C.text }}>★ Theeram pick</span>
+                        </div>
+                      )}
+                      <Link href={`/property/${p.slug}`} style={{ display: 'block', height: 196, background: CARD_BG[p.property_type] ?? C.green, textDecoration: 'none', position: 'relative', overflow: 'hidden', flexShrink: 0 }}>
+                        <PropIllustration type={p.property_type} photos={photos} name={p.name}/>
+                        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,.45) 0%, transparent 55%)' }}/>
+                        <div style={{ position: 'absolute', bottom: 12, left: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <div style={{ width: 8, height: 1, background: C.gold }}/>
+                          <span style={{ ...serif, fontSize: 12, color: C.gold, fontStyle: 'italic' }}>{TYPE_LABEL[p.property_type] ?? p.property_type}</span>
+                        </div>
+                      </Link>
+
+                      <div style={{ padding: '16px 16px 15px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                        <div>
+                          <Link href={`/property/${p.slug}`} style={{ textDecoration: 'none' }}>
+                            <div style={{ ...serif, fontSize: 20, color: C.text, marginBottom: 4, lineHeight: 1.2 }}>{p.name}</div>
+                            <div style={{ ...sans, fontSize: 11.5, color: C.muted, marginBottom: 11, fontWeight: 300, lineHeight: 1.5 }}>{town.name} · {p.tagline?.split('—')[0]?.trim()}</div>
+                          </Link>
+                          {chips.length > 0 && (
+                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const, marginBottom: 12 }}>
+                              {chips.slice(0, 4).map(ch => (
+                                <span key={ch} style={{ ...sans, fontSize: 10.5, color: C.muted, background: '#F0EBE0', padding: '4px 10px', borderRadius: 999, border: `1px solid ${C.cream3}`, fontWeight: 300 }}>
+                                  {ch}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        <div>
+                          <div style={{ width: '100%', height: 1, background: C.cream3, marginBottom: 11 }}/>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 11 }}>
+                            <span style={{ ...sans, fontSize: 14, fontWeight: 600, color: C.text }}>{p.price_guide || 'Ask for price'}</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <Link href={`/property/${p.slug}`} style={{ ...sans, fontSize: 11, color: C.terra, textDecoration: 'none' }}>Details →</Link>
+                              <button onClick={() => share(p.slug, p.name)} aria-label={`Share ${p.name}`} className="tap-press" style={{ width: 32, height: 32, borderRadius: 999, border: `1px solid ${C.cream3}`, background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.muted }}>
+                                <svg viewBox="0 0 14 14" fill="none" width={12} height={12} stroke="currentColor" strokeWidth={1.3} strokeLinecap="round"><circle cx="11" cy="2.5" r="1.5"/><circle cx="3" cy="7" r="1.5"/><circle cx="11" cy="11.5" r="1.5"/><path d="M4.5 6.3l5-3.2M4.5 7.7l5 3.2"/></svg>
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* 1-Tap Direct WhatsApp + 1-Tap Call */}
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <button onClick={() => handleWhatsApp(p)} className="tap-press"
+                              style={{
+                                ...sans, flex: 1, height: 44, background: C.green, color: 'white', fontSize: 12, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase' as const,
+                                border: 'none', borderRadius: 14, cursor: 'pointer',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                                boxShadow: '0 3px 10px rgba(28,58,43,.2)',
+                              }}>
+                              <svg viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}><path d="M12 3a9 9 0 00-7.8 13.5L3 21l4.6-1.2A9 9 0 1012 3z"/></svg>
+                              Check availability
+                            </button>
+                            {ownerPhone && (
+                              <a href={`tel:+${ownerPhone}`} onClick={() => logPropertyInquiry(p)} aria-label={`Call ${p.name} owner`} className="tap-press"
+                                style={{
+                                  width: 44, height: 44, borderRadius: 14, border: `1px solid ${C.cream3}`, background: C.cream,
+                                  color: C.green, display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', flexShrink: 0,
+                                }}>
+                                <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 01-2.2 2 19.8 19.8 0 01-8.6-3.1 19.5 19.5 0 01-6-6A19.8 19.8 0 012.1 4.2 2 2 0 014.1 2h3a2 2 0 012 1.7c.1.9.4 1.8.7 2.7a2 2 0 01-.5 2.1L8 9.8a16 16 0 006 6l1.3-1.3a2 2 0 012.1-.4c.9.3 1.8.6 2.7.7a2 2 0 011.7 2z"/></svg>
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </article>
+                  )
+                })}
+              </div>
+            )
+          )}
+
+          {/* Makers panel */}
+          {tab === 'makers' && (
+            loading ? (
+              <div className="theeram-grid">
+                {[1,2,3,4].map(i => <div key={i} style={{ height: 220, background: 'rgba(255,255,255,.45)', borderRadius: 22, border: `1px solid ${C.cream3}` }}/>)}
+              </div>
+            ) : filteredVendors.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '44px 20px', background: C.cream, borderRadius: 24, border: `1px solid ${C.cream3}` }}>
                 <p style={{ ...sans, fontSize: 14, color: C.muted, marginBottom: 10 }}>No makers found.</p>
                 <button onClick={() => { setMakerFilter('all'); setSearch('') }} style={{ ...sans, fontSize: 12, color: C.terra, background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>Clear filters</button>
               </div>
-            ) : filteredVendors.map((v, idx) => (
-              <div key={v.id} style={{ opacity: 0, animation: 'cardFadeUp .45s ease forwards', animationDelay: `${Math.min(idx * 0.06, 0.4)}s` }}>
-                <MakerCard maker={v as any}/>
+            ) : (
+              <div className="theeram-grid">
+                {filteredVendors.map((v, idx) => (
+                  <div key={v.id} style={{ opacity: 0, animation: 'cardFadeUp .45s ease forwards', animationDelay: `${Math.min(idx * 0.05, 0.35)}s` }}>
+                    <MakerCard maker={v as any}/>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        )}
+            )
+          )}
+
+        </div>
       </section>
 
-      {/* End-of-list section — other locations live here */}
-      <section id="other-locations" style={{ background: C.green2, padding: '40px 0' }}>
-        <div style={{ textAlign: 'center', padding: '0 20px' }}>
+      {/* End-of-list section — other locations */}
+      <section id="other-locations" style={{ background: C.green2, padding: '44px 0' }}>
+        <div style={{ maxWidth: 1020, margin: '0 auto', textAlign: 'center', padding: '0 20px' }}>
           <div style={{ fontSize: 20, marginBottom: 10 }}>🌿</div>
-          <div style={{ ...serif, fontSize: 18, color: 'white', fontWeight: 300, marginBottom: 8, lineHeight: 1.4 }}>
+          <div style={{ ...serif, fontSize: 20, color: 'white', fontWeight: 300, marginBottom: 8, lineHeight: 1.4 }}>
             More spaces being added<br/>every week
           </div>
-          <p style={{ ...sans, fontSize: 12, color: 'rgba(255,255,255,.55)', fontWeight: 300, marginBottom: 22, lineHeight: 1.6 }}>
-            Can't find what you're looking for?<br/>Check other locations on Theeram.
+          <p style={{ ...sans, fontSize: 12.5, color: 'rgba(255,255,255,.6)', fontWeight: 300, marginBottom: 22, lineHeight: 1.6 }}>
+            Can’t find what you’re looking for?<br/>Check other locations on Theeram.
           </p>
-        </div>
 
-        {otherTowns.length > 0 && (
-          <>
-            <div style={{ width: 30, height: 1, background: 'rgba(255,255,255,.15)', margin: '0 auto 20px' }}/>
-            <div style={{ textAlign: 'center', padding: '0 20px', marginBottom: 12 }}>
-              <span style={{ ...sans, fontSize: 10, color: C.gold, letterSpacing: '.08em' }}>OTHER LOCATIONS</span>
-            </div>
-            <div style={{ display: 'flex', gap: 8, overflowX: 'auto', padding: '0 20px 6px', scrollSnapType: 'x proximity' as const }} className="no-scrollbar">
-              {otherTowns.map(t => (
-                <Link key={t.slug} href={`/${t.slug}`} style={{ textDecoration: 'none', flexShrink: 0, scrollSnapAlign: 'start' }}>
-                  <div className="tap-press" style={{ background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.2)', color: 'white', fontSize: 11, padding: '9px 18px', whiteSpace: 'nowrap', ...sans }}>
-                    {t.name}
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </>
-        )}
+          {otherTowns.length > 0 && (
+            <>
+              <div style={{ width: 30, height: 1, background: 'rgba(255,255,255,.15)', margin: '0 auto 20px' }}/>
+              <div style={{ marginBottom: 12 }}>
+                <span style={{ ...sans, fontSize: 10, color: C.gold, letterSpacing: '.08em' }}>OTHER LOCATIONS</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 8, flexWrap: 'wrap' }}>
+                {otherTowns.map(t => (
+                  <Link key={t.slug} href={`/${t.slug}`} style={{ textDecoration: 'none' }}>
+                    <div className="tap-press" style={{ background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.2)', borderRadius: 999, color: 'white', fontSize: 11.5, padding: '9px 20px', whiteSpace: 'nowrap', ...sans }}>
+                      {t.name}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
       </section>
 
-      {/* Footer — preserved exactly as-is, no changes */}
+      {/* Footer */}
       <footer style={{ background: C.dark, padding: '40px 16px 32px', textAlign: 'center' }}>
         <div style={{ ...serif, fontSize: 19, color: C.gold, marginBottom: 5, fontWeight: 300 }}>തീരം · theeram</div>
         <div style={{ ...sans, fontSize: 10, color: 'rgba(255,255,255,.4)', letterSpacing: '.08em', marginBottom: 20 }}>Spaces for every occasion · Kerala</div>
@@ -680,10 +841,13 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
         <div style={{ ...sans, fontSize: 10, color: 'rgba(255,255,255,.18)', lineHeight: 1.6 }}>© {new Date().getFullYear()} Theeram Spaces · Kerala</div>
       </footer>
 
-      {/* Enquiry sheet — instant WhatsApp/Call with a pre-filled, specific message */}
+      {/* Post-enquiry gratitude sheet (shown after WhatsApp has already been opened) */}
       {modalProperty && showModal && (
-        <EnquirySheet
-          property={modalProperty}
+        <GratitudeModal
+          propertyName={modalProperty.name}
+          whatsappUrl={buildWaUrl(modalProperty)}
+          reviewUrl="https://g.page/r/Cav0otb1aGpEEBM/review"
+          upiUrl="upi://pay?pa=smm0794@okhdfcbank&pn=Theeram&am=20&cu=INR&tn=Theeram+chai"
           onClose={() => { setShowModal(false); setModalProperty(null) }}
         />
       )}

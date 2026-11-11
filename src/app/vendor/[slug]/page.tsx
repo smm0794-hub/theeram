@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { supabase, Vendor, VENDOR_CATEGORY_LABELS } from '@/lib/supabase'
 import { C, sans, serif } from '@/lib/design'
 import Header from '@/components/Header'
+import GratitudeModal from '@/components/GratitudeModal'
 
 export default function VendorDetailPage({ params }: { params: { slug: string } }) {
   const router = useRouter()
@@ -13,6 +14,7 @@ export default function VendorDetailPage({ params }: { params: { slug: string } 
   const [loading, setLoading] = useState(true)
   const [copied, setCopied] = useState(false)
   const [activePhoto, setActivePhoto] = useState<string | null>(null)
+  const [showModal, setShowModal] = useState(false)
 
   useEffect(() => {
     supabase.from('vendors').select('*').eq('slug', params.slug).eq('is_active', true).single()
@@ -24,10 +26,13 @@ export default function VendorDetailPage({ params }: { params: { slug: string } 
     try { if (navigator.share) await navigator.share({ title: vendor?.name ?? '', url }); else { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 2000) } } catch {}
   }
 
-  function handleWhatsApp() {
+  function logInquiry() {
     if (!vendor) return
-    const msg = encodeURIComponent(`Hi! I found ${vendor.name} on Theeram and I'm interested in your services.`)
-    window.open(`https://wa.me/${vendor.whatsapp}?text=${msg}`, '_blank')
+    fetch('/api/vendor-inquiries', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ vendor_id: vendor.id }),
+    }).catch(() => {})
   }
 
   if (loading) return (
@@ -45,79 +50,103 @@ export default function VendorDetailPage({ params }: { params: { slug: string } 
   )
 
   const photos = vendor.photos ?? []
+  const waDigits = (vendor.whatsapp ?? '').replace(/\D/g, '')
+  const phoneDigits = (vendor.phone || vendor.whatsapp || '').replace(/\D/g, '')
+  const waUrl = `https://wa.me/${waDigits}?text=${encodeURIComponent(`Hi! I found ${vendor.name} on Theeram (theeramspaces.in) and I'm interested in your services. Could you share availability and pricing?`)}`
+
+  function handleWhatsApp() {
+    logInquiry()
+    const w = window.open(waUrl, '_blank', 'noopener,noreferrer')
+    if (!w) window.location.href = waUrl
+    setShowModal(true)
+  }
 
   return (
-    <div style={{ background: C.cream, minHeight: '100vh', paddingBottom: 90 }}>
+    <div style={{ background: C.cream, minHeight: '100vh', paddingBottom: 100 }}>
       <Header/>
 
-      {/* Hero zone */}
-      <div style={{ background: C.green, height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
-        {photos.length > 0
-          ? <img src={photos[0]} alt={vendor.name} style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }}/>
-          : <div style={{ opacity: .1 }}>
-              <svg viewBox="0 0 120 120" fill="none" width={180} height={180} stroke="white" strokeWidth={.8}>
-                <circle cx="60" cy="60" r="50"/><circle cx="60" cy="60" r="30"/>
-                <line x1="60" y1="10" x2="60" y2="110"/><line x1="10" y1="60" x2="110" y2="60"/>
-              </svg>
-            </div>
-        }
-        <button onClick={() => router.back()} style={{ position: 'absolute', top: 16, left: 16, width: 36, height: 36, background: 'rgba(0,0,0,.4)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <svg viewBox="0 0 20 20" fill="none" width={18} height={18} stroke="white" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M12 5L7 10l5 5"/></svg>
-        </button>
-        <button onClick={handleShare} style={{ position: 'absolute', top: 16, right: 16, width: 36, height: 36, background: 'rgba(0,0,0,.4)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          {copied
-            ? <svg viewBox="0 0 20 20" fill="none" width={16} height={16} stroke="white" strokeWidth={2}><path d="M4 10l5 5 7-9" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            : <svg viewBox="0 0 14 14" fill="none" width={14} height={14} stroke="white" strokeWidth={1.3} strokeLinecap="round"><circle cx="11" cy="2.5" r="1.5"/><circle cx="3" cy="7" r="1.5"/><circle cx="11" cy="11.5" r="1.5"/><path d="M4.5 6.3l5-3.2M4.5 7.7l5 3.2"/></svg>
-          }
-        </button>
-        {vendor.is_featured && (
-          <div style={{ position: 'absolute', bottom: 12, right: 12, background: C.gold, padding: '4px 10px' }}>
-            <span style={{ ...sans, fontSize: 9, fontWeight: 700, color: C.text, letterSpacing: '.07em' }}>Featured</span>
-          </div>
-        )}
-        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '24px 16px 12px', background: 'linear-gradient(to top,rgba(0,0,0,.55),transparent)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
-            <div style={{ width: 10, height: 1, background: C.gold }}/>
-            <span style={{ ...sans, fontSize: 10, color: C.gold, letterSpacing: '.07em' }}>{VENDOR_CATEGORY_LABELS[vendor.category]}</span>
-            <div style={{ width: 10, height: 1, background: C.gold }}/>
-          </div>
-          <h1 style={{ ...serif, fontSize: 22, color: 'white', fontWeight: 400, lineHeight: 1.2 }}>{vendor.name}</h1>
+      <div style={{ maxWidth: 780, margin: '0 auto', padding: '16px 16px 0' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+          <button onClick={() => router.back()} style={{
+            ...sans, fontSize: 12, color: C.text, background: C.cream2, border: `1px solid ${C.cream3}`,
+            padding: '7px 14px', borderRadius: 999, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6,
+          }}>
+            ← Back
+          </button>
+          <button onClick={handleShare} style={{
+            ...sans, fontSize: 12, color: C.text, background: 'white', border: `1px solid ${C.cream3}`,
+            padding: '7px 14px', borderRadius: 999, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6,
+          }}>
+            {copied ? '✓ Link copied' : '↗ Share'}
+          </button>
         </div>
-      </div>
 
-      {/* Body */}
-      <div style={{ padding: '20px 16px 0' }}>
-        <p style={{ ...sans, fontSize: 14, color: C.muted, lineHeight: 1.6, marginBottom: 16, fontWeight: 300 }}>{vendor.tagline}</p>
-        {vendor.area_served && <p style={{ ...sans, fontSize: 12, color: C.muted, marginBottom: 16 }}>📍 {vendor.area_served}</p>}
+        {/* Rounded Hero Card */}
+        <div style={{ background: 'white', borderRadius: 26, border: `1px solid ${C.cream3}`, overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,.04)', marginBottom: 16 }}>
+          <div style={{ background: C.green, height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
+            {photos.length > 0
+              ? <img src={photos[0]} alt={vendor.name} style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }}/>
+              : <div style={{ opacity: .1 }}>
+                  <svg viewBox="0 0 120 120" fill="none" width={180} height={180} stroke="white" strokeWidth={.8}>
+                    <circle cx="60" cy="60" r="50"/><circle cx="60" cy="60" r="30"/>
+                    <line x1="60" y1="10" x2="60" y2="110"/><line x1="10" y1="60" x2="110" y2="60"/>
+                  </svg>
+                </div>
+            }
+            {vendor.is_featured && (
+              <div style={{ position: 'absolute', top: 14, left: 14, background: C.gold, padding: '4px 12px', borderRadius: 999 }}>
+                <span style={{ ...sans, fontSize: 9.5, fontWeight: 700, color: C.text, letterSpacing: '.05em' }}>★ Featured</span>
+              </div>
+            )}
+            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '28px 20px 14px', background: 'linear-gradient(to top,rgba(0,0,0,.6),transparent)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
+                <div style={{ width: 10, height: 1, background: C.gold }}/>
+                <span style={{ ...sans, fontSize: 10, color: C.gold, letterSpacing: '.07em' }}>{VENDOR_CATEGORY_LABELS[vendor.category]}</span>
+              </div>
+              <h1 style={{ ...serif, fontSize: 24, color: 'white', fontWeight: 400, lineHeight: 1.2 }}>{vendor.name}</h1>
+            </div>
+          </div>
 
-        {vendor.instagram_url && (
-          <a href={vendor.instagram_url.startsWith('http') ? vendor.instagram_url : `https://instagram.com/${vendor.instagram_url.replace('@','')}`}
-            target="_blank" rel="noopener noreferrer"
-            style={{ ...sans, fontSize: 12, color: C.terra, textDecoration: 'none', borderBottom: `1px solid ${C.terra}`, paddingBottom: 1, display: 'inline-block', marginBottom: 20 }}>
-            Instagram →
-          </a>
-        )}
+          <div style={{ padding: '18px 20px 20px' }}>
+            <p style={{ ...sans, fontSize: 14, color: C.muted, lineHeight: 1.65, marginBottom: 12, fontWeight: 300 }}>{vendor.tagline}</p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+              {vendor.area_served && (
+                <span style={{ ...sans, fontSize: 11.5, color: C.muted, background: C.cream, padding: '6px 12px', borderRadius: 999, border: `1px solid ${C.cream3}` }}>
+                  📍 {vendor.area_served}
+                </span>
+              )}
+              {vendor.price_guide && (
+                <span style={{ ...sans, fontSize: 11.5, color: C.text, fontWeight: 500, background: C.cream, padding: '6px 12px', borderRadius: 999, border: `1px solid ${C.cream3}` }}>
+                  {vendor.price_guide}
+                </span>
+              )}
+              {vendor.instagram_url && (
+                <a href={vendor.instagram_url.startsWith('http') ? vendor.instagram_url : `https://instagram.com/${vendor.instagram_url.replace('@','')}`}
+                  target="_blank" rel="noopener noreferrer"
+                  style={{ ...sans, fontSize: 11.5, color: C.terra, background: '#FDF4EF', border: `1px solid rgba(155,61,30,.28)`, padding: '6px 13px', borderRadius: 999, textDecoration: 'none' }}>
+                  Instagram →
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
 
         {vendor.description && (
-          <div style={{ borderTop: `1px solid ${C.cream3}`, paddingTop: 20, marginBottom: 20 }}>
+          <div style={{ background: 'white', borderRadius: 24, border: `1px solid ${C.cream3}`, padding: '20px 20px', marginBottom: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 12 }}>
               <div style={{ width: 14, height: 1, background: C.terra }}/>
               <span style={{ ...sans, fontSize: 10, color: C.terra, letterSpacing: '.08em' }}>കൂടുതൽ</span>
               <div style={{ flex: 1, height: 1, background: C.cream3 }}/>
             </div>
-            <p style={{ ...sans, fontSize: 14, color: '#444', lineHeight: 1.8, fontWeight: 300 }}>{vendor.description}</p>
+            <p style={{ ...sans, fontSize: 14, color: '#444', lineHeight: 1.8, fontWeight: 300, margin: 0 }}>{vendor.description}</p>
           </div>
         )}
 
-        {vendor.price_guide && (
-          <p style={{ ...sans, fontSize: 13, color: C.muted, fontStyle: 'italic', borderTop: `1px solid ${C.cream3}`, paddingTop: 16, marginBottom: 16, fontWeight: 300 }}>{vendor.price_guide}</p>
-        )}
-
         {photos.length > 1 && (
-          <div style={{ borderTop: `1px solid ${C.cream3}`, paddingTop: 20, marginBottom: 20 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+          <div style={{ background: 'white', borderRadius: 24, border: `1px solid ${C.cream3}`, padding: '20px 20px', marginBottom: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
               {photos.map((url, i) => (
-                <div key={i} style={{ aspectRatio: '1', overflow: 'hidden', cursor: 'pointer' }} onClick={() => setActivePhoto(url)}>
+                <div key={i} style={{ aspectRatio: '1', overflow: 'hidden', borderRadius: 14, cursor: 'pointer' }} onClick={() => setActivePhoto(url)}>
                   <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}/>
                 </div>
               ))}
@@ -127,29 +156,41 @@ export default function VendorDetailPage({ params }: { params: { slug: string } 
       </div>
 
       {/* Sticky CTA */}
-      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: C.cream, borderTop: `1px solid ${C.cream3}`, padding: '12px 16px', display: 'flex', gap: 10, zIndex: 30 }}>
-        <Link href="/?tab=makers" style={{ width: 44, height: 44, border: `1px solid ${C.cream3}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.muted, textDecoration: 'none', flexShrink: 0 }}>
-          <svg viewBox="0 0 20 20" fill="none" width={18} height={18} stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M12 5L7 10l5 5"/></svg>
-        </Link>
-        {vendor.phone && (
-          <a href={`tel:${vendor.phone}`} style={{ ...sans, height: 44, border: `1px solid ${C.cream3}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.text, textDecoration: 'none', padding: '0 14px', fontSize: 11, fontWeight: 500 }}>
-            📞 Call
-          </a>
-        )}
-        {vendor.whatsapp && (
-          <button onClick={handleWhatsApp} style={{ ...sans, flex: 1, background: C.green, color: 'white', fontSize: 11, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', height: 44, border: 'none', cursor: 'pointer' }}>
-            WhatsApp
-          </button>
-        )}
+      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: 'rgba(245,240,232,.96)', backdropFilter: 'blur(8px)', borderTop: `1px solid ${C.cream3}`, padding: '12px 16px', zIndex: 30 }}>
+        <div style={{ maxWidth: 780, margin: '0 auto', display: 'flex', gap: 10 }}>
+          <Link href="/?tab=makers" style={{ width: 48, height: 48, borderRadius: 14, border: `1px solid ${C.cream3}`, background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.muted, textDecoration: 'none', flexShrink: 0 }}>
+            <svg viewBox="0 0 20 20" fill="none" width={18} height={18} stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M12 5L7 10l5 5"/></svg>
+          </Link>
+          {phoneDigits && (
+            <a href={`tel:+${phoneDigits}`} onClick={logInquiry} style={{ ...sans, height: 48, borderRadius: 14, border: `1px solid ${C.green}`, background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.green, textDecoration: 'none', padding: '0 16px', fontSize: 12, fontWeight: 600 }}>
+              📞 Call
+            </a>
+          )}
+          {waDigits && (
+            <button onClick={handleWhatsApp} style={{ ...sans, flex: 1, background: C.green, color: 'white', fontSize: 12, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', height: 48, borderRadius: 14, border: 'none', cursor: 'pointer' }}>
+              Check availability on WhatsApp
+            </button>
+          )}
+        </div>
       </div>
 
       {activePhoto && (
         <div onClick={() => setActivePhoto(null)} style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <img src={activePhoto} alt="" style={{ maxWidth: '100%', maxHeight: '85vh', objectFit: 'contain' }} onClick={e => e.stopPropagation()}/>
-          <button onClick={() => setActivePhoto(null)} style={{ position: 'absolute', top: 16, right: 16, width: 36, height: 36, background: 'rgba(255,255,255,.15)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <img src={activePhoto} alt="" style={{ maxWidth: '100%', maxHeight: '85vh', objectFit: 'contain', borderRadius: 14 }} onClick={e => e.stopPropagation()}/>
+          <button onClick={() => setActivePhoto(null)} style={{ position: 'absolute', top: 16, right: 16, width: 38, height: 38, borderRadius: 999, background: 'rgba(255,255,255,.15)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <svg viewBox="0 0 20 20" fill="none" width={18} height={18} stroke="white" strokeWidth={1.8}><path d="M5 5l10 10M15 5L5 15" strokeLinecap="round"/></svg>
           </button>
         </div>
+      )}
+
+      {showModal && (
+        <GratitudeModal
+          propertyName={vendor.name}
+          whatsappUrl={waUrl}
+          reviewUrl="https://g.page/r/Cav0otb1aGpEEBM/review"
+          upiUrl="upi://pay?pa=smm0794@okhdfcbank&pn=Theeram&am=20&cu=INR&tn=Theeram+chai"
+          onClose={() => setShowModal(false)}
+        />
       )}
     </div>
   )

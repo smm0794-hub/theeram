@@ -1,6 +1,8 @@
 import { Metadata } from 'next'
-import { createServiceClient, PROPERTY_TYPE_LABELS, EVENT_TYPE_LABELS } from '@/lib/supabase'
+import { createServiceClient, PROPERTY_TYPE_LABELS, EVENT_TYPE_LABELS, Property } from '@/lib/supabase'
 import PropertyDetailClient from './client'
+
+export const revalidate = 60
 
 interface PageProps {
   params: { slug: string }
@@ -26,7 +28,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     const town = (p as any).towns
     const location = town ? `${town.name}, ${town.district} district, Kerala` : 'Kerala'
     const title = `${p.name} — ${typeLabel} in ${location}`
-    const desc = `${p.tagline} · ${p.price_guide ?? 'Ask owner for pricing'} · Ideal for ${eventTypes}. Book directly on WhatsApp — no commission, no middleman.`
+    const desc = `${p.tagline} · ${p.price_guide ?? 'Ask owner for pricing'}${eventTypes ? ` · Ideal for ${eventTypes}` : ''}. Book directly on WhatsApp — no commission, no middleman.`
     const firstPhoto = (p as any).photos?.[0]
 
     return {
@@ -61,6 +63,18 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 }
 
-export default function PropertyDetailPage({ params }: PageProps) {
-  return <PropertyDetailClient slug={params.slug} />
+export default async function PropertyDetailPage({ params }: PageProps) {
+  let initialProperty: Property | null = null
+  try {
+    const supabase = createServiceClient()
+    const { data } = await supabase
+      .from('properties')
+      .select('*, property_attributes(*), property_event_types(event_type), towns(name, slug, district)')
+      .eq('slug', params.slug)
+      .eq('is_active', true)
+      .single()
+    if (data) initialProperty = data as Property
+  } catch {}
+
+  return <PropertyDetailClient slug={params.slug} initialProperty={initialProperty} />
 }

@@ -20,24 +20,28 @@ const sections = [
 
 export default function PrivacyPage() {
   return (
-    <div style={{ background:C.cream,minHeight:'100vh',paddingBottom:48 }}>
+    <div style={{ background:C.cream,minHeight:'100vh',paddingBottom:56 }}>
       <Header/>
-      <div style={{ background:C.green,padding:'32px 20px 28px' }}>
-        <h1 style={{ ...serif,fontSize:26,color:'white',fontWeight:300 }}>Privacy Policy</h1>
+      <div style={{ background:C.green,padding:'34px 20px 30px',borderRadius:'0 0 32px 32px' }}>
+        <div style={{ maxWidth:640,margin:'0 auto' }}>
+          <h1 style={{ ...serif,fontSize:28,color:'white',fontWeight:300 }}>Privacy Policy</h1>
+        </div>
       </div>
       <div style={{ padding:'24px 16px 0',maxWidth:640,margin:'0 auto' }}>
-        <p style={{ ...sans,fontSize:11,color:C.muted,marginBottom:24 }}>Last updated: {new Date().toLocaleDateString('en-IN',{year:'numeric',month:'long',day:'numeric'})}</p>
-        <p style={{ ...sans,fontSize:14,color:C.muted,lineHeight:1.8,marginBottom:28,fontWeight:300 }}>
-          Theeram Spaces is a curated directory of event spaces and services in Pala, Kerala. This policy explains what data we collect, why, and how we use it.
-        </p>
-        {sections.map(({title,body})=>(
-          <section key={title} style={{ marginBottom:24,borderTop:`1px solid ${C.cream3}`,paddingTop:20 }}>
-            <h2 style={{ ...serif,fontSize:17,color:C.text,marginBottom:10,fontWeight:400 }}>{title}</h2>
-            <p style={{ ...sans,fontSize:13,color:C.muted,lineHeight:1.85,whiteSpace:'pre-line',fontWeight:300 }}>{body}</p>
-          </section>
-        ))}
-        <div style={{ borderTop:`1px solid ${C.cream3}`,paddingTop:16 }}>
-          <p style={{ ...sans,fontSize:11,color:C.muted }}>Theeram Spaces · Pala, Kerala · smm0794@gmail.com</p>
+        <p style={{ ...sans,fontSize:11,color:C.muted,marginBottom:16 }}>Last updated: {new Date().toLocaleDateString('en-IN',{year:'numeric',month:'long',day:'numeric'})}</p>
+        <div style={{ background:'white',borderRadius:24,border:`1px solid ${C.cream3}`,padding:'22px 22px' }}>
+          <p style={{ ...sans,fontSize:14,color:C.muted,lineHeight:1.8,marginBottom:22,fontWeight:300 }}>
+            Theeram Spaces is a curated directory of event spaces and services in Kerala. This policy explains what data we collect, why, and how we use it.
+          </p>
+          {sections.map(({title,body})=>(
+            <section key={title} style={{ marginBottom:20,borderTop:`1px solid ${C.cream3}`,paddingTop:18 }}>
+              <h2 style={{ ...serif,fontSize:17,color:C.text,marginBottom:8,fontWeight:400 }}>{title}</h2>
+              <p style={{ ...sans,fontSize:13,color:C.muted,lineHeight:1.85,whiteSpace:'pre-line',fontWeight:300,margin:0 }}>{body}</p>
+            </section>
+          ))}
+          <div style={{ borderTop:`1px solid ${C.cream3}`,paddingTop:16 }}>
+            <p style={{ ...sans,fontSize:11,color:C.muted,margin:0 }}>Theeram Spaces · Pala, Kerala · smm0794@gmail.com</p>
+          </div>
         </div>
       </div>
     </div>

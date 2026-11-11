@@ -1,8 +1,10 @@
 import { createClient } from '@supabase/supabase-js'
 import { notFound } from 'next/navigation'
 import { Metadata } from 'next'
-import { Town } from '@/lib/supabase'
+import { Town, Property, Vendor } from '@/lib/supabase'
 import TownPage from '@/components/TownPage'
+
+export const revalidate = 60
 
 const supabaseServer = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -32,9 +34,28 @@ export default async function TownRoute({ params }: { params: { town: string } }
     .from('towns').select('*').eq('slug', params.town).eq('is_active', true).single()
   if (!town) notFound()
 
-  // Fetch all active towns for the "Browse other towns" row
-  const { data: allTowns } = await supabaseServer
-    .from('towns').select('*').eq('is_active', true).order('sort_order', { ascending: true })
+  const [ar, pr, vr] = await Promise.all([
+    supabaseServer.from('towns').select('*').eq('is_active', true).order('sort_order', { ascending: true }),
+    supabaseServer.from('properties').select('*, property_attributes(*), property_event_types(event_type)')
+      .eq('is_active', true).eq('town_id', town.id)
+      .order('sort_order', { ascending: false }).order('created_at', { ascending: false }),
+    supabaseServer.from('vendors').select('*, vendor_attributes(*)').eq('is_active', true)
+      .order('is_featured', { ascending: false }).order('created_at', { ascending: false }),
+  ])
 
-  return <TownPage town={town as Town} allTowns={(allTowns ?? []) as Town[]}/>
+  const initialVendors = (!vr.error && vr.data)
+    ? vr.data.map((v: any) => ({
+        ...v,
+        vendor_attributes: Array.isArray(v.vendor_attributes) ? v.vendor_attributes[0] : v.vendor_attributes,
+      })) as Vendor[]
+    : undefined
+
+  return (
+    <TownPage
+      town={town as Town}
+      allTowns={(ar.data ?? []) as Town[]}
+      initialProperties={(!pr.error && pr.data) ? (pr.data as Property[]) : undefined}
+      initialVendors={initialVendors}
+    />
+  )
 }
