@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { supabase, Property, EVENT_TYPE_LABELS } from '@/lib/supabase'
 import { C, sans, serif } from '@/lib/design'
 import Header from '@/components/Header'
-import GratitudeModal from '@/components/GratitudeModal'
+import EnquirySheet from '@/components/EnquirySheet'
 
 const TYPE_LABEL: Record<string, string> = {
   villa_with_pool: 'Villa with pool', villa_without_pool: 'Villa',
@@ -110,18 +110,10 @@ export default function PropertyDetailClient({ slug }: { slug: string }) {
     window.addEventListener('beforeunload', sendDuration)
   }
 
-  async function handleWhatsApp() {
+  function handleWhatsApp() {
     if (!property) return
-    // Log enquiry — linked to the specific view that led to it, so analytics can
-    // compare time-on-page for views that converted vs. views that didn't.
-    try {
-      await supabase.from('inquiries').insert({
-        property_id: property.id,
-        event_type: property.property_event_types?.[0]?.event_type ?? 'general',
-        view_id: currentViewId,
-      })
-    } catch {}
-    // Show gratitude modal — it handles WhatsApp opening internally
+    // Enquiry is logged inside EnquirySheet when the visitor actually taps
+    // WhatsApp or Call — still linked to currentViewId for conversion analytics.
     setShowModal(true)
   }
 
@@ -153,10 +145,16 @@ export default function PropertyDetailClient({ slug }: { slug: string }) {
   const firstEvent = eventTypes[0]?.event_type ?? 'general'
   const heroBg = CARD_BG[property.property_type] ?? C.green
 
-  const waMessage = encodeURIComponent(
-    `Hi! I found ${property.name} on Theeram and I'm interested in booking. Could you share availability and pricing?`
-  )
-  const waUrl = `https://wa.me/${property.owner_whatsapp}?text=${waMessage}`
+  const ownerPhone = (property.owner_whatsapp ?? '').replace(/\D/g, '')
+
+  function handleCall() {
+    if (!property) return
+    supabase.from('inquiries').insert({
+      property_id: property.id,
+      event_type: 'general',
+      ...(currentViewId ? { view_id: currentViewId } : {}),
+    }).then(() => {}, () => {})
+  }
 
   const facilities = [
     { label: 'Bedrooms', value: attrs?.room_count, show: (attrs?.room_count ?? 0) > 0 },
@@ -335,12 +333,19 @@ export default function PropertyDetailClient({ slug }: { slug: string }) {
         <Link href="/" style={{ width: 44, height: 44, border: `1px solid ${C.cream3}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.muted, textDecoration: 'none', flexShrink: 0 }}>
           <svg viewBox="0 0 20 20" fill="none" width={18} height={18} stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M12 5L7 10l5 5"/></svg>
         </Link>
+        {ownerPhone && (
+          <a href={`tel:+${ownerPhone}`} onClick={handleCall} aria-label="Call the owner"
+            style={{ ...sans, width: 52, height: 52, border: `1px solid ${C.green}`, color: C.green, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, textDecoration: 'none', flexShrink: 0, background: 'white' }}>
+            <svg viewBox="0 0 24 24" width={17} height={17} fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 01-2.2 2 19.8 19.8 0 01-8.6-3.1 19.5 19.5 0 01-6-6A19.8 19.8 0 012.1 4.2 2 2 0 014.1 2h3a2 2 0 012 1.7c.1.9.4 1.8.7 2.7a2 2 0 01-.5 2.1L8 9.8a16 16 0 006 6l1.3-1.3a2 2 0 012.1-.4c.9.3 1.8.6 2.7.7a2 2 0 011.7 2z"/></svg>
+            <span style={{ fontSize: 9, fontWeight: 600 }}>Call</span>
+          </a>
+        )}
         <button onClick={handleWhatsApp} style={{ ...sans, flex: 1, background: C.green, color: 'white', padding: '0 16px', height: 52, border: 'none', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
           <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase' }}>
             <svg viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}><path d="M12 3a9 9 0 00-7.8 13.5L3 21l4.6-1.2A9 9 0 1012 3z"/></svg>
             Check availability &amp; price
           </span>
-          <span style={{ fontSize: 10, fontWeight: 300, letterSpacing: '.02em', opacity: .85 }}>Message ready on WhatsApp · No commission</span>
+          <span style={{ fontSize: 10, fontWeight: 300, letterSpacing: '.02em', opacity: .85 }}>Direct to owner on WhatsApp · No commission</span>
         </button>
       </div>
 
@@ -354,13 +359,11 @@ export default function PropertyDetailClient({ slug }: { slug: string }) {
         </div>
       )}
 
-      {/* Gratitude modal */}
+      {/* Enquiry sheet */}
       {showModal && (
-        <GratitudeModal
-          propertyName={property.name}
-          whatsappUrl={waUrl}
-          reviewUrl="https://g.page/r/Cav0otb1aGpEEBM/review"
-          upiUrl={`upi://pay?pa=smm0794@okhdfcbank&pn=Theeram&am=20&cu=INR&tn=Theeram+chai`}
+        <EnquirySheet
+          property={property}
+          viewId={currentViewId}
           onClose={() => setShowModal(false)}
         />
       )}

@@ -6,13 +6,27 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const staticPages: MetadataRoute.Sitemap = [
     { url: baseUrl, lastModified: new Date(), changeFrequency: 'daily', priority: 1 },
+    { url: `${baseUrl}/about`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.6 },
     { url: `${baseUrl}/services`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.9 },
+    { url: `${baseUrl}/list`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.6 },
     { url: `${baseUrl}/join`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.5 },
     { url: `${baseUrl}/privacy`, lastModified: new Date(), changeFrequency: 'yearly', priority: 0.2 },
   ]
 
   try {
     const supabase = createServiceClient()
+
+    const { data: towns } = await supabase
+      .from('towns')
+      .select('slug, created_at')
+      .eq('is_active', true)
+
+    const townPages: MetadataRoute.Sitemap = (towns ?? []).map((t) => ({
+      url: `${baseUrl}/${t.slug}`,
+      lastModified: t.created_at ? new Date(t.created_at) : new Date(),
+      changeFrequency: 'daily' as const,
+      priority: 0.9,
+    }))
 
     const { data: properties } = await supabase
       .from('properties')
@@ -38,7 +52,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.7,
     }))
 
-    return [...staticPages, ...propertyPages, ...vendorPages]
+    return [...staticPages, ...townPages, ...propertyPages, ...vendorPages]
   } catch {
     return staticPages
   }

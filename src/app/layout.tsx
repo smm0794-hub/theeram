@@ -1,4 +1,4 @@
-﻿import type { Metadata } from 'next'
+import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -25,7 +25,6 @@ export const metadata: Metadata = {
     description: 'Hand-curated event spaces across Kerala. No booking fees.',
   },
   robots: { index: true, follow: true },
-  alternates: { canonical: 'https://www.theeramspaces.in' },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

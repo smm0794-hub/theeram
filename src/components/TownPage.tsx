@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { supabase, Property, Vendor, Town, VENDOR_CATEGORY_LABELS, VendorCategory } from '@/lib/supabase'
 import { C, sans, serif } from '@/lib/design'
-import GratitudeModal from '@/components/GratitudeModal'
+import EnquirySheet from '@/components/EnquirySheet'
 import MakerCard from '@/components/MakerCard'
 
 const CARD_BG: Record<string, string> = {
@@ -204,6 +204,7 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
   const [vendors, setVendors] = useState<Vendor[]>([])
   const [loading, setLoading] = useState(true)
   const [spaceFilter, setSpaceFilter] = useState('all')
+  const [quickFilter, setQuickFilter] = useState('all')
   const [modalProperty, setModalProperty] = useState<Property | null>(null)
   const [showModal, setShowModal] = useState(false)
   const [makerFilter, setMakerFilter] = useState('all')
@@ -251,13 +252,7 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  async function handleWhatsApp(p: Property) {
-    try {
-      await supabase.from('inquiries').insert({
-        property_id: p.id,
-        event_type: p.property_event_types?.[0]?.event_type ?? 'general',
-      })
-    } catch {}
+  function handleWhatsApp(p: Property) {
     setModalProperty(p)
     setShowModal(true)
   }
@@ -270,11 +265,29 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
     } catch {}
   }
 
+  function matchesQuickFilter(p: Property, qf: string): boolean {
+    if (qf === 'all') return true
+    const attrs = p.property_attributes
+    const cap = attrs?.max_guests_day_event ?? 0
+    if (qf === 'under_100') return cap > 0 && cap <= 100
+    if (qf === '100_250') return cap >= 100
+    if (qf === '250_plus') return cap >= 250
+    if (qf === 'ac_hall') return !!attrs?.has_ac_hall
+    if (qf === 'pool') return !!attrs?.has_pool
+    if (qf === 'wedding') return (p.property_event_types ?? []).some(e => e.event_type === 'wedding')
+    return true
+  }
+
+  const hasPhotos = (p: Property) => Array.isArray(p.photos) && p.photos.length > 0
   const filteredProps = properties.filter(p => {
     if (!matchesFilter(p.property_type, spaceFilter)) return false
+    if (!matchesQuickFilter(p, quickFilter)) return false
     if (search.trim()) return p.name.toLowerCase().includes(search.toLowerCase()) || p.tagline?.toLowerCase().includes(search.toLowerCase())
     return true
   })
+    // Listings with real photos first — placeholder illustrations erode trust,
+    // so they sink to the bottom. Array.sort is stable, so sort_order is preserved.
+    .sort((a, b) => Number(hasPhotos(b)) - Number(hasPhotos(a)))
 
   const filteredVendors = vendors.filter(v => {
     if (makerFilter !== 'all' && v.category !== makerFilter) return false
@@ -473,6 +486,33 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
               placeholder={tab === 'spaces' ? `Search spaces in ${town.name}...` : 'Search makers...'}
               style={{ width: '100%', border: `1px solid rgba(0,0,0,.12)`, padding: '10px 12px 10px 34px', fontSize: 13, fontFamily: 'system-ui,sans-serif', background: 'rgba(255,255,255,.85)', outline: 'none', color: C.text, fontWeight: 300, boxSizing: 'border-box' as const, boxShadow: 'inset 0 1px 3px rgba(0,0,0,.04)' }}/>
           </div>
+          {tab === 'spaces' && (
+            <div style={{ display: 'flex', gap: 6, overflowX: 'auto', marginTop: 9 }} className="no-scrollbar">
+              {[
+                { id: 'all', label: 'All capacities' },
+                { id: 'under_100', label: '≤ 100 guests' },
+                { id: '100_250', label: '100+ guests' },
+                { id: '250_plus', label: '250+ guests' },
+                { id: 'wedding', label: 'Wedding' },
+                { id: 'ac_hall', label: 'AC Hall' },
+                { id: 'pool', label: 'Pool' },
+              ].map(f => {
+                const active = quickFilter === f.id
+                return (
+                  <button key={f.id} onClick={() => setQuickFilter(active && f.id !== 'all' ? 'all' : f.id)}
+                    style={{
+                      ...sans, flexShrink: 0, fontSize: 11, padding: '5px 11px', borderRadius: 16, cursor: 'pointer',
+                      border: `1px solid ${active ? C.green : 'rgba(0,0,0,.12)'}`,
+                      background: active ? C.green : 'rgba(255,255,255,.8)',
+                      color: active ? 'white' : C.text, fontWeight: active ? 500 : 300,
+                      transition: 'all .12s',
+                    }}>
+                    {f.label}
+                  </button>
+                )
+              })}
+            </div>
+          )}
         </div>
 
         {/* Spaces panel */}
@@ -496,7 +536,7 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
                 </p>
                 {properties.length === 0
                   ? <Link href="/list" style={{ ...sans, fontSize: 13, color: C.terra, textDecoration: 'underline' }}>Be the first to list →</Link>
-                  : <button onClick={() => { setSpaceFilter('all'); setSearch('') }} style={{ ...sans, fontSize: 12, color: C.terra, background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>Clear filters</button>
+                  : <button onClick={() => { setSpaceFilter('all'); setQuickFilter('all'); setSearch('') }} style={{ ...sans, fontSize: 12, color: C.terra, background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>Clear filters</button>
                 }
               </div>
             ) : filteredProps.map((p, idx) => {
@@ -640,13 +680,10 @@ export default function TownPage({ town, allTowns }: { town: Town; allTowns: Tow
         <div style={{ ...sans, fontSize: 10, color: 'rgba(255,255,255,.18)', lineHeight: 1.6 }}>© {new Date().getFullYear()} Theeram Spaces · Kerala</div>
       </footer>
 
-      {/* Gratitude modal — WhatsApp message now includes theeramspaces.in as a clickable plain-text link */}
+      {/* Enquiry sheet — instant WhatsApp/Call with a pre-filled, specific message */}
       {modalProperty && showModal && (
-        <GratitudeModal
-          propertyName={modalProperty.name}
-          whatsappUrl={`https://wa.me/${modalProperty.owner_whatsapp}?text=${encodeURIComponent(`Hi! I found ${modalProperty.name} on Theeram (theeramspaces.in) and I'm interested in booking. Could you share availability and pricing?`)}`}
-          reviewUrl="https://g.page/r/Cav0otb1aGpEEBM/review"
-          upiUrl="upi://pay?pa=smm0794@okhdfcbank&pn=Theeram&am=20&cu=INR&tn=Theeram+chai"
+        <EnquirySheet
+          property={modalProperty}
           onClose={() => { setShowModal(false); setModalProperty(null) }}
         />
       )}
