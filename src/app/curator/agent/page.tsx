@@ -34,6 +34,9 @@ interface Venue {
   event_types: string[]
   confidence: 'high' | 'medium' | 'low'
   source: string
+  provider?: 'gemini' | 'claude'
+  match_key?: string
+  matched_in_both?: boolean
   candidate_images: string[]
   selected_images: string[]
   already_listed: boolean
@@ -59,6 +62,11 @@ const PROPERTY_TYPES: Record<string, string> = {
 
 const CONFIDENCE_COLOR: Record<string, string> = {
   high: '#2D7A4F', medium: '#8A7040', low: '#9B3D1E',
+}
+
+const PROVIDER_STYLE: Record<'gemini' | 'claude', { label: string; bg: string; border: string; color: string }> = {
+  gemini: { label: '✨ GEMINI', bg: '#eef6ff', border: '#9ec5fe', color: '#1a56db' },
+  claude: { label: '🤖 CLAUDE', bg: '#fdf4eb', border: '#e8c7a8', color: '#8A5A2B' },
 }
 
 function slugify(name: string) {
@@ -99,12 +107,15 @@ SELECT id,unnest(ARRAY[${types}]::text[]) FROM ins;`
 export default function AgentPage() {
   const [query, setQuery] = useState('')
   const [mode, setMode] = useState<'discovery' | 'name_lookup'>('discovery')
+  const [provider, setProvider] = useState<'both' | 'gemini' | 'claude'>('both')
+  const [filterTab, setFilterTab] = useState<'all' | 'gemini' | 'claude' | 'matched'>('all')
   const [townId, setTownId] = useState<string | null>(null)
   const [townSlug, setTownSlug] = useState('')
   const [townName, setTownName] = useState('')
   const [scanning, setScanning] = useState(false)
   const [venues, setVenues] = useState<Venue[]>([])
   const [log, setLog] = useState<string[]>([])
+  const [warnings, setWarnings] = useState<string[]>([])
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [copied, setCopied] = useState('')
   const [bulkSQL, setBulkSQL] = useState('')
@@ -128,10 +139,17 @@ export default function AgentPage() {
 
   async function runScan() {
     if (!query.trim()) return
-    setScanning(true); setVenues([]); setLog([])
+    setScanning(true); setVenues([]); setLog([]); setWarnings([]); setFilterTab('all')
     setError(''); setBulkSQL(''); setShowBulk(false); setShowListed(false)
     addLog(`${mode === 'name_lookup' ? '🔍 Name lookup' : '📍 Discovery scan'}: "${query}"`)
-    addLog('Running targeted searches via Serper...')
+    if (provider === 'both') {
+      addLog('Running Gemini (Google Search Grounding + Places) & Claude Haiku + Serper in parallel...')
+    } else if (provider === 'gemini') {
+      addLog('Running Gemini (Google Search Grounding + Places)...')
+    } else {
+      addLog('Running targeted searches via Serper + Claude Haiku...')
+    }
+
     try {
       // Fetch existing slugs so the agent can flag already-listed venues
       let existingSlugs: string[] = []
@@ -144,24 +162,44 @@ export default function AgentPage() {
       const res = await fetch('/api/agent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, townId, townSlug, mode, existingSlugs }),
+        body: JSON.stringify({ query, townId, townSlug, mode, provider, existingSlugs }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? `Error ${res.status}`)
 
-      addLog('Extracting details with Claude Haiku...')
+      if (Array.isArray(data.warnings) && data.warnings.length) {
+        setWarnings(data.warnings)
+        data.warnings.forEach((w: string) => addLog(`⚠️ ${w}`))
+      }
+
       const parsed: any[] = data.venues ?? []
       const resolvedTownId = data.townId ?? townId
       const newCount = data.newCount ?? parsed.length
       const listedCount = parsed.length - newCount
-      addLog(`✓ ${newCount} new venue${newCount !== 1 ? 's' : ''}${listedCount > 0 ? ` · ${listedCount} already listed` : ''}`)
+      if (provider === 'both') {
+        addLog(`✓ Gemini found ${data.geminiCount ?? 0} new · Claude found ${data.claudeCount ?? 0} new (${data.matchedCount ?? 0} matched in both)${listedCount > 0 ? ` · ${listedCount} already listed` : ''}`)
+      } else {
+        addLog(`✓ ${newCount} new venue${newCount !== 1 ? 's' : ''}${listedCount > 0 ? ` · ${listedCount} already listed` : ''}`)
+      }
 
+      // When both providers find the same venue (same match_key), default-select only the first/higher-confidence one
+      // so we don't select duplicate slugs by default.
+      const selectedMatchKeys = new Set<string>()
       const processed: Venue[] = parsed.map((v, i) => {
+        const eligible = !v.already_listed && v.confidence !== 'low'
+        const mk = v.match_key || slugify(v.name)
+        let shouldSelect = false
+        if (eligible) {
+          if (!selectedMatchKeys.has(mk)) {
+            shouldSelect = true
+            selectedMatchKeys.add(mk)
+          }
+        }
         const venue: Venue = {
           ...v,
           id: `v${i}-${Date.now()}`,
           slug: slugify(v.name),
-          selected: !v.already_listed && v.confidence !== 'low',
+          selected: shouldSelect,
           candidate_images: v.candidate_images ?? [],
           selected_images: [],  // user picks manually
           already_listed: !!v.already_listed,
@@ -179,13 +217,48 @@ export default function AgentPage() {
   }
 
   function update(id: string, field: string, val: any) {
-    setVenues(prev => prev.map(v => {
-      if (v.id !== id) return v
-      const u = { ...v, [field]: val }
-      if (field === 'name') u.slug = slugify(val)
-      u.sql = buildSQL(u, townId)
-      return u
-    }))
+    setVenues(prev => {
+      const target = prev.find(v => v.id === id)
+      return prev.map(v => {
+        if (v.id === id) {
+          const u = { ...v, [field]: val }
+          if (field === 'name') u.slug = slugify(val)
+          u.sql = buildSQL(u, townId)
+          return u
+        }
+        // If user selects one card in a matched pair (or with identical slug), unselect its duplicate twin
+        if (
+          field === 'selected' &&
+          val === true &&
+          target &&
+          v.selected &&
+          ((target.match_key && v.match_key === target.match_key) || v.slug === target.slug)
+        ) {
+          return { ...v, selected: false }
+        }
+        return v
+      })
+    })
+  }
+
+  function selectByProvider(targetProvider: 'gemini' | 'claude' | 'best' | 'none') {
+    setVenues(prev => {
+      if (targetProvider === 'none') {
+        return prev.map(v => v.already_listed ? v : { ...v, selected: false })
+      }
+      if (targetProvider === 'gemini' || targetProvider === 'claude') {
+        return prev.map(v => v.already_listed ? v : { ...v, selected: v.provider === targetProvider })
+      }
+      // 'best': select all unique new venues, preferring Gemini when matched
+      const seenKeys = new Set<string>()
+      return prev.map(v => {
+        if (v.already_listed) return v
+        const mk = v.match_key || v.slug
+        if (seenKeys.has(mk)) return { ...v, selected: false }
+        seenKeys.add(mk)
+        return { ...v, selected: true }
+      })
+    })
   }
 
   function selectImage(id: string, url: string) {
@@ -221,20 +294,50 @@ export default function AgentPage() {
   function generateBulk() {
     const sel = venues.filter(v => v.selected && !v.already_listed)
     if (!sel.length) return
-    setBulkSQL(sel.map(v => `-- ${v.name} (${v.confidence})\n${v.sql}`).join('\n\n'))
+    setBulkSQL(sel.map(v => `-- ${v.name} (${v.provider ? `${v.provider.toUpperCase()} · ` : ''}${v.confidence})\n${v.sql}`).join('\n\n'))
     setShowBulk(true)
   }
 
-  const newVenues = venues.filter(v => !v.already_listed)
+  const allNewVenues = venues.filter(v => !v.already_listed)
+  const newVenues = allNewVenues.filter(v => {
+    if (filterTab === 'gemini') return v.provider === 'gemini'
+    if (filterTab === 'claude') return v.provider === 'claude'
+    if (filterTab === 'matched') return !!v.matched_in_both
+    return true
+  })
   const listedVenues = venues.filter(v => v.already_listed)
-  const selCount = venues.filter(v => v.selected && !v.already_listed).length
+  const selCount = allNewVenues.filter(v => v.selected).length
+  const geminiNewCount = allNewVenues.filter(v => v.provider === 'gemini').length
+  const claudeNewCount = allNewVenues.filter(v => v.provider === 'claude').length
+  const matchedPairCount = allNewVenues.filter(v => v.matched_in_both).length
 
   function renderVenue(v: Venue) {
+    const pStyle = v.provider ? PROVIDER_STYLE[v.provider] : null
+    const quickChips: string[] = []
+    if (v.room_count > 0) quickChips.push(`🛏️ ${v.room_count} rm`)
+    if (v.max_day > 0) quickChips.push(`👥 ${v.max_day} day`)
+    else if (v.ac_hall_capacity > 0) quickChips.push(`👥 ${v.ac_hall_capacity} cap`)
+    if (v.has_pool) quickChips.push('🏊 Pool')
+    if (v.has_ac_hall) quickChips.push('❄️ AC Hall')
+    if (v.has_open_lawn) quickChips.push('🌿 Lawn')
+    if (v.instagram) quickChips.push('📸 IG')
+    if (v.maps_url) quickChips.push('📍 Maps')
+
     return (
       <div key={v.id} style={{ background: 'white', border: v.already_listed ? `1px dashed ${C.cream3}` : v.selected ? `1.5px solid ${C.green}` : `1px solid ${C.cream3}`, opacity: v.already_listed ? 0.6 : 1 }}>
         <div style={{ padding: '14px 14px 10px', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
           <div style={{ flex: 1 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' as const }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5, flexWrap: 'wrap' as const }}>
+              {pStyle && (
+                <span style={{ ...sans, fontSize: 9, fontWeight: 700, background: pStyle.bg, color: pStyle.color, border: `1px solid ${pStyle.border}`, padding: '2px 6px', letterSpacing: '.04em' }}>
+                  {pStyle.label}
+                </span>
+              )}
+              {v.matched_in_both && !v.already_listed && (
+                <span style={{ ...sans, fontSize: 9, fontWeight: 600, background: '#f5f0ff', color: '#5b21b6', border: '1px solid #d8b4fe', padding: '2px 6px' }}>
+                  ⚖️ IN BOTH
+                </span>
+              )}
               {v.already_listed
                 ? <span style={{ ...sans, fontSize: 9, fontWeight: 700, color: C.muted, border: `1px solid ${C.cream3}`, padding: '2px 6px' }}>ALREADY LISTED</span>
                 : <span style={{ ...sans, fontSize: 9, fontWeight: 700, color: CONFIDENCE_COLOR[v.confidence], border: `1px solid ${CONFIDENCE_COLOR[v.confidence]}`, padding: '2px 6px' }}>{v.confidence.toUpperCase()}</span>
@@ -242,11 +345,36 @@ export default function AgentPage() {
               <span style={{ ...sans, fontSize: 10, color: C.muted }}>{PROPERTY_TYPES[v.type] ?? v.type}</span>
             </div>
             <div style={{ ...serif, fontSize: 16, color: C.text, marginBottom: 2 }}>{v.name}</div>
-            <div style={{ ...sans, fontSize: 11, color: C.muted, fontWeight: 300 }}>{v.location}</div>
-            {v.phone && <div style={{ ...sans, fontSize: 11, color: C.green, marginTop: 4 }}>📞 {v.phone}</div>}
+            <div style={{ ...sans, fontSize: 11, color: C.muted, fontWeight: 300 }}>
+              {v.location}{v.price_guide && v.price_guide !== 'Ask owner for price' ? ` · ${v.price_guide}` : ''}
+            </div>
+            {v.tagline && (
+              <div style={{ ...sans, fontSize: 12, color: C.text, opacity: 0.8, marginTop: 4, lineHeight: 1.45 }}>
+                {v.tagline}
+              </div>
+            )}
+            {v.phone && <div style={{ ...sans, fontSize: 11, color: C.green, marginTop: 5, fontWeight: 500 }}>📞 {v.phone}</div>}
+            {quickChips.length > 0 && (
+              <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' as const, marginTop: 6 }}>
+                {quickChips.map(chip => (
+                  <span key={chip} style={{ ...sans, fontSize: 10, background: C.cream, color: C.muted, padding: '2px 7px', border: `1px solid ${C.cream3}` }}>
+                    {chip}
+                  </span>
+                ))}
+              </div>
+            )}
+            {v.source && (
+              <div style={{ ...sans, fontSize: 10, color: C.muted, marginTop: 5, opacity: 0.75 }}>
+                Source: {v.source}
+              </div>
+            )}
           </div>
           {!v.already_listed && (
-            <button onClick={() => update(v.id, 'selected', !v.selected)} style={{ width: 28, height: 28, border: `1.5px solid ${v.selected ? C.green : C.cream3}`, background: v.selected ? C.green : 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <button
+              title={v.selected ? 'Selected for SQL export' : 'Select this listing'}
+              onClick={() => update(v.id, 'selected', !v.selected)}
+              style={{ width: 28, height: 28, border: `1.5px solid ${v.selected ? C.green : C.cream3}`, background: v.selected ? C.green : 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+            >
               {v.selected && <svg viewBox="0 0 14 14" fill="none" width={12} height={12} stroke="white" strokeWidth={2}><path d="M2 7l4 4 6-6" strokeLinecap="round" strokeLinejoin="round"/></svg>}
             </button>
           )}
@@ -276,7 +404,7 @@ export default function AgentPage() {
         {!v.already_listed && (
           <div style={{ borderTop: `1px solid ${C.cream3}` }}>
             <button onClick={() => setExpandedId(expandedId === v.id ? null : v.id)} style={{ ...sans, width: '100%', padding: '9px 14px', fontSize: 11, color: C.muted, background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' as const, display: 'flex', justifyContent: 'space-between' }}>
-              <span>Review & edit</span><span>{expandedId === v.id ? '▲' : '▼'}</span>
+              <span>Review & edit details</span><span>{expandedId === v.id ? '▲' : '▼'}</span>
             </button>
 
             {expandedId === v.id && (
@@ -353,20 +481,49 @@ export default function AgentPage() {
           <span style={{ color: C.cream3 }}>|</span>
           <span style={{ ...serif, fontSize: 18, color: C.text }}>Listing Agent</span>
         </div>
-        {newVenues.length > 0 && <span style={{ ...sans, fontSize: 11, color: C.muted }}>{selCount}/{newVenues.length} selected</span>}
+        {allNewVenues.length > 0 && <span style={{ ...sans, fontSize: 11, color: C.muted }}>{selCount}/{allNewVenues.length} selected</span>}
       </div>
 
       <div style={{ padding: '20px 16px 0' }}>
 
-        <div style={{ background: C.green, padding: '16px', marginBottom: 20 }}>
+        <div style={{ background: C.green, padding: '16px', marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
             <div style={{ width: 14, height: 1, background: C.gold }}/>
-            <span style={{ ...sans, fontSize: 10, color: C.gold, letterSpacing: '.08em' }}>Serper + Claude Haiku</span>
+            <span style={{ ...sans, fontSize: 10, color: C.gold, letterSpacing: '.08em' }}>Gemini (Free) vs Serper + Claude Haiku</span>
             <div style={{ width: 14, height: 1, background: C.gold }}/>
           </div>
           <p style={{ ...sans, fontSize: 13, color: 'rgba(255,255,255,.7)', lineHeight: 1.7, fontWeight: 300, margin: 0 }}>
-            Each scan costs under ₹1. Already-listed venues are flagged and skipped. Pick a mode below.
+            Run both engines side-by-side (or individually) to compare extracted venues, phone numbers, and facilities, then tick whichever listings you want to take.
           </p>
+        </div>
+
+        {/* Engine / Provider selector */}
+        <div style={{ marginBottom: 14 }}>
+          <label style={{ ...sans, fontSize: 10, color: C.terra, letterSpacing: '.08em', display: 'block', marginBottom: 6 }}>
+            SCOUTING ENGINE
+          </label>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+            {[
+              { id: 'both' as const, title: '⚡ Compare Both', sub: 'Gemini + Claude' },
+              { id: 'gemini' as const, title: '✨ Gemini Free', sub: 'Search Grounding' },
+              { id: 'claude' as const, title: '🤖 Claude Haiku', sub: 'Existing Serper' },
+            ].map(opt => (
+              <button
+                key={opt.id}
+                onClick={() => setProvider(opt.id)}
+                style={{
+                  ...sans, padding: '10px 8px',
+                  border: `1px solid ${provider === opt.id ? C.green : C.cream3}`,
+                  background: provider === opt.id ? '#f0faf4' : 'white',
+                  color: provider === opt.id ? C.green : C.muted,
+                  cursor: 'pointer', textAlign: 'left' as const,
+                }}
+              >
+                <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 2 }}>{opt.title}</div>
+                <div style={{ fontSize: 10, fontWeight: 300 }}>{opt.sub}</div>
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Mode toggle */}
@@ -397,7 +554,11 @@ export default function AgentPage() {
         </div>
 
         <button onClick={runScan} disabled={scanning || !query.trim()} style={{ ...sans, width: '100%', background: scanning ? C.muted : C.green, color: 'white', fontSize: 11, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase' as const, padding: '14px 0', border: 'none', cursor: scanning ? 'not-allowed' : 'pointer', marginBottom: 20 }}>
-          {scanning ? '⟳  Scanning...' : mode === 'name_lookup' ? '🔍  Look up venue' : '⟳  Run discovery scan'}
+          {scanning
+            ? '⟳  Scanning...'
+            : mode === 'name_lookup'
+              ? `🔍  Look up venue (${provider === 'both' ? 'Gemini + Claude' : provider})`
+              : `⟳  Run discovery scan (${provider === 'both' ? 'Gemini + Claude' : provider})`}
         </button>
 
         {log.length > 0 && (
@@ -408,9 +569,52 @@ export default function AgentPage() {
           </div>
         )}
 
+        {warnings.length > 0 && (
+          <div style={{ background: '#fff9eb', border: '1px solid #e8d49a', padding: '10px 14px', marginBottom: 16 }}>
+            {warnings.map((w, i) => (
+              <p key={i} style={{ ...sans, fontSize: 12, color: '#8A7040', margin: '2px 0' }}>⚠️ {w}</p>
+            ))}
+          </div>
+        )}
+
         {error && (
           <div style={{ background: '#fdf0eb', border: `1px solid ${C.terra}`, padding: '12px 14px', marginBottom: 20 }}>
             <p style={{ ...sans, fontSize: 13, color: C.terra, margin: 0 }}>{error}</p>
+          </div>
+        )}
+
+        {/* Comparison Filter Tabs & Quick Selection Bar */}
+        {allNewVenues.length > 0 && (
+          <div style={{ background: 'white', border: `1px solid ${C.cream3}`, padding: '12px 14px', marginBottom: 16 }}>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const, marginBottom: 10 }}>
+              {[
+                { id: 'all' as const, label: `All (${allNewVenues.length})` },
+                { id: 'gemini' as const, label: `✨ Gemini (${geminiNewCount})` },
+                { id: 'claude' as const, label: `🤖 Claude (${claudeNewCount})` },
+                ...(matchedPairCount > 0 ? [{ id: 'matched' as const, label: `⚖️ Matched in Both (${matchedPairCount})` }] : []),
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setFilterTab(tab.id)}
+                  style={{
+                    ...sans, fontSize: 11, padding: '6px 10px', cursor: 'pointer',
+                    border: `1px solid ${filterTab === tab.id ? C.green : C.cream3}`,
+                    background: filterTab === tab.id ? C.green : C.cream,
+                    color: filterTab === tab.id ? 'white' : C.text,
+                    fontWeight: filterTab === tab.id ? 600 : 400,
+                  }}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' as const }}>
+              <span style={{ ...sans, fontSize: 10, color: C.muted, marginRight: 2 }}>Quick select:</span>
+              <button onClick={() => selectByProvider('gemini')} style={{ ...sans, fontSize: 10, padding: '4px 8px', border: `1px solid ${C.cream3}`, background: 'white', color: '#1a56db', cursor: 'pointer' }}>Only ✨ Gemini</button>
+              <button onClick={() => selectByProvider('claude')} style={{ ...sans, fontSize: 10, padding: '4px 8px', border: `1px solid ${C.cream3}`, background: 'white', color: '#8A5A2B', cursor: 'pointer' }}>Only 🤖 Claude</button>
+              <button onClick={() => selectByProvider('best')} style={{ ...sans, fontSize: 10, padding: '4px 8px', border: `1px solid ${C.cream3}`, background: 'white', color: C.green, cursor: 'pointer' }}>All unique (prefer Gemini)</button>
+              <button onClick={() => selectByProvider('none')} style={{ ...sans, fontSize: 10, padding: '4px 8px', border: `1px solid ${C.cream3}`, background: 'white', color: C.muted, cursor: 'pointer' }}>Clear</button>
+            </div>
           </div>
         )}
 
@@ -455,9 +659,9 @@ export default function AgentPage() {
         )}
       </div>
 
-      {newVenues.length > 0 && (
+      {allNewVenues.length > 0 && (
         <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: C.cream, borderTop: `1px solid ${C.cream3}`, padding: '12px 16px', display: 'flex', gap: 10, zIndex: 30 }}>
-          <button onClick={() => setVenues(prev => prev.map(v => v.already_listed ? v : ({ ...v, selected: true })))} style={{ ...sans, flex: 1, border: `1px solid ${C.cream3}`, background: 'white', color: C.muted, fontSize: 11, fontWeight: 500, padding: '11px 0', cursor: 'pointer' }}>Select all new</button>
+          <button onClick={() => selectByProvider('best')} style={{ ...sans, flex: 1, border: `1px solid ${C.cream3}`, background: 'white', color: C.muted, fontSize: 11, fontWeight: 500, padding: '11px 0', cursor: 'pointer' }}>Select unique new</button>
           <button onClick={generateBulk} disabled={selCount === 0} style={{ ...sans, flex: 2, background: selCount === 0 ? C.muted : C.green, color: 'white', fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase' as const, padding: '11px 0', border: 'none', cursor: selCount === 0 ? 'not-allowed' : 'pointer' }}>
             Generate SQL for {selCount} venue{selCount !== 1 ? 's' : ''}
           </button>
@@ -467,3 +671,4 @@ export default function AgentPage() {
     </div>
   )
 }
+
