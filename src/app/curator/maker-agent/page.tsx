@@ -42,6 +42,8 @@ interface Maker {
   candidate_images: string[]
   selected_images: string[]
   already_listed: boolean
+  saved?: boolean
+  saving?: boolean
   selected: boolean
   exportData: any
 }
@@ -49,8 +51,38 @@ interface Maker {
 const CONFIDENCE_COLOR: Record<string, string> = { high: '#2D7A4F', medium: '#8A7040', low: '#9B3D1E' }
 
 function slugify(name: string) { return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') }
-function esc(s: string) { return (s ?? '').replace(/'/g, "''") }
 function n(x: any): number { const v = Number(x); return Number.isFinite(v) ? Math.floor(v) : 0 }
+
+function buildMakerApiItem(m: Maker, category: string, districtIds: string[], districtNames: string[]) {
+  const wa = (m.whatsapp || m.phone || '').replace(/\D/g, '')
+  const vendor = {
+    name: m.name,
+    slug: m.slug || slugify(m.name),
+    category,
+    tagline: m.tagline || '',
+    description: m.description || '',
+    whatsapp: wa,
+    phone: m.phone || '',
+    instagram_url: m.instagram_url || '',
+    photos: (m.selected_images ?? []).filter(Boolean),
+    price_guide: m.price_guide || 'Ask for quote',
+    area_served: districtNames.length > 0 ? districtNames.join(', ') : 'Kerala',
+    is_active: false,
+    is_featured: false,
+  }
+  const attributes = {
+    years_experience: n(m.years_experience),
+    team_size: n(m.team_size),
+    instagram_followers: n(m.instagram_followers),
+    min_guests: n(m.min_guests),
+    max_guests: n(m.max_guests),
+    facebook_url: m.facebook_url || '',
+    offers_trial: !!m.offers_trial,
+    home_service: !!m.home_service,
+    category_details: m.category_details ?? {},
+  }
+  return { vendor, attributes, districtIds }
+}
 
 // Builds the clean export object Claude will read back and insert via Supabase directly.
 // No SQL string, no escaping needed here — Claude handles that when executing.
@@ -89,6 +121,8 @@ export default function MakerAgentPage() {
   const [districts, setDistricts] = useState<{ id: string; name: string }[]>([])
   const [selectedDistricts, setSelectedDistricts] = useState<string[]>([])
   const [scanning, setScanning] = useState(false)
+  const [savingBulk, setSavingBulk] = useState(false)
+  const [saveSuccessMsg, setSaveSuccessMsg] = useState('')
   const [makers, setMakers] = useState<Maker[]>([])
   const [log, setLog] = useState<string[]>([])
   const [expandedId, setExpandedId] = useState<string | null>(null)
@@ -115,7 +149,7 @@ export default function MakerAgentPage() {
   async function runScan() {
     if (!query.trim()) return
     setScanning(true); setMakers([]); setLog([])
-    setError(''); setBulkExport(''); setShowBulk(false); setShowListed(false)
+    setError(''); setBulkExport(''); setShowBulk(false); setShowListed(false); setSaveSuccessMsg('')
     const catLabel = CATEGORIES.find(c => c.id === category)?.label
     addLog(`${mode === 'name_lookup' ? '🔍 Name lookup' : '📍 Discovery scan'}: ${catLabel} — "${query}"`)
     try {
@@ -147,6 +181,8 @@ export default function MakerAgentPage() {
           candidate_images: m.candidate_images ?? [],
           selected_images: [],
           already_listed: !!m.already_listed,
+          saved: false,
+          saving: false,
           exportData: null,
         }
         maker.exportData = buildExportObject(maker, category, selectedDistricts, selectedDistrictNames())
@@ -196,7 +232,7 @@ export default function MakerAgentPage() {
   }
 
   function generateBulk() {
-    const sel = makers.filter(m => m.selected && !m.already_listed)
+    const sel = makers.filter(m => m.selected && !m.already_listed && !m.saved)
     if (!sel.length) return
     const exportPayload = {
       action: 'insert_makers',
@@ -207,9 +243,52 @@ export default function MakerAgentPage() {
     setShowBulk(true)
   }
 
+  async function saveMakersToSupabase(targetMakers: Maker[]) {
+    if (!targetMakers.length) return
+    const targetIds = new Set(targetMakers.map(m => m.id))
+    setError('')
+    setSavingBulk(true)
+    setMakers(prev => prev.map(m => targetIds.has(m.id) ? { ...m, saving: true } : m))
+
+    try {
+      const dNames = selectedDistrictNames()
+      const items = targetMakers.map(m => buildMakerApiItem(m, category, selectedDistricts, dNames))
+      const res = await fetch('/api/vendors', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Failed to save makers to Supabase')
+
+      const savedSlugs = new Set<string>(data.savedSlugs ?? targetMakers.map(m => m.slug))
+      setMakers(prev => prev.map(m => {
+        if (targetIds.has(m.id) || savedSlugs.has(m.slug)) {
+          return { ...m, saving: false, saved: true, selected: false }
+        }
+        return { ...m, saving: false }
+      }))
+
+      const count = data.savedCount ?? targetMakers.length
+      setSaveSuccessMsg(`✓ Saved ${count} maker${count !== 1 ? 's' : ''} to Supabase as Draft`)
+      addLog(`✓ Saved ${count} maker${count !== 1 ? 's' : ''} directly to Supabase (Draft)`)
+    } catch (err: any) {
+      setError(err.message ?? 'Could not save to Supabase')
+      setMakers(prev => prev.map(m => targetIds.has(m.id) ? { ...m, saving: false } : m))
+    }
+    setSavingBulk(false)
+  }
+
+  function handleSaveSelected() {
+    const sel = makers.filter(m => m.selected && !m.already_listed && !m.saved)
+    if (!sel.length) return
+    saveMakersToSupabase(sel)
+  }
+
   const newMakers = makers.filter(m => !m.already_listed)
   const listedMakers = makers.filter(m => m.already_listed)
-  const selCount = makers.filter(m => m.selected && !m.already_listed).length
+  const selCount = makers.filter(m => m.selected && !m.already_listed && !m.saved).length
+  const savedCount = newMakers.filter(m => m.saved).length
 
   function renderDetailFields(m: Maker) {
     switch (category) {
@@ -274,23 +353,48 @@ export default function MakerAgentPage() {
 
   function renderMaker(m: Maker) {
     return (
-      <div key={m.id} style={{ background: 'white', border: m.already_listed ? `1px dashed ${C.cream3}` : m.selected ? `1.5px solid ${C.green}` : `1px solid ${C.cream3}`, opacity: m.already_listed ? 0.6 : 1 }}>
+      <div key={m.id} style={{ background: 'white', border: m.already_listed ? `1px dashed ${C.cream3}` : m.saved ? `1.5px solid #2D7A4F` : m.selected ? `1.5px solid ${C.green}` : `1px solid ${C.cream3}`, opacity: m.already_listed ? 0.6 : 1 }}>
         <div style={{ padding: '14px 14px 10px', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' as const }}>
-              {m.already_listed
-                ? <span style={{ ...sans, fontSize: 9, fontWeight: 700, color: C.muted, border: `1px solid ${C.cream3}`, padding: '2px 6px' }}>ALREADY LISTED</span>
-                : <span style={{ ...sans, fontSize: 9, fontWeight: 700, color: CONFIDENCE_COLOR[m.confidence], border: `1px solid ${CONFIDENCE_COLOR[m.confidence]}`, padding: '2px 6px' }}>{m.confidence.toUpperCase()}</span>
-              }
+              {m.saved ? (
+                <span style={{ ...sans, fontSize: 9, fontWeight: 700, background: '#f0faf4', color: '#2D7A4F', border: '1px solid #2D7A4F', padding: '2px 6px' }}>
+                  ✓ SAVED AS DRAFT
+                </span>
+              ) : m.already_listed ? (
+                <span style={{ ...sans, fontSize: 9, fontWeight: 700, color: C.muted, border: `1px solid ${C.cream3}`, padding: '2px 6px' }}>ALREADY LISTED</span>
+              ) : (
+                <span style={{ ...sans, fontSize: 9, fontWeight: 700, color: CONFIDENCE_COLOR[m.confidence], border: `1px solid ${CONFIDENCE_COLOR[m.confidence]}`, padding: '2px 6px' }}>{m.confidence.toUpperCase()}</span>
+              )}
             </div>
             <div style={{ ...serif, fontSize: 16, color: C.text, marginBottom: 2 }}>{m.name}</div>
             {m.phone && <div style={{ ...sans, fontSize: 11, color: C.green, marginTop: 4 }}>📞 {m.phone}</div>}
             {m.instagram_url && <div style={{ ...sans, fontSize: 11, color: C.terra, marginTop: 2 }}>📷 {m.instagram_url.replace(/https?:\/\/(www\.)?instagram\.com\//, '@')}</div>}
           </div>
           {!m.already_listed && (
-            <button onClick={() => update(m.id, 'selected', !m.selected)} style={{ width: 28, height: 28, border: `1.5px solid ${m.selected ? C.green : C.cream3}`, background: m.selected ? C.green : 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              {m.selected && <svg viewBox="0 0 14 14" fill="none" width={12} height={12} stroke="white" strokeWidth={2}><path d="M2 7l4 4 6-6" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-            </button>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
+              {m.saved ? (
+                <Link
+                  href="/curator/vendors"
+                  style={{ ...sans, fontSize: 10, fontWeight: 600, color: '#2D7A4F', background: '#f0faf4', border: '1px solid #2D7A4F', padding: '5px 8px', textDecoration: 'none', whiteSpace: 'nowrap' }}
+                >
+                  Open Makers →
+                </Link>
+              ) : (
+                <>
+                  <button onClick={() => update(m.id, 'selected', !m.selected)} style={{ width: 28, height: 28, border: `1.5px solid ${m.selected ? C.green : C.cream3}`, background: m.selected ? C.green : 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {m.selected && <svg viewBox="0 0 14 14" fill="none" width={12} height={12} stroke="white" strokeWidth={2}><path d="M2 7l4 4 6-6" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                  </button>
+                  <button
+                    onClick={() => saveMakersToSupabase([m])}
+                    disabled={m.saving || savingBulk}
+                    style={{ ...sans, fontSize: 10, fontWeight: 600, color: C.green, background: '#f0faf4', border: `1px solid ${C.green}`, padding: '4px 7px', cursor: m.saving ? 'wait' : 'pointer', whiteSpace: 'nowrap' }}
+                  >
+                    {m.saving ? 'Saving...' : '+ Draft'}
+                  </button>
+                </>
+              )}
+            </div>
           )}
         </div>
 
@@ -432,13 +536,23 @@ export default function MakerAgentPage() {
             {log.map((l, i) => <p key={i} style={{ ...mono, fontSize: 11, color: i === log.length - 1 ? C.gold : 'rgba(255,255,255,.45)', margin: '3px 0' }}>{l}</p>)}
           </div>
         )}
+        {saveSuccessMsg && (
+          <div style={{ background: '#f0faf4', border: '1.5px solid #2D7A4F', padding: '12px 14px', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' as const }}>
+            <span style={{ ...sans, fontSize: 13, color: '#2D7A4F', fontWeight: 600 }}>{saveSuccessMsg}</span>
+            <Link href="/curator/vendors" style={{ ...sans, fontSize: 11, fontWeight: 700, color: 'white', background: '#2D7A4F', padding: '6px 12px', textDecoration: 'none' }}>
+              Open Makers →
+            </Link>
+          </div>
+        )}
         {error && <div style={{ background: '#fdf0eb', border: `1px solid ${C.terra}`, padding: '12px 14px', marginBottom: 20 }}><p style={{ ...sans, fontSize: 13, color: C.terra, margin: 0 }}>{error}</p></div>}
 
         {newMakers.length > 0 && (
           <>
             <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 14 }}>
               <div style={{ width: 14, height: 1, background: C.terra }}/>
-              <span style={{ ...sans, fontSize: 10, color: C.terra, letterSpacing: '.08em' }}>NEW MAKERS ({newMakers.length})</span>
+              <span style={{ ...sans, fontSize: 10, color: C.terra, letterSpacing: '.08em' }}>
+                NEW MAKERS ({newMakers.length}){savedCount > 0 ? ` · ${savedCount} SAVED` : ''}
+              </span>
               <div style={{ flex: 1, height: 1, background: C.cream3 }}/>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>{newMakers.map(renderMaker)}</div>
@@ -469,10 +583,39 @@ export default function MakerAgentPage() {
       </div>
 
       {newMakers.length > 0 && (
-        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: C.cream, borderTop: `1px solid ${C.cream3}`, padding: '12px 16px', display: 'flex', gap: 10, zIndex: 30 }}>
-          <button onClick={() => setMakers(prev => prev.map(m => m.already_listed ? m : ({ ...m, selected: true })))} style={{ ...sans, flex: 1, border: `1px solid ${C.cream3}`, background: 'white', color: C.muted, fontSize: 11, fontWeight: 500, padding: '11px 0', cursor: 'pointer' }}>Select all new</button>
-          <button onClick={generateBulk} disabled={selCount === 0} style={{ ...sans, flex: 2, background: selCount === 0 ? C.muted : C.green, color: 'white', fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase' as const, padding: '11px 0', border: 'none', cursor: selCount === 0 ? 'not-allowed' : 'pointer' }}>
-            Export {selCount} maker{selCount !== 1 ? 's' : ''} for Claude
+        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: C.cream, borderTop: `1px solid ${C.cream3}`, padding: '12px 16px', display: 'flex', gap: 8, zIndex: 30 }}>
+          <button
+            onClick={handleSaveSelected}
+            disabled={selCount === 0 || savingBulk}
+            style={{
+              ...sans, flex: 1,
+              background: selCount === 0 || savingBulk ? C.muted : C.green,
+              color: 'white', fontSize: 11, fontWeight: 700,
+              letterSpacing: '.08em', textTransform: 'uppercase' as const,
+              padding: '12px 10px', border: 'none',
+              cursor: selCount === 0 || savingBulk ? 'not-allowed' : 'pointer',
+            }}
+          >
+            {savingBulk
+              ? `⟳ Saving ${selCount}...`
+              : selCount > 0
+                ? `Save ${selCount} Maker${selCount !== 1 ? 's' : ''} to Drafts`
+                : savedCount > 0
+                  ? `✓ ${savedCount} Saved to Drafts`
+                  : 'Select makers to save'}
+          </button>
+          <button
+            onClick={generateBulk}
+            disabled={selCount === 0}
+            title="Export JSON instead"
+            style={{
+              ...sans, border: `1px solid ${C.cream3}`,
+              background: 'white', color: C.muted,
+              fontSize: 11, fontWeight: 500, padding: '12px 14px',
+              cursor: selCount === 0 ? 'not-allowed' : 'pointer',
+            }}
+          >
+            JSON
           </button>
         </div>
       )}

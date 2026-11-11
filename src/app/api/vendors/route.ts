@@ -35,6 +35,54 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
     const db = createServiceClient()
+
+    // Bulk mode for Maker Agent 1-tap mobile save
+    if (Array.isArray(body.items)) {
+      const saved: any[] = []
+      const errors: string[] = []
+      for (const item of body.items) {
+        try {
+          const { vendor, attributes, districtIds } = item
+          const { data: vRow, error: vErr } = await db
+            .from('vendors')
+            .upsert(vendor, { onConflict: 'slug' })
+            .select()
+            .single()
+          if (vErr) throw new Error(`${vendor?.name || vendor?.slug || 'Maker'}: ${vErr.message}`)
+
+          if (attributes) {
+            const { error: aErr } = await db
+              .from('vendor_attributes')
+              .upsert({ vendor_id: vRow.id, ...attributes }, { onConflict: 'vendor_id' })
+            if (aErr) throw new Error(`${vendor?.name || vRow.slug} attributes: ${aErr.message}`)
+          }
+
+          if (Array.isArray(districtIds)) {
+            await db.from('vendor_districts').delete().eq('vendor_id', vRow.id)
+            if (districtIds.length > 0) {
+              const { error: dErr } = await db
+                .from('vendor_districts')
+                .insert(districtIds.map((dId: string) => ({ vendor_id: vRow.id, district_id: dId })))
+              if (dErr) throw new Error(`${vendor?.name || vRow.slug} districts: ${dErr.message}`)
+            }
+          }
+
+          saved.push(vRow)
+        } catch (err: any) {
+          errors.push(err.message ?? 'Failed to save maker')
+        }
+      }
+      if (saved.length === 0 && errors.length > 0) {
+        return NextResponse.json({ error: errors.join(' · '), errors }, { status: 500 })
+      }
+      return NextResponse.json({
+        data: saved,
+        savedCount: saved.length,
+        savedSlugs: saved.map(v => v.slug),
+        errors,
+      })
+    }
+
     const { data, error } = await db.from('vendors').insert(body).select().single()
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ data })

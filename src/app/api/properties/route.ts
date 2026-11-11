@@ -29,31 +29,63 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   if (!isAuthed()) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   try {
-    const { property, attributes, eventTypes } = await req.json()
+    const body = await req.json()
     const db = createServiceClient()
 
-    const { data: prop, error: propErr } = await db
-      .from('properties')
-      .upsert(property, { onConflict: 'slug' })
-      .select()
-      .single()
-    if (propErr) return NextResponse.json({ error: propErr.message }, { status: 500 })
+    const saveOne = async (item: { property: any; attributes?: any; eventTypes?: string[] }) => {
+      const { property, attributes, eventTypes } = item
+      const { data: prop, error: propErr } = await db
+        .from('properties')
+        .upsert(property, { onConflict: 'slug' })
+        .select()
+        .single()
+      if (propErr) throw new Error(`${property?.name || property?.slug || 'Venue'}: ${propErr.message}`)
 
-    if (attributes) {
-      const { error: attrErr } = await db
-        .from('property_attributes')
-        .upsert({ ...attributes, property_id: prop.id }, { onConflict: 'property_id' })
-      if (attrErr) return NextResponse.json({ error: attrErr.message }, { status: 500 })
+      if (attributes) {
+        const { error: attrErr } = await db
+          .from('property_attributes')
+          .upsert({ ...attributes, property_id: prop.id }, { onConflict: 'property_id' })
+        if (attrErr) throw new Error(`${property?.name || prop.slug} attributes: ${attrErr.message}`)
+      }
+
+      if (Array.isArray(eventTypes)) {
+        await db.from('property_event_types').delete().eq('property_id', prop.id)
+        if (eventTypes.length > 0) {
+          const { error: etErr } = await db
+            .from('property_event_types')
+            .insert(eventTypes.map((et: string) => ({ property_id: prop.id, event_type: et })))
+          if (etErr) throw new Error(`${property?.name || prop.slug} event types: ${etErr.message}`)
+        }
+      }
+
+      return prop
     }
 
-    await db.from('property_event_types').delete().eq('property_id', prop.id)
-    if (eventTypes?.length > 0) {
-      const { error: etErr } = await db
-        .from('property_event_types')
-        .insert(eventTypes.map((et: string) => ({ property_id: prop.id, event_type: et })))
-      if (etErr) return NextResponse.json({ error: etErr.message }, { status: 500 })
+    // Bulk mode for Listing Agent 1-tap mobile save
+    if (Array.isArray(body.items)) {
+      const saved: any[] = []
+      const errors: string[] = []
+      for (const item of body.items) {
+        try {
+          const p = await saveOne(item)
+          saved.push(p)
+        } catch (err: any) {
+          errors.push(err.message ?? 'Failed to save venue')
+        }
+      }
+      if (saved.length === 0 && errors.length > 0) {
+        return NextResponse.json({ error: errors.join(' · '), errors }, { status: 500 })
+      }
+      return NextResponse.json({
+        data: saved,
+        savedCount: saved.length,
+        savedSlugs: saved.map(p => p.slug),
+        errors,
+      })
     }
 
+    // Single property mode (used by PropertyForm)
+    const prop = await saveOne(body)
     return NextResponse.json({ data: prop })
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 })

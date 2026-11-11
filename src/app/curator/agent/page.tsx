@@ -40,6 +40,8 @@ interface Venue {
   candidate_images: string[]
   selected_images: string[]
   already_listed: boolean
+  saved?: boolean
+  saving?: boolean
   selected: boolean
   sql: string
 }
@@ -83,6 +85,49 @@ function n(x: any): number {
   return Number.isFinite(v) ? Math.floor(v) : 0
 }
 
+function buildVenueApiItem(v: Venue, townId?: string | null) {
+  const wa = (v.whatsapp || v.phone || '').replace(/\D/g, '')
+  const eventTypes = v.event_types?.length ? v.event_types : ['family_gathering']
+  const photos = (v.selected_images ?? []).filter(Boolean)
+  const property: Record<string, any> = {
+    name: v.name,
+    slug: v.slug || slugify(v.name),
+    tagline: v.tagline || '',
+    description: v.description || '',
+    owner_whatsapp: wa,
+    owner_name: v.name,
+    price_guide: v.price_guide || 'Ask owner for price',
+    photos,
+    is_active: false,
+    is_featured: false,
+    sort_order: 0,
+    instagram_url: v.instagram || '',
+    maps_url: v.maps_url || '',
+    property_type: v.type || 'open_event_space',
+  }
+  if (townId) property.town_id = townId
+
+  const attributes = {
+    room_count: n(v.room_count),
+    bathroom_count: n(v.bathroom_count),
+    max_guests_overnight: n(v.max_overnight),
+    max_guests_day_event: n(v.max_day),
+    has_pool: !!v.has_pool,
+    has_ac_hall: !!v.has_ac_hall,
+    has_open_lawn: !!v.has_open_lawn,
+    has_kitchen: !!v.has_kitchen,
+    has_parking: !!v.has_parking,
+    has_generator: !!v.has_generator,
+    alcohol_allowed: !!v.alcohol_allowed,
+    outside_catering: !!v.outside_catering,
+    ac_hall_capacity: n(v.ac_hall_capacity),
+    open_lawn_sqft: 0,
+    parking_count: n(v.parking_count),
+  }
+
+  return { property, attributes, eventTypes }
+}
+
 function buildSQL(v: Venue, townId?: string | null): string {
   const wa = (v.whatsapp || v.phone || '').replace(/\D/g, '')
   const eventTypes = v.event_types?.length ? v.event_types : ['family_gathering']
@@ -109,10 +154,13 @@ export default function AgentPage() {
   const [mode, setMode] = useState<'discovery' | 'name_lookup'>('discovery')
   const [provider, setProvider] = useState<'both' | 'gemini' | 'claude'>('both')
   const [filterTab, setFilterTab] = useState<'all' | 'gemini' | 'claude' | 'matched'>('all')
+  const [towns, setTowns] = useState<{ id: string; name: string; slug: string; hero_bg_color: string }[]>([])
   const [townId, setTownId] = useState<string | null>(null)
   const [townSlug, setTownSlug] = useState('')
   const [townName, setTownName] = useState('')
   const [scanning, setScanning] = useState(false)
+  const [savingBulk, setSavingBulk] = useState(false)
+  const [saveSuccessMsg, setSaveSuccessMsg] = useState('')
   const [venues, setVenues] = useState<Venue[]>([])
   const [log, setLog] = useState<string[]>([])
   const [warnings, setWarnings] = useState<string[]>([])
@@ -131,6 +179,11 @@ export default function AgentPage() {
     if (tn) { setTownName(tn); setQuery(`party halls villas event spaces ${tn} Kerala`) }
     if (tid) setTownId(tid)
     if (ts) setTownSlug(ts)
+
+    fetch('/api/towns')
+      .then(r => r.json())
+      .then(d => { if (Array.isArray(d.data)) setTowns(d.data) })
+      .catch(() => {})
   }, [])
 
   function addLog(msg: string) {
@@ -140,7 +193,7 @@ export default function AgentPage() {
   async function runScan() {
     if (!query.trim()) return
     setScanning(true); setVenues([]); setLog([]); setWarnings([]); setFilterTab('all')
-    setError(''); setBulkSQL(''); setShowBulk(false); setShowListed(false)
+    setError(''); setBulkSQL(''); setShowBulk(false); setShowListed(false); setSaveSuccessMsg('')
     addLog(`${mode === 'name_lookup' ? '🔍 Name lookup' : '📍 Discovery scan'}: "${query}"`)
     if (provider === 'both') {
       addLog('Running Gemini (Google Search Grounding + Places) & Claude Haiku + Serper in parallel...')
@@ -174,6 +227,9 @@ export default function AgentPage() {
 
       const parsed: any[] = data.venues ?? []
       const resolvedTownId = data.townId ?? townId
+      if (resolvedTownId && resolvedTownId !== townId) {
+        setTownId(resolvedTownId)
+      }
       const newCount = data.newCount ?? parsed.length
       const listedCount = parsed.length - newCount
       if (provider === 'both') {
@@ -203,6 +259,8 @@ export default function AgentPage() {
           candidate_images: v.candidate_images ?? [],
           selected_images: [],  // user picks manually
           already_listed: !!v.already_listed,
+          saved: false,
+          saving: false,
           sql: '',
         }
         venue.sql = buildSQL(venue, resolvedTownId)
@@ -244,15 +302,15 @@ export default function AgentPage() {
   function selectByProvider(targetProvider: 'gemini' | 'claude' | 'best' | 'none') {
     setVenues(prev => {
       if (targetProvider === 'none') {
-        return prev.map(v => v.already_listed ? v : { ...v, selected: false })
+        return prev.map(v => (v.already_listed || v.saved) ? v : { ...v, selected: false })
       }
       if (targetProvider === 'gemini' || targetProvider === 'claude') {
-        return prev.map(v => v.already_listed ? v : { ...v, selected: v.provider === targetProvider })
+        return prev.map(v => (v.already_listed || v.saved) ? v : { ...v, selected: v.provider === targetProvider })
       }
       // 'best': select all unique new venues, preferring Gemini when matched
       const seenKeys = new Set<string>()
       return prev.map(v => {
-        if (v.already_listed) return v
+        if (v.already_listed || v.saved) return v
         const mk = v.match_key || v.slug
         if (seenKeys.has(mk)) return { ...v, selected: false }
         seenKeys.add(mk)
@@ -292,10 +350,54 @@ export default function AgentPage() {
   }
 
   function generateBulk() {
-    const sel = venues.filter(v => v.selected && !v.already_listed)
+    const sel = venues.filter(v => v.selected && !v.already_listed && !v.saved)
     if (!sel.length) return
     setBulkSQL(sel.map(v => `-- ${v.name} (${v.provider ? `${v.provider.toUpperCase()} · ` : ''}${v.confidence})\n${v.sql}`).join('\n\n'))
     setShowBulk(true)
+  }
+
+  async function saveVenuesToSupabase(targetVenues: Venue[]) {
+    if (!targetVenues.length) return
+    const targetIds = new Set(targetVenues.map(v => v.id))
+    setError('')
+    setSavingBulk(true)
+    setVenues(prev => prev.map(v => targetIds.has(v.id) ? { ...v, saving: true } : v))
+
+    try {
+      const items = targetVenues.map(v => buildVenueApiItem(v, townId))
+      const res = await fetch('/api/properties', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Failed to save to Supabase')
+
+      const savedSlugs = new Set<string>(data.savedSlugs ?? targetVenues.map(v => v.slug))
+      setVenues(prev => prev.map(v => {
+        if (targetIds.has(v.id) || savedSlugs.has(v.slug)) {
+          return { ...v, saving: false, saved: true, selected: false }
+        }
+        return { ...v, saving: false }
+      }))
+
+      const count = data.savedCount ?? targetVenues.length
+      setSaveSuccessMsg(`✓ Saved ${count} venue${count !== 1 ? 's' : ''} to Supabase as Draft`)
+      addLog(`✓ Saved ${count} venue${count !== 1 ? 's' : ''} directly to Supabase (Draft)`)
+      if (Array.isArray(data.errors) && data.errors.length > 0) {
+        setWarnings(prev => [...prev, ...data.errors])
+      }
+    } catch (err: any) {
+      setError(err.message ?? 'Could not save to Supabase')
+      setVenues(prev => prev.map(v => targetIds.has(v.id) ? { ...v, saving: false } : v))
+    }
+    setSavingBulk(false)
+  }
+
+  function handleSaveSelected() {
+    const sel = venues.filter(v => v.selected && !v.already_listed && !v.saved)
+    if (!sel.length) return
+    saveVenuesToSupabase(sel)
   }
 
   const allNewVenues = venues.filter(v => !v.already_listed)
@@ -306,7 +408,8 @@ export default function AgentPage() {
     return true
   })
   const listedVenues = venues.filter(v => v.already_listed)
-  const selCount = allNewVenues.filter(v => v.selected).length
+  const selCount = allNewVenues.filter(v => v.selected && !v.saved).length
+  const savedCount = allNewVenues.filter(v => v.saved).length
   const geminiNewCount = allNewVenues.filter(v => v.provider === 'gemini').length
   const claudeNewCount = allNewVenues.filter(v => v.provider === 'claude').length
   const matchedPairCount = allNewVenues.filter(v => v.matched_in_both).length
@@ -324,7 +427,7 @@ export default function AgentPage() {
     if (v.maps_url) quickChips.push('📍 Maps')
 
     return (
-      <div key={v.id} style={{ background: 'white', border: v.already_listed ? `1px dashed ${C.cream3}` : v.selected ? `1.5px solid ${C.green}` : `1px solid ${C.cream3}`, opacity: v.already_listed ? 0.6 : 1 }}>
+      <div key={v.id} style={{ background: 'white', border: v.already_listed ? `1px dashed ${C.cream3}` : v.saved ? `1.5px solid #2D7A4F` : v.selected ? `1.5px solid ${C.green}` : `1px solid ${C.cream3}`, opacity: v.already_listed ? 0.6 : 1 }}>
         <div style={{ padding: '14px 14px 10px', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5, flexWrap: 'wrap' as const }}>
@@ -338,10 +441,15 @@ export default function AgentPage() {
                   ⚖️ IN BOTH
                 </span>
               )}
-              {v.already_listed
-                ? <span style={{ ...sans, fontSize: 9, fontWeight: 700, color: C.muted, border: `1px solid ${C.cream3}`, padding: '2px 6px' }}>ALREADY LISTED</span>
-                : <span style={{ ...sans, fontSize: 9, fontWeight: 700, color: CONFIDENCE_COLOR[v.confidence], border: `1px solid ${CONFIDENCE_COLOR[v.confidence]}`, padding: '2px 6px' }}>{v.confidence.toUpperCase()}</span>
-              }
+              {v.saved ? (
+                <span style={{ ...sans, fontSize: 9, fontWeight: 700, background: '#f0faf4', color: '#2D7A4F', border: '1px solid #2D7A4F', padding: '2px 6px' }}>
+                  ✓ SAVED AS DRAFT
+                </span>
+              ) : v.already_listed ? (
+                <span style={{ ...sans, fontSize: 9, fontWeight: 700, color: C.muted, border: `1px solid ${C.cream3}`, padding: '2px 6px' }}>ALREADY LISTED</span>
+              ) : (
+                <span style={{ ...sans, fontSize: 9, fontWeight: 700, color: CONFIDENCE_COLOR[v.confidence], border: `1px solid ${CONFIDENCE_COLOR[v.confidence]}`, padding: '2px 6px' }}>{v.confidence.toUpperCase()}</span>
+              )}
               <span style={{ ...sans, fontSize: 10, color: C.muted }}>{PROPERTY_TYPES[v.type] ?? v.type}</span>
             </div>
             <div style={{ ...serif, fontSize: 16, color: C.text, marginBottom: 2 }}>{v.name}</div>
@@ -370,13 +478,33 @@ export default function AgentPage() {
             )}
           </div>
           {!v.already_listed && (
-            <button
-              title={v.selected ? 'Selected for SQL export' : 'Select this listing'}
-              onClick={() => update(v.id, 'selected', !v.selected)}
-              style={{ width: 28, height: 28, border: `1.5px solid ${v.selected ? C.green : C.cream3}`, background: v.selected ? C.green : 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-            >
-              {v.selected && <svg viewBox="0 0 14 14" fill="none" width={12} height={12} stroke="white" strokeWidth={2}><path d="M2 7l4 4 6-6" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-            </button>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
+              {v.saved ? (
+                <Link
+                  href={`/curator/edit/${v.slug}`}
+                  style={{ ...sans, fontSize: 10, fontWeight: 600, color: '#2D7A4F', background: '#f0faf4', border: '1px solid #2D7A4F', padding: '5px 8px', textDecoration: 'none', whiteSpace: 'nowrap' }}
+                >
+                  Edit / Publish →
+                </Link>
+              ) : (
+                <>
+                  <button
+                    title={v.selected ? 'Selected' : 'Select this listing'}
+                    onClick={() => update(v.id, 'selected', !v.selected)}
+                    style={{ width: 28, height: 28, border: `1.5px solid ${v.selected ? C.green : C.cream3}`, background: v.selected ? C.green : 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    {v.selected && <svg viewBox="0 0 14 14" fill="none" width={12} height={12} stroke="white" strokeWidth={2}><path d="M2 7l4 4 6-6" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                  </button>
+                  <button
+                    onClick={() => saveVenuesToSupabase([v])}
+                    disabled={v.saving || savingBulk}
+                    style={{ ...sans, fontSize: 10, fontWeight: 600, color: C.green, background: '#f0faf4', border: `1px solid ${C.green}`, padding: '4px 7px', cursor: v.saving ? 'wait' : 'pointer', whiteSpace: 'nowrap' }}
+                  >
+                    {v.saving ? 'Saving...' : '+ Draft'}
+                  </button>
+                </>
+              )}
+            </div>
           )}
         </div>
 
@@ -553,6 +681,31 @@ export default function AgentPage() {
           )}
         </div>
 
+        {towns.length > 0 && (
+          <div style={{ marginBottom: 14 }}>
+            <label style={{ ...sans, fontSize: 10, color: C.terra, letterSpacing: '.08em', display: 'block', marginBottom: 6 }}>
+              ASSIGN TO TOWN (FOR 1-TAP SAVE)
+            </label>
+            <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 2 }} className="no-scrollbar">
+              {towns.map(t => (
+                <button
+                  key={t.id}
+                  onClick={() => { setTownId(t.id); setTownSlug(t.slug); setTownName(t.name) }}
+                  style={{
+                    ...sans, fontSize: 11, padding: '6px 12px', flexShrink: 0, cursor: 'pointer',
+                    border: `1px solid ${townId === t.id ? C.green : C.cream3}`,
+                    background: townId === t.id ? C.green : 'white',
+                    color: townId === t.id ? 'white' : C.muted,
+                    fontWeight: townId === t.id ? 600 : 400,
+                  }}
+                >
+                  {t.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <button onClick={runScan} disabled={scanning || !query.trim()} style={{ ...sans, width: '100%', background: scanning ? C.muted : C.green, color: 'white', fontSize: 11, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase' as const, padding: '14px 0', border: 'none', cursor: scanning ? 'not-allowed' : 'pointer', marginBottom: 20 }}>
           {scanning
             ? '⟳  Scanning...'
@@ -566,6 +719,15 @@ export default function AgentPage() {
             {log.map((l, i) => (
               <p key={i} style={{ ...mono, fontSize: 11, color: i === log.length - 1 ? C.gold : 'rgba(255,255,255,.45)', margin: '3px 0' }}>{l}</p>
             ))}
+          </div>
+        )}
+
+        {saveSuccessMsg && (
+          <div style={{ background: '#f0faf4', border: '1.5px solid #2D7A4F', padding: '12px 14px', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' as const }}>
+            <span style={{ ...sans, fontSize: 13, color: '#2D7A4F', fontWeight: 600 }}>{saveSuccessMsg}</span>
+            <Link href="/curator/spaces" style={{ ...sans, fontSize: 11, fontWeight: 700, color: 'white', background: '#2D7A4F', padding: '6px 12px', textDecoration: 'none' }}>
+              Open Spaces →
+            </Link>
           </div>
         )}
 
@@ -623,7 +785,9 @@ export default function AgentPage() {
           <>
             <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 14 }}>
               <div style={{ width: 14, height: 1, background: C.terra }}/>
-              <span style={{ ...sans, fontSize: 10, color: C.terra, letterSpacing: '.08em' }}>NEW VENUES ({newVenues.length})</span>
+              <span style={{ ...sans, fontSize: 10, color: C.terra, letterSpacing: '.08em' }}>
+                NEW VENUES ({newVenues.length}){savedCount > 0 ? ` · ${savedCount} SAVED` : ''}
+              </span>
               <div style={{ flex: 1, height: 1, background: C.cream3 }}/>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
@@ -660,10 +824,39 @@ export default function AgentPage() {
       </div>
 
       {allNewVenues.length > 0 && (
-        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: C.cream, borderTop: `1px solid ${C.cream3}`, padding: '12px 16px', display: 'flex', gap: 10, zIndex: 30 }}>
-          <button onClick={() => selectByProvider('best')} style={{ ...sans, flex: 1, border: `1px solid ${C.cream3}`, background: 'white', color: C.muted, fontSize: 11, fontWeight: 500, padding: '11px 0', cursor: 'pointer' }}>Select unique new</button>
-          <button onClick={generateBulk} disabled={selCount === 0} style={{ ...sans, flex: 2, background: selCount === 0 ? C.muted : C.green, color: 'white', fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase' as const, padding: '11px 0', border: 'none', cursor: selCount === 0 ? 'not-allowed' : 'pointer' }}>
-            Generate SQL for {selCount} venue{selCount !== 1 ? 's' : ''}
+        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: C.cream, borderTop: `1px solid ${C.cream3}`, padding: '12px 16px', display: 'flex', gap: 8, zIndex: 30 }}>
+          <button
+            onClick={handleSaveSelected}
+            disabled={selCount === 0 || savingBulk}
+            style={{
+              ...sans, flex: 1,
+              background: selCount === 0 || savingBulk ? C.muted : C.green,
+              color: 'white', fontSize: 11, fontWeight: 700,
+              letterSpacing: '.08em', textTransform: 'uppercase' as const,
+              padding: '12px 10px', border: 'none',
+              cursor: selCount === 0 || savingBulk ? 'not-allowed' : 'pointer',
+            }}
+          >
+            {savingBulk
+              ? `⟳ Saving ${selCount}...`
+              : selCount > 0
+                ? `Save ${selCount} Venue${selCount !== 1 ? 's' : ''} to Drafts`
+                : savedCount > 0
+                  ? `✓ ${savedCount} Saved to Drafts`
+                  : 'Select venues to save'}
+          </button>
+          <button
+            onClick={generateBulk}
+            disabled={selCount === 0}
+            title="Generate raw SQL instead"
+            style={{
+              ...sans, border: `1px solid ${C.cream3}`,
+              background: 'white', color: C.muted,
+              fontSize: 11, fontWeight: 500, padding: '12px 14px',
+              cursor: selCount === 0 ? 'not-allowed' : 'pointer',
+            }}
+          >
+            SQL
           </button>
         </div>
       )}
