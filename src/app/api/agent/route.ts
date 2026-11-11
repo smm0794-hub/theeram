@@ -103,13 +103,20 @@ async function serperImages(name: string, town: string, apiKey: string): Promise
     const r = await fetch('https://google.serper.dev/images', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-API-KEY': apiKey },
-      body: JSON.stringify({ q: `"${name}" ${town} Kerala event venue`, gl: 'in', num: 6 }),
+      body: JSON.stringify({ q: `"${name}" ${town} Kerala`, gl: 'in', num: 8 }),
     })
     const data = await r.json()
     return (data.images ?? [])
-      .map((img: any) => img.imageUrl)
+      .map((img: any) => {
+        const raw: string = img.imageUrl ?? ''
+        // Facebook/Instagram raw lookaside/CDN URLs block hotlinking (403); use Google's cached thumbnailUrl instead
+        if (/fbsbx\.com|fbcdn\.net|instagram\.com|cdninstagram\.com/i.test(raw)) {
+          return img.thumbnailUrl ?? ''
+        }
+        return raw || img.thumbnailUrl || ''
+      })
       .filter((url: string) => url?.startsWith('http'))
-      .slice(0, 4)
+      .slice(0, 5)
   } catch { return [] }
 }
 
@@ -646,8 +653,7 @@ export async function POST(req: NextRequest) {
     const imageCache = new Map<string, Promise<string[]>>()
     const venuesWithImages = await Promise.all(
       combined.map(async (v: any) => {
-        const shouldFetchImages =
-          !!serperKey && !v.already_listed && (v.confidence === 'high' || v.confidence === 'medium')
+        const shouldFetchImages = !!serperKey && !v.already_listed
         if (!shouldFetchImages) {
           return { ...v, candidate_images: [] }
         }

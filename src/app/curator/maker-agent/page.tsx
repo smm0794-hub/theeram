@@ -179,7 +179,7 @@ export default function MakerAgentPage() {
           ...m, id: `m${i}-${Date.now()}`, slug: slugify(m.name),
           selected: !m.already_listed && m.confidence !== 'low',
           candidate_images: m.candidate_images ?? [],
-          selected_images: [],
+          selected_images: [...(m.candidate_images ?? [])],
           already_listed: !!m.already_listed,
           saved: false,
           saving: false,
@@ -221,6 +221,17 @@ export default function MakerAgentPage() {
       const already = m.selected_images.includes(url)
       const selected_images = already ? m.selected_images.filter(u => u !== url) : [...m.selected_images, url]
       const u = { ...m, selected_images }
+      u.exportData = buildExportObject(u, category, selectedDistricts, selectedDistrictNames())
+      return u
+    }))
+  }
+
+  function removeBrokenImage(id: string, url: string) {
+    setMakers(prev => prev.map(m => {
+      if (m.id !== id) return m
+      const candidate_images = m.candidate_images.filter(u => u !== url)
+      const selected_images = m.selected_images.filter(u => u !== url)
+      const u = { ...m, candidate_images, selected_images }
       u.exportData = buildExportObject(u, category, selectedDistricts, selectedDistrictNames())
       return u
     }))
@@ -400,11 +411,13 @@ export default function MakerAgentPage() {
 
         {!m.already_listed && m.candidate_images.length > 0 && (
           <div style={{ padding: '0 14px 12px' }}>
-            <div style={{ ...sans, fontSize: 9, color: C.terra, letterSpacing: '.07em', marginBottom: 8 }}>SELECT PHOTOS — tap to add/remove</div>
+            <div style={{ ...sans, fontSize: 9, color: C.terra, letterSpacing: '.07em', marginBottom: 8 }}>
+              PHOTOS ({m.selected_images.length}/{m.candidate_images.length} INCLUDED) — tap any photo to remove or re-add
+            </div>
             <div style={{ display: 'flex', gap: 6, overflowX: 'auto' }} className="no-scrollbar">
               {m.candidate_images.map((url, i) => (
-                <div key={i} onClick={() => selectImage(m.id, url)} style={{ flexShrink: 0, width: 90, height: 68, position: 'relative', cursor: 'pointer', border: m.selected_images.includes(url) ? `2px solid ${C.terra}` : `1px solid ${C.cream3}` }}>
-                  <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={e => { const d = (e.target as HTMLImageElement).closest('div'); if (d) d.style.display = 'none' }}/>
+                <div key={url || i} onClick={() => selectImage(m.id, url)} style={{ flexShrink: 0, width: 90, height: 68, position: 'relative', cursor: 'pointer', border: m.selected_images.includes(url) ? `2px solid ${C.terra}` : `1px solid ${C.cream3}`, opacity: m.selected_images.includes(url) ? 1 : 0.45 }}>
+                  <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={() => removeBrokenImage(m.id, url)}/>
                   {m.selected_images.includes(url) && (
                     <div style={{ position: 'absolute', top: 3, right: 3, width: 16, height: 16, background: C.terra, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <svg viewBox="0 0 10 10" fill="none" width={8} height={8} stroke="white" strokeWidth={1.5}><path d="M2 5l2 2 4-4"/></svg>
@@ -413,7 +426,7 @@ export default function MakerAgentPage() {
                 </div>
               ))}
             </div>
-            {m.selected_images.length > 0 && <div style={{ ...sans, fontSize: 10, color: C.muted, marginTop: 6 }}>⚠️ {m.selected_images.length} photo{m.selected_images.length > 1 ? 's' : ''} selected · Reference only — confirm before publishing</div>}
+            {m.selected_images.length > 0 && <div style={{ ...sans, fontSize: 10, color: C.muted, marginTop: 6 }}>✓ {m.selected_images.length} photo{m.selected_images.length > 1 ? 's' : ''} will be saved with this maker · Reference only — confirm before publishing</div>}
           </div>
         )}
 

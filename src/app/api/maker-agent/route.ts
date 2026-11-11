@@ -58,13 +58,19 @@ async function serperImages(name: string, location: string, apiKey: string): Pro
     const r = await fetch('https://google.serper.dev/images', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-API-KEY': apiKey },
-      body: JSON.stringify({ q: `"${name}" ${location} Kerala`, gl: 'in', num: 6 }),
+      body: JSON.stringify({ q: `"${name}" ${location} Kerala`, gl: 'in', num: 8 }),
     })
     const data = await r.json()
     return (data.images ?? [])
-      .map((img: any) => img.imageUrl)
+      .map((img: any) => {
+        const raw: string = img.imageUrl ?? ''
+        if (/fbsbx\.com|fbcdn\.net|instagram\.com|cdninstagram\.com/i.test(raw)) {
+          return img.thumbnailUrl ?? ''
+        }
+        return raw || img.thumbnailUrl || ''
+      })
       .filter((url: string) => url?.startsWith('http'))
-      .slice(0, 4)
+      .slice(0, 5)
   } catch { return [] }
 }
 
