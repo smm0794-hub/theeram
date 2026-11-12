@@ -6,6 +6,7 @@ import { supabase, Property, Vendor, Town } from '@/lib/supabase'
 import { C, sans, serif } from '@/lib/design'
 import GratitudeModal from '@/components/GratitudeModal'
 import MakerCard from '@/components/MakerCard'
+import EnquiryModal, { EnquiryDetails, buildEnquiryWaUrl, openWhatsApp } from '@/components/EnquiryModal'
 
 const CARD_BG: Record<string, string> = {
   villa_with_pool: '#1C3A2B', villa_without_pool: '#2E5C4E',
@@ -265,19 +266,27 @@ export default function TownPage({ town, allTowns, initialProperties, initialVen
     }).then(() => {}, () => {})
   }
 
-  function buildWaUrl(p: Property) {
-    const phone = (p.owner_whatsapp ?? '').replace(/\D/g, '')
-    const msg = `Hi! I found ${p.name} on Theeram (theeramspaces.in) and I'm interested in booking. Could you share availability and pricing?`
-    return `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`
+  const [enquiryProperty, setEnquiryProperty] = useState<Property | null>(null)
+  const [enquiryDetails, setEnquiryDetails] = useState<EnquiryDetails | undefined>(undefined)
+
+  function buildWaUrl(p: Property, details?: EnquiryDetails) {
+    return buildEnquiryWaUrl(p.owner_whatsapp, p.name, details)
   }
 
-  // 1-Tap Direct WhatsApp: opens WhatsApp immediately on tap (zero 4-second delay)
-  // and shows the post-enquiry gratitude card in the background for when they return.
+  // Step 1: tap "Check availability" → ask for tentative date + guest count
   function handleWhatsApp(p: Property) {
+    setModalProperty(p)
+    setShowModal(false)
+    setEnquiryProperty(p)
+  }
+
+  // Step 2: submit → open WhatsApp (inside the click gesture) with date & pax pre-filled,
+  // then show the gratitude sheet for when they come back.
+  function sendEnquiry(p: Property, details: EnquiryDetails) {
     logPropertyInquiry(p)
-    const url = buildWaUrl(p)
-    const w = window.open(url, '_blank', 'noopener,noreferrer')
-    if (!w) window.location.href = url
+    openWhatsApp(buildWaUrl(p, details))
+    setEnquiryDetails(details)
+    setEnquiryProperty(null)
     setModalProperty(p)
     setShowModal(true)
   }
@@ -734,11 +743,25 @@ export default function TownPage({ town, allTowns, initialProperties, initialVen
         <div style={{ ...sans, fontSize: 10, color: 'rgba(255,255,255,.18)', lineHeight: 1.6 }}>© {new Date().getFullYear()} Theeram Spaces · Kerala</div>
       </footer>
 
+      {/* Enquiry sheet: tentative date + guest count → WhatsApp */}
+      {enquiryProperty && (() => {
+        const raw = (enquiryProperty as any).property_attributes
+        const a = Array.isArray(raw) ? raw[0] : raw
+        return (
+          <EnquiryModal
+            propertyName={enquiryProperty.name}
+            maxGuests={a?.max_guests_day_event ?? null}
+            onSubmit={details => sendEnquiry(enquiryProperty, details)}
+            onClose={() => setEnquiryProperty(null)}
+          />
+        )
+      })()}
+
       {/* Post-enquiry gratitude sheet (shown after WhatsApp has already been opened) */}
       {modalProperty && showModal && (
         <GratitudeModal
           propertyName={modalProperty.name}
-          whatsappUrl={buildWaUrl(modalProperty)}
+          whatsappUrl={buildWaUrl(modalProperty, enquiryDetails)}
           reviewUrl="https://g.page/r/Cav0otb1aGpEEBM/review"
           upiUrl="upi://pay?pa=smm0794@okhdfcbank&pn=Theeram&am=20&cu=INR&tn=Theeram+chai"
           onClose={() => { setShowModal(false); setModalProperty(null) }}

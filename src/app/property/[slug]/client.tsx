@@ -7,6 +7,7 @@ import { supabase, Property } from '@/lib/supabase'
 import { C, sans, serif } from '@/lib/design'
 import Header from '@/components/Header'
 import GratitudeModal from '@/components/GratitudeModal'
+import EnquiryModal, { EnquiryDetails, buildEnquiryWaUrl, openWhatsApp } from '@/components/EnquiryModal'
 
 const TYPE_LABEL: Record<string, string> = {
   villa_with_pool: 'Villa with pool', villa_without_pool: 'Villa',
@@ -40,6 +41,8 @@ export default function PropertyDetailClient({ slug, initialProperty }: { slug: 
   const [property, setProperty] = useState<Property | null>(initialProperty ?? null)
   const [loading, setLoading] = useState(!initialProperty)
   const [showModal, setShowModal] = useState(false)
+  const [showEnquiry, setShowEnquiry] = useState(false)
+  const [enquiryDetails, setEnquiryDetails] = useState<EnquiryDetails | undefined>(undefined)
   const [activePhoto, setActivePhoto] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [currentViewId, setCurrentViewId] = useState<string | null>(null)
@@ -157,16 +160,20 @@ export default function PropertyDetailClient({ slug, initialProperty }: { slug: 
   const heroBg = CARD_BG[property.property_type] ?? C.green
 
   const ownerPhone = (property.owner_whatsapp ?? '').replace(/\D/g, '')
-  const waMessage = encodeURIComponent(
-    `Hi! I found ${property.name} on Theeram (theeramspaces.in) and I'm interested in booking. Could you share availability and pricing?`
-  )
-  const waUrl = `https://wa.me/${ownerPhone}?text=${waMessage}`
+  const waUrl = buildEnquiryWaUrl(property.owner_whatsapp, property.name, enquiryDetails)
 
-  // 1-Tap Direct WhatsApp: opens WhatsApp immediately and shows the gratitude modal for when they return
+  // Step 1: ask for tentative date + guest count
   function handleWhatsApp() {
+    setShowEnquiry(true)
+  }
+
+  // Step 2: open WhatsApp with details pre-filled (inside the click gesture), then show gratitude sheet
+  function sendEnquiry(details: EnquiryDetails) {
+    if (!property) return
     logInquiry()
-    const w = window.open(waUrl, '_blank', 'noopener,noreferrer')
-    if (!w) window.location.href = waUrl
+    openWhatsApp(buildEnquiryWaUrl(property.owner_whatsapp, property.name, details))
+    setEnquiryDetails(details)
+    setShowEnquiry(false)
     setShowModal(true)
   }
 
@@ -377,7 +384,7 @@ export default function PropertyDetailClient({ slug, initialProperty }: { slug: 
               <svg viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}><path d="M12 3a9 9 0 00-7.8 13.5L3 21l4.6-1.2A9 9 0 1012 3z"/></svg>
               Check availability &amp; price
             </span>
-            <span style={{ fontSize: 10, fontWeight: 300, letterSpacing: '.02em', opacity: .85 }}>Opens WhatsApp directly · No commission</span>
+            <span style={{ fontSize: 10, fontWeight: 300, letterSpacing: '.02em', opacity: .85 }}>Straight to owner on WhatsApp · No commission</span>
           </button>
         </div>
       </div>
@@ -390,6 +397,16 @@ export default function PropertyDetailClient({ slug, initialProperty }: { slug: 
             <svg viewBox="0 0 20 20" fill="none" width={18} height={18} stroke="white" strokeWidth={1.8}><path d="M5 5l10 10M15 5L5 15" strokeLinecap="round"/></svg>
           </button>
         </div>
+      )}
+
+      {/* Enquiry sheet: tentative date + guest count → WhatsApp */}
+      {showEnquiry && (
+        <EnquiryModal
+          propertyName={property.name}
+          maxGuests={attrs?.max_guests_day_event ?? null}
+          onSubmit={sendEnquiry}
+          onClose={() => setShowEnquiry(false)}
+        />
       )}
 
       {/* Post-enquiry gratitude modal */}
