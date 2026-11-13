@@ -36,13 +36,15 @@ function getSessionId(): string {
   }
 }
 
-export default function PropertyDetailClient({ slug, initialProperty }: { slug: string; initialProperty?: Property | null }) {
+export default function PropertyDetailClient({ slug, initialProperty, similarProperties = [] }: { slug: string; initialProperty?: Property | null; similarProperties?: Property[] }) {
   const router = useRouter()
   const [property, setProperty] = useState<Property | null>(initialProperty ?? null)
   const [loading, setLoading] = useState(!initialProperty)
   const [showModal, setShowModal] = useState(false)
   const [showEnquiry, setShowEnquiry] = useState(false)
   const [enquiryDetails, setEnquiryDetails] = useState<EnquiryDetails | undefined>(undefined)
+  const [heroPhotoIdx, setHeroPhotoIdx] = useState(0)
+  const [touchStartX, setTouchStartX] = useState<number | null>(null)
   const [activePhoto, setActivePhoto] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [currentViewId, setCurrentViewId] = useState<string | null>(null)
@@ -177,6 +179,24 @@ export default function PropertyDetailClient({ slug, initialProperty }: { slug: 
     setShowModal(true)
   }
 
+  // Skip date/pax when visitor just wants to ask a quick question
+  function skipEnquiry() {
+    if (!property) return
+    logInquiry()
+    openWhatsApp(buildEnquiryWaUrl(property.owner_whatsapp, property.name))
+    setEnquiryDetails(undefined)
+    setShowEnquiry(false)
+    setShowModal(true)
+  }
+
+  const shareText = [
+    `Check out ${property.name}${townObj?.name ? ` (${townObj.name})` : ''} on Theeram:`,
+    property.price_guide ? `Price guide: ${property.price_guide}` : null,
+    attrs?.max_guests_day_event ? `Capacity: up to ${attrs.max_guests_day_event} guests` : null,
+    `https://www.theeramspaces.in/property/${property.slug}`,
+  ].filter(Boolean).join('\n')
+  const familyShareUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`
+
   // Only show facilities that are actually available (no greyed-out negative boxes)
   const availableFacilities = [
     (attrs?.room_count ?? 0) > 0 ? `${attrs.room_count} ${attrs.room_count === 1 ? 'Bedroom' : 'Bedrooms'}` : null,
@@ -240,7 +260,18 @@ export default function PropertyDetailClient({ slug, initialProperty }: { slug: 
 
         {/* Rounded Hero Card */}
         <div style={{ background: 'white', borderRadius: 26, border: `1px solid ${C.cream3}`, overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,.04)', marginBottom: 18 }}>
-          <div style={{ background: heroBg, height: 270, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
+          <div
+            onTouchStart={e => setTouchStartX(e.touches[0].clientX)}
+            onTouchEnd={e => {
+              if (touchStartX === null || photos.length <= 1) return
+              const dx = e.changedTouches[0].clientX - touchStartX
+              if (Math.abs(dx) > 40) {
+                setHeroPhotoIdx(i => (dx < 0 ? (i + 1) % photos.length : (i - 1 + photos.length) % photos.length))
+              }
+              setTouchStartX(null)
+            }}
+            style={{ background: heroBg, height: 270, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}
+          >
             <div style={{ opacity: .12, position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <svg viewBox="0 0 120 120" fill="none" width={200} height={200} stroke="white" strokeWidth={.8}>
                 <circle cx="60" cy="60" r="50"/><circle cx="60" cy="60" r="35"/><circle cx="60" cy="60" r="20"/>
@@ -248,9 +279,40 @@ export default function PropertyDetailClient({ slug, initialProperty }: { slug: 
               </svg>
             </div>
             {photos.length > 0 ? (
-              <img src={photos[0]} alt={property.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', position: 'absolute', inset: 0, cursor: 'pointer' }} onClick={() => setActivePhoto(photos[0])}/>
+              <img
+                src={photos[heroPhotoIdx] ?? photos[0]}
+                alt={`${property.name} photo ${heroPhotoIdx + 1}`}
+                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', position: 'absolute', inset: 0, cursor: 'pointer' }}
+                onClick={() => setActivePhoto(photos[heroPhotoIdx] ?? photos[0])}
+              />
             ) : null}
-            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '36px 20px 16px', background: 'linear-gradient(to top, rgba(0,0,0,.62), transparent)' }}>
+
+            {/* Photo counter + prev/next arrows */}
+            {photos.length > 1 && (
+              <>
+                <div style={{ position: 'absolute', top: 12, right: 12, background: 'rgba(15,15,13,.62)', backdropFilter: 'blur(4px)', color: 'white', padding: '4px 10px', borderRadius: 999, ...sans, fontSize: 10.5, fontWeight: 500, zIndex: 2 }}>
+                  {heroPhotoIdx + 1} / {photos.length} photos
+                </div>
+                <button
+                  type="button"
+                  aria-label="Previous photo"
+                  onClick={e => { e.stopPropagation(); setHeroPhotoIdx(i => (i - 1 + photos.length) % photos.length) }}
+                  style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', width: 32, height: 32, borderRadius: 999, background: 'rgba(15,15,13,.45)', border: 'none', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2 }}
+                >
+                  ‹
+                </button>
+                <button
+                  type="button"
+                  aria-label="Next photo"
+                  onClick={e => { e.stopPropagation(); setHeroPhotoIdx(i => (i + 1) % photos.length) }}
+                  style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', width: 32, height: 32, borderRadius: 999, background: 'rgba(15,15,13,.45)', border: 'none', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2 }}
+                >
+                  ›
+                </button>
+              </>
+            )}
+
+            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '36px 20px 16px', background: 'linear-gradient(to top, rgba(0,0,0,.62), transparent)', pointerEvents: 'none' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
                 <div style={{ width: 10, height: 1, background: C.gold }}/>
                 <span style={{ ...serif, fontSize: 12, color: C.gold, fontStyle: 'italic' }}>
@@ -263,7 +325,15 @@ export default function PropertyDetailClient({ slug, initialProperty }: { slug: 
           </div>
 
           <div style={{ padding: '18px 20px 20px' }}>
-            <p style={{ ...sans, fontSize: 14, color: C.muted, lineHeight: 1.65, marginBottom: 16, fontWeight: 300 }}>{property.tagline}</p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
+              <p style={{ ...sans, fontSize: 14, color: C.muted, lineHeight: 1.65, margin: 0, fontWeight: 300, flex: '1 1 260px' }}>{property.tagline}</p>
+              {(property as any).maps_url && (
+                <a href={(property as any).maps_url} target="_blank" rel="noopener noreferrer"
+                  style={{ ...sans, fontSize: 11.5, color: C.terra, background: '#FDF4EF', border: `1px solid rgba(155,61,30,.25)`, padding: '6px 12px', borderRadius: 999, textDecoration: 'none', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                  📍 View location ↗
+                </a>
+              )}
+            </div>
 
             {/* Key Capacity & Price Pills */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 10 }}>
@@ -321,6 +391,30 @@ export default function PropertyDetailClient({ slug, initialProperty }: { slug: 
           </div>
         )}
 
+        {/* Inline Enquiry + Family WhatsApp Share Card */}
+        <div style={{ background: C.green, borderRadius: 24, padding: '20px 20px', marginBottom: 16, color: 'white' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <div style={{ width: 14, height: 1, background: C.gold }}/>
+            <span style={{ ...sans, fontSize: 10, color: C.gold, letterSpacing: '.08em' }}>നേരിട്ട് സംസാരിക്കാം · DIRECT OWNER CONTACT</span>
+          </div>
+          <h2 style={{ ...serif, fontSize: 20, fontWeight: 300, color: 'white', margin: '0 0 6px' }}>
+            Planning an event here?
+          </h2>
+          <p style={{ ...sans, fontSize: 12.5, color: 'rgba(255,255,255,.72)', fontWeight: 300, lineHeight: 1.6, margin: '0 0 16px' }}>
+            Message the owner directly on WhatsApp for exact date availability &amp; pricing — usually replies within a few hours, with zero brokerage.
+          </p>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <button onClick={handleWhatsApp} style={{ ...sans, flex: '1 1 200px', height: 46, borderRadius: 12, border: 'none', cursor: 'pointer', background: C.gold, color: C.text, fontSize: 12, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+              <svg viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 00-7.8 13.5L3 21l4.6-1.2A9 9 0 1012 3z"/></svg>
+              Check availability &amp; price
+            </button>
+            <a href={familyShareUrl} target="_blank" rel="noopener noreferrer"
+              style={{ ...sans, flex: '1 1 180px', height: 46, borderRadius: 12, border: `1px solid rgba(255,255,255,.28)`, background: 'rgba(255,255,255,.08)', color: 'white', fontSize: 12, fontWeight: 500, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
+              Share with family on WhatsApp
+            </a>
+          </div>
+        </div>
+
         {/* Photo Gallery Card */}
         {photos.length > 1 && (
           <div style={{ background: 'white', borderRadius: 24, border: `1px solid ${C.cream3}`, padding: '20px 20px', marginBottom: 16 }}>
@@ -340,7 +434,7 @@ export default function PropertyDetailClient({ slug, initialProperty }: { slug: 
         )}
 
         {/* Price note & External Links */}
-        <div style={{ background: 'white', borderRadius: 24, border: `1px solid ${C.cream3}`, padding: '18px 20px' }}>
+        <div style={{ background: 'white', borderRadius: 24, border: `1px solid ${C.cream3}`, padding: '18px 20px', marginBottom: 16 }}>
           <p style={{ ...sans, fontSize: 13, color: C.text, fontStyle: 'italic', fontWeight: 400, marginBottom: 10 }}>
             {property.price_guide ? `Typically ${property.price_guide}. Owner confirms the exact price for your date.` : 'Ask the owner for pricing for your date.'}
           </p>
@@ -364,6 +458,57 @@ export default function PropertyDetailClient({ slug, initialProperty }: { slug: 
             Details reviewed and curated at time of listing. Facilities, pricing, and availability may change — please confirm directly with the owner before booking. Theeram Spaces is a discovery directory and is not party to any booking arrangement.
           </p>
         </div>
+
+        {/* Similar spaces in same town — prevents dead-end bounce */}
+        {similarProperties.length > 0 && (
+          <div style={{ marginTop: 22, marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                  <div style={{ width: 12, height: 1, background: C.terra }}/>
+                  <span style={{ ...sans, fontSize: 10, color: C.terra, letterSpacing: '.08em' }}>കൂടുതൽ ഇടങ്ങൾ</span>
+                </div>
+                <h2 style={{ ...serif, fontSize: 19, fontWeight: 400, color: C.text, margin: 0 }}>
+                  More spaces in {townObj?.name ?? 'this area'}
+                </h2>
+              </div>
+              <Link href={backHref} style={{ ...sans, fontSize: 12, color: C.terra, textDecoration: 'none' }}>
+                See all →
+              </Link>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 12 }}>
+              {similarProperties.map(sp => {
+                const spPhotos = Array.isArray(sp.photos) ? sp.photos : []
+                const spRawAttrs = (sp as any).property_attributes
+                const spAttrs = Array.isArray(spRawAttrs) ? spRawAttrs[0] : spRawAttrs
+                return (
+                  <Link key={sp.id} href={`/property/${sp.slug}`} style={{ background: 'white', borderRadius: 18, border: `1px solid ${C.cream3}`, overflow: 'hidden', textDecoration: 'none', display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ height: 116, background: CARD_BG[sp.property_type] ?? C.green, position: 'relative' }}>
+                      {spPhotos[0] && (
+                        <img src={spPhotos[0]} alt={sp.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}/>
+                      )}
+                      <div style={{ position: 'absolute', bottom: 8, left: 10, background: 'rgba(15,15,13,.6)', color: C.gold, padding: '2px 8px', borderRadius: 999, ...serif, fontSize: 10.5, fontStyle: 'italic' }}>
+                        {TYPE_LABEL[sp.property_type] ?? sp.property_type}
+                      </div>
+                    </div>
+                    <div style={{ padding: '12px 14px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 6 }}>
+                      <div>
+                        <div style={{ ...serif, fontSize: 15.5, color: C.text, lineHeight: 1.25, marginBottom: 4 }}>{sp.name}</div>
+                        <div style={{ ...sans, fontSize: 11.5, color: C.muted, fontWeight: 300, lineHeight: 1.4 }}>{sp.tagline?.split('—')[0]?.trim()}</div>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: `1px solid ${C.cream3}`, paddingTop: 8, marginTop: 4 }}>
+                        <span style={{ ...sans, fontSize: 12, fontWeight: 600, color: C.text }}>{sp.price_guide || 'Ask owner'}</span>
+                        {spAttrs?.max_guests_day_event ? (
+                          <span style={{ ...sans, fontSize: 10.5, color: C.muted }}>Up to {spAttrs.max_guests_day_event}</span>
+                        ) : null}
+                      </div>
+                    </div>
+                  </Link>
+                )
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Sticky bottom bar — constrained width + rounded buttons + 1-Tap Call & 1-Tap WhatsApp */}
@@ -405,6 +550,7 @@ export default function PropertyDetailClient({ slug, initialProperty }: { slug: 
           propertyName={property.name}
           maxGuests={attrs?.max_guests_day_event ?? null}
           onSubmit={sendEnquiry}
+          onSkip={skipEnquiry}
           onClose={() => setShowEnquiry(false)}
         />
       )}

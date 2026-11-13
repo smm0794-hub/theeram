@@ -52,6 +52,7 @@ interface EnquiryModalProps {
   propertyName: string
   maxGuests?: number | null
   onSubmit: (details: EnquiryDetails) => void
+  onSkip?: () => void
   onClose: () => void
 }
 
@@ -68,7 +69,7 @@ function Label({ ml, en }: { ml: string; en: string }) {
 // Asks for tentative date + guest count, then hands off to WhatsApp.
 // onSubmit is called directly from the button's click handler so window.open
 // stays inside the user gesture and isn't blocked as a popup.
-export default function EnquiryModal({ propertyName, maxGuests, onSubmit, onClose }: EnquiryModalProps) {
+export default function EnquiryModal({ propertyName, maxGuests, onSubmit, onSkip, onClose }: EnquiryModalProps) {
   const [date, setDate] = useState('')
   const [flexible, setFlexible] = useState(false)
   const [pax, setPax] = useState('')
@@ -217,7 +218,15 @@ export default function EnquiryModal({ propertyName, maxGuests, onSubmit, onClos
               <svg viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 00-7.8 13.5L3 21l4.6-1.2A9 9 0 1012 3z"/></svg>
               Send on WhatsApp
             </button>
-            <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: 14, marginTop: 12 }}>
+            {onSkip && (
+              <button type="button" onClick={onSkip} style={{
+                ...sans, width: '100%', background: 'none', border: 'none', cursor: 'pointer',
+                padding: '11px 8px 2px', fontSize: 11.5, color: C.terra, textDecoration: 'underline', fontWeight: 400,
+              }}>
+                Just have a quick question? Open WhatsApp directly →
+              </button>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: 14, marginTop: 10 }}>
               {['Straight to owner', 'No commission', 'No login'].map(t => (
                 <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <div style={{ width: 4, height: 4, borderRadius: '50%', background: C.gold }}/>

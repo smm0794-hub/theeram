@@ -65,6 +65,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function PropertyDetailPage({ params }: PageProps) {
   let initialProperty: Property | null = null
+  let similarProperties: Property[] = []
   try {
     const supabase = createServiceClient()
     const { data } = await supabase
@@ -73,8 +74,23 @@ export default async function PropertyDetailPage({ params }: PageProps) {
       .eq('slug', params.slug)
       .eq('is_active', true)
       .single()
-    if (data) initialProperty = data as Property
+    if (data) {
+      initialProperty = data as Property
+      const townId = (data as any).town_id
+      if (townId) {
+        const { data: sim } = await supabase
+          .from('properties')
+          .select('id, name, slug, tagline, property_type, price_guide, photos, property_attributes(max_guests_day_event)')
+          .eq('is_active', true)
+          .eq('town_id', townId)
+          .neq('id', data.id)
+          .order('sort_order', { ascending: false })
+          .order('created_at', { ascending: false })
+          .limit(3)
+        if (sim) similarProperties = sim as unknown as Property[]
+      }
+    }
   } catch {}
 
-  return <PropertyDetailClient slug={params.slug} initialProperty={initialProperty} />
+  return <PropertyDetailClient slug={params.slug} initialProperty={initialProperty} similarProperties={similarProperties} />
 }
