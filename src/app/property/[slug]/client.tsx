@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase, Property } from '@/lib/supabase'
@@ -44,7 +44,7 @@ export default function PropertyDetailClient({ slug, initialProperty, similarPro
   const [showEnquiry, setShowEnquiry] = useState(false)
   const [enquiryDetails, setEnquiryDetails] = useState<EnquiryDetails | undefined>(undefined)
   const [heroPhotoIdx, setHeroPhotoIdx] = useState(0)
-  const [touchStartX, setTouchStartX] = useState<number | null>(null)
+  const carouselRef = useRef<HTMLDivElement>(null)
   const [activePhoto, setActivePhoto] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [currentViewId, setCurrentViewId] = useState<string | null>(null)
@@ -260,43 +260,64 @@ export default function PropertyDetailClient({ slug, initialProperty, similarPro
 
         {/* Rounded Hero Card */}
         <div style={{ background: 'white', borderRadius: 26, border: `1px solid ${C.cream3}`, overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,.04)', marginBottom: 18 }}>
-          <div
-            onTouchStart={e => setTouchStartX(e.touches[0].clientX)}
-            onTouchEnd={e => {
-              if (touchStartX === null || photos.length <= 1) return
-              const dx = e.changedTouches[0].clientX - touchStartX
-              if (Math.abs(dx) > 40) {
-                setHeroPhotoIdx(i => (dx < 0 ? (i + 1) % photos.length : (i - 1 + photos.length) % photos.length))
-              }
-              setTouchStartX(null)
-            }}
-            style={{ background: heroBg, height: 270, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}
-          >
-            <div style={{ opacity: .12, position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <style>{`.hero-carousel::-webkit-scrollbar{display:none}`}</style>
+          <div style={{ background: heroBg, height: 270, position: 'relative', overflow: 'hidden' }}>
+            <div style={{ opacity: .12, position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
               <svg viewBox="0 0 120 120" fill="none" width={200} height={200} stroke="white" strokeWidth={.8}>
                 <circle cx="60" cy="60" r="50"/><circle cx="60" cy="60" r="35"/><circle cx="60" cy="60" r="20"/>
                 <line x1="60" y1="10" x2="60" y2="110"/><line x1="10" y1="60" x2="110" y2="60"/>
               </svg>
             </div>
             {photos.length > 0 ? (
-              <img
-                src={photos[heroPhotoIdx] ?? photos[0]}
-                alt={`${property.name} photo ${heroPhotoIdx + 1}`}
-                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', position: 'absolute', inset: 0, cursor: 'pointer' }}
-                onClick={() => setActivePhoto(photos[heroPhotoIdx] ?? photos[0])}
-              />
+              <div
+                ref={carouselRef}
+                className="hero-carousel"
+                onScroll={e => {
+                  const el = e.currentTarget
+                  if (el.clientWidth > 0) {
+                    const idx = Math.round(el.scrollLeft / el.clientWidth)
+                    if (idx !== heroPhotoIdx) setHeroPhotoIdx(idx)
+                  }
+                }}
+                style={{
+                  position: 'absolute', inset: 0, display: 'flex',
+                  overflowX: 'auto', scrollSnapType: 'x mandatory',
+                  WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none',
+                  touchAction: 'pan-x pan-y',
+                }}
+              >
+                {photos.map((url, idx) => (
+                  <div
+                    key={`${url}-${idx}`}
+                    onClick={() => setActivePhoto(url)}
+                    style={{ flex: '0 0 100%', width: '100%', height: '100%', scrollSnapAlign: 'start', cursor: 'pointer', position: 'relative' }}
+                  >
+                    <img
+                      src={url}
+                      alt={`${property.name} photo ${idx + 1}`}
+                      draggable={false}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', userSelect: 'none' }}
+                    />
+                  </div>
+                ))}
+              </div>
             ) : null}
 
             {/* Photo counter + prev/next arrows */}
             {photos.length > 1 && (
               <>
-                <div style={{ position: 'absolute', top: 12, right: 12, background: 'rgba(15,15,13,.62)', backdropFilter: 'blur(4px)', color: 'white', padding: '4px 10px', borderRadius: 999, ...sans, fontSize: 10.5, fontWeight: 500, zIndex: 2 }}>
+                <div style={{ position: 'absolute', top: 12, right: 12, background: 'rgba(15,15,13,.62)', backdropFilter: 'blur(4px)', color: 'white', padding: '4px 10px', borderRadius: 999, ...sans, fontSize: 10.5, fontWeight: 500, zIndex: 2, pointerEvents: 'none' }}>
                   {heroPhotoIdx + 1} / {photos.length} photos
                 </div>
                 <button
                   type="button"
                   aria-label="Previous photo"
-                  onClick={e => { e.stopPropagation(); setHeroPhotoIdx(i => (i - 1 + photos.length) % photos.length) }}
+                  onClick={e => {
+                    e.stopPropagation()
+                    const nextIdx = (heroPhotoIdx - 1 + photos.length) % photos.length
+                    setHeroPhotoIdx(nextIdx)
+                    if (carouselRef.current) carouselRef.current.scrollTo({ left: nextIdx * carouselRef.current.clientWidth, behavior: 'smooth' })
+                  }}
                   style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', width: 32, height: 32, borderRadius: 999, background: 'rgba(15,15,13,.45)', border: 'none', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2 }}
                 >
                   ‹
@@ -304,7 +325,12 @@ export default function PropertyDetailClient({ slug, initialProperty, similarPro
                 <button
                   type="button"
                   aria-label="Next photo"
-                  onClick={e => { e.stopPropagation(); setHeroPhotoIdx(i => (i + 1) % photos.length) }}
+                  onClick={e => {
+                    e.stopPropagation()
+                    const nextIdx = (heroPhotoIdx + 1) % photos.length
+                    setHeroPhotoIdx(nextIdx)
+                    if (carouselRef.current) carouselRef.current.scrollTo({ left: nextIdx * carouselRef.current.clientWidth, behavior: 'smooth' })
+                  }}
                   style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', width: 32, height: 32, borderRadius: 999, background: 'rgba(15,15,13,.45)', border: 'none', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2 }}
                 >
                   ›
@@ -312,7 +338,7 @@ export default function PropertyDetailClient({ slug, initialProperty, similarPro
               </>
             )}
 
-            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '36px 20px 16px', background: 'linear-gradient(to top, rgba(0,0,0,.62), transparent)', pointerEvents: 'none' }}>
+            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '36px 20px 16px', background: 'linear-gradient(to top, rgba(0,0,0,.62), transparent)', pointerEvents: 'none', zIndex: 1 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
                 <div style={{ width: 10, height: 1, background: C.gold }}/>
                 <span style={{ ...serif, fontSize: 12, color: C.gold, fontStyle: 'italic' }}>
