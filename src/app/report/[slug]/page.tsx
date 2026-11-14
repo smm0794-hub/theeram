@@ -55,7 +55,7 @@ export default async function OwnerReportPage({ params }: { params: { slug: stri
   const attrs = Array.isArray(rawAttrs) ? rawAttrs[0] : rawAttrs
   const maxGuests = attrs?.max_guests_day_event ?? null
 
-  async function fetchPropInquiries() {
+  const fetchPropInquiries = async () => {
     try {
       return await fetchAll((from, to) =>
         db.from('inquiries')

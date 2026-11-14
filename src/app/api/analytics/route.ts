@@ -12,7 +12,7 @@ export async function GET() {
     const db = createServiceClient()
 
     // Try selecting the v4 enriched inquiry columns first; fall back cleanly if migration hasn't been applied yet
-    async function fetchEnquiries() {
+    const fetchEnquiries = async () => {
       try {
         return await fetchAll((from, to) =>
           db.from('inquiries')
