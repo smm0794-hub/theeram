@@ -252,6 +252,7 @@ export default function AnalyticsPage() {
   const [readinessStats, setReadinessStats] = useState<ReadinessStats | null>(null)
   const [demandInsights, setDemandInsights] = useState<DemandInsights | null>(null)
   const [expandedSlug, setExpandedSlug] = useState<string | null>(null)
+  const [showAllCountries, setShowAllCountries] = useState(false)
   const [daily, setDaily] = useState<DailyDetail[]>([])
   const [openDay, setOpenDay] = useState<string | null>(null)
 
@@ -498,17 +499,59 @@ export default function AnalyticsPage() {
                 <div style={{ ...sans, fontSize:9, color:C.muted, marginBottom:12, fontStyle:'italic' as const }}>
                   {locationStats.views_with_location} of {stats.views_all} views have location data
                 </div>
-                {locationStats.by_country.map(c => (
-                  <div key={c.country} style={{ marginBottom:8 }}>
-                    <div style={{ display:'flex', justifyContent:'space-between', marginBottom:3 }}>
-                      <span style={{ ...sans, fontSize:12, color:C.text }}>{c.country}</span>
-                      <span style={{ ...sans, fontSize:11, color:C.muted }}>{c.views} views</span>
+                {(() => {
+                  const totalCountryViews = locationStats.by_country.reduce((s, c) => s + c.views, 0)
+                  const threshold = totalCountryViews * 0.9
+                  let running = 0
+                  const topCountries: typeof locationStats.by_country = []
+                  const restCountries: typeof locationStats.by_country = []
+                  locationStats.by_country.forEach((c, idx) => {
+                    if (idx === 0 || running < threshold) {
+                      topCountries.push(c)
+                      running += c.views
+                    } else {
+                      restCountries.push(c)
+                    }
+                  })
+                  const restViews = restCountries.reduce((s, c) => s + c.views, 0)
+                  const maxViews = locationStats.by_country[0]?.views || 1
+                  const renderCountry = (c: { country: string; views: number }) => (
+                    <div key={c.country} style={{ marginBottom:8 }}>
+                      <div style={{ display:'flex', justifyContent:'space-between', marginBottom:3 }}>
+                        <span style={{ ...sans, fontSize:12, color:C.text }}>{c.country}</span>
+                        <span style={{ ...sans, fontSize:11, color:C.muted }}>{c.views} views</span>
+                      </div>
+                      <div style={{ background:C.cream2, borderRadius:2, overflow:'hidden' }}>
+                        <div style={{ height:5, background:'#2D7A4F', width:`${(c.views/maxViews)*100}%`, transition:'width .3s' }}/>
+                      </div>
                     </div>
-                    <div style={{ background:C.cream2, borderRadius:2, overflow:'hidden' }}>
-                      <div style={{ height:5, background:'#2D7A4F', width:`${(c.views/locationStats.by_country[0].views)*100}%`, transition:'width .3s' }}/>
-                    </div>
-                  </div>
-                ))}
+                  )
+                  return (
+                    <>
+                      {topCountries.map(renderCountry)}
+                      {restCountries.length > 0 && (
+                        <div style={{ marginTop:6 }}>
+                          <button
+                            type="button"
+                            onClick={() => setShowAllCountries(v => !v)}
+                            style={{ ...sans, fontSize:11, color:C.terra, background:C.cream, border:`1px solid ${C.cream3}`, padding:'6px 10px', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'space-between', width:'100%' }}
+                          >
+                            <span>
+                              <span style={{ display:'inline-block', marginRight:6, transform: showAllCountries ? 'rotate(90deg)' : 'none', transition:'transform .15s' }}>▸</span>
+                              {restCountries.length} other {restCountries.length === 1 ? 'country' : 'countries'}
+                            </span>
+                            <span style={{ color:C.muted }}>{restViews} views</span>
+                          </button>
+                          {showAllCountries && (
+                            <div style={{ marginTop:10, paddingLeft:8, borderLeft:`2px solid ${C.cream3}` }}>
+                              {restCountries.map(renderCountry)}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  )
+                })()}
                 {locationStats.by_region.length > 0 && (
                   <>
                     <div style={{ ...sans, fontSize:9, color:C.muted, letterSpacing:'.05em', marginTop:14, marginBottom:8 }}>TOP REGIONS</div>
