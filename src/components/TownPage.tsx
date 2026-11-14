@@ -259,11 +259,49 @@ export default function TownPage({ town, allTowns, initialProperties, initialVen
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  function logPropertyInquiry(p: Property) {
-    supabase.from('inquiries').insert({
+  function getSessionId(): string {
+    try {
+      let id = sessionStorage.getItem('theeram_session_id')
+      if (!id) {
+        id = crypto.randomUUID()
+        sessionStorage.setItem('theeram_session_id', id)
+      }
+      return id
+    } catch {
+      return 'unknown'
+    }
+  }
+
+  function logPropertyInquiry(p: Property, opts?: {
+    details?: EnquiryDetails
+    channel?: 'whatsapp' | 'whatsapp_skip' | 'phone' | 'share_link'
+  }) {
+    const details = opts?.details
+    const channel = opts?.channel ?? 'whatsapp'
+    const rawAttrs = (p as any).property_attributes
+    const attrs = Array.isArray(rawAttrs) ? rawAttrs[0] : rawAttrs
+    const maxGuests = attrs?.max_guests_day_event ?? null
+
+    const basePayload: Record<string, any> = {
       property_id: p.id,
-      event_type: p.property_event_types?.[0]?.event_type ?? 'general',
-    }).then(() => {}, () => {})
+      event_type: details?.occasion || p.property_event_types?.[0]?.event_type || 'general',
+    }
+    const enrichedPayload: Record<string, any> = {
+      ...basePayload,
+      channel,
+      session_id: getSessionId(),
+      ...(details ? {
+        event_date: details.date || null,
+        is_flexible_date: !details.date,
+        guest_count: details.pax,
+        is_over_capacity: !!(maxGuests && details.pax > maxGuests),
+      } : {}),
+    }
+    supabase.from('inquiries').insert(enrichedPayload).then(({ error }) => {
+      if (error && (channel === 'whatsapp' || channel === 'whatsapp_skip' || channel === 'phone')) {
+        supabase.from('inquiries').insert(basePayload).then(() => {}, () => {})
+      }
+    }, () => {})
   }
 
   const [enquiryProperty, setEnquiryProperty] = useState<Property | null>(null)
@@ -283,7 +321,7 @@ export default function TownPage({ town, allTowns, initialProperties, initialVen
   // Step 2: submit → open WhatsApp (inside the click gesture) with date & pax pre-filled,
   // then show the gratitude sheet for when they come back.
   function sendEnquiry(p: Property, details: EnquiryDetails) {
-    logPropertyInquiry(p)
+    logPropertyInquiry(p, { details, channel: 'whatsapp' })
     openWhatsApp(buildWaUrl(p, details))
     setEnquiryDetails(details)
     setEnquiryProperty(null)
@@ -291,10 +329,20 @@ export default function TownPage({ town, allTowns, initialProperties, initialVen
     setShowModal(true)
   }
 
-  async function share(slug: string, name: string) {
-    const url = `${window.location.origin}/property/${slug}`
+  function skipEnquiry(p: Property) {
+    logPropertyInquiry(p, { channel: 'whatsapp_skip' })
+    openWhatsApp(buildWaUrl(p))
+    setEnquiryDetails(undefined)
+    setEnquiryProperty(null)
+    setModalProperty(p)
+    setShowModal(true)
+  }
+
+  async function share(p: Property) {
+    logPropertyInquiry(p, { channel: 'share_link' })
+    const url = `${window.location.origin}/property/${p.slug}`
     try {
-      if (navigator.share) await navigator.share({ title: name, url })
+      if (navigator.share) await navigator.share({ title: p.name, url })
       else await navigator.clipboard.writeText(url)
     } catch {}
   }
@@ -624,7 +672,7 @@ export default function TownPage({ town, allTowns, initialProperties, initialVen
                             <span style={{ ...sans, fontSize: 14, fontWeight: 600, color: C.text }}>{p.price_guide || 'Ask for price'}</span>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                               <Link href={`/property/${p.slug}`} style={{ ...sans, fontSize: 11, color: C.terra, textDecoration: 'none' }}>Details →</Link>
-                              <button onClick={() => share(p.slug, p.name)} aria-label={`Share ${p.name}`} className="tap-press" style={{ width: 32, height: 32, borderRadius: 999, border: `1px solid ${C.cream3}`, background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.muted }}>
+                              <button onClick={() => share(p)} aria-label={`Share ${p.name}`} className="tap-press" style={{ width: 32, height: 32, borderRadius: 999, border: `1px solid ${C.cream3}`, background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.muted }}>
                                 <svg viewBox="0 0 14 14" fill="none" width={12} height={12} stroke="currentColor" strokeWidth={1.3} strokeLinecap="round"><circle cx="11" cy="2.5" r="1.5"/><circle cx="3" cy="7" r="1.5"/><circle cx="11" cy="11.5" r="1.5"/><path d="M4.5 6.3l5-3.2M4.5 7.7l5 3.2"/></svg>
                               </button>
                             </div>
@@ -643,7 +691,7 @@ export default function TownPage({ town, allTowns, initialProperties, initialVen
                               Check availability
                             </button>
                             {ownerPhone && (
-                              <a href={`tel:+${ownerPhone}`} onClick={() => logPropertyInquiry(p)} aria-label={`Call ${p.name} owner`} className="tap-press"
+                              <a href={`tel:+${ownerPhone}`} onClick={() => logPropertyInquiry(p, { channel: 'phone' })} aria-label={`Call ${p.name} owner`} className="tap-press"
                                 style={{
                                   width: 44, height: 44, borderRadius: 14, border: `1px solid ${C.cream3}`, background: C.cream,
                                   color: C.green, display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', flexShrink: 0,
@@ -758,6 +806,7 @@ export default function TownPage({ town, allTowns, initialProperties, initialVen
             propertyName={enquiryProperty.name}
             maxGuests={a?.max_guests_day_event ?? null}
             onSubmit={details => sendEnquiry(enquiryProperty, details)}
+            onSkip={() => skipEnquiry(enquiryProperty)}
             onClose={() => setEnquiryProperty(null)}
           />
         )

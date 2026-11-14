@@ -121,16 +121,40 @@ export default function PropertyDetailClient({ slug, initialProperty, similarPro
     window.addEventListener('beforeunload', sendDuration)
   }
 
-  function logInquiry() {
+  function logInquiry(opts?: {
+    details?: EnquiryDetails
+    channel?: 'whatsapp' | 'whatsapp_skip' | 'phone' | 'share_family' | 'share_link' | 'maps' | 'instagram'
+    maxGuests?: number | null
+  }) {
     if (!property) return
-    supabase.from('inquiries').insert({
+    const details = opts?.details
+    const channel = opts?.channel ?? 'whatsapp'
+    const basePayload: Record<string, any> = {
       property_id: property.id,
-      event_type: property.property_event_types?.[0]?.event_type ?? 'general',
+      event_type: details?.occasion || property.property_event_types?.[0]?.event_type || 'general',
       ...(currentViewId ? { view_id: currentViewId } : {}),
-    }).then(() => {}, () => {})
+    }
+    const enrichedPayload: Record<string, any> = {
+      ...basePayload,
+      channel,
+      session_id: getSessionId(),
+      ...(details ? {
+        event_date: details.date || null,
+        is_flexible_date: !details.date,
+        guest_count: details.pax,
+        is_over_capacity: !!(opts?.maxGuests && details.pax > opts.maxGuests),
+      } : {}),
+    }
+    supabase.from('inquiries').insert(enrichedPayload).then(({ error }) => {
+      // Fallback to base columns if the v4 SQL migration hasn't been run yet
+      if (error && (channel === 'whatsapp' || channel === 'whatsapp_skip' || channel === 'phone')) {
+        supabase.from('inquiries').insert(basePayload).then(() => {}, () => {})
+      }
+    }, () => {})
   }
 
   async function handleShare() {
+    logInquiry({ channel: 'share_link' })
     const url = window.location.href
     try {
       if (navigator.share) await navigator.share({ title: property?.name ?? 'Theeram', url })
@@ -173,7 +197,7 @@ export default function PropertyDetailClient({ slug, initialProperty, similarPro
   // Step 2: open WhatsApp with details pre-filled (inside the click gesture), then show gratitude sheet
   function sendEnquiry(details: EnquiryDetails) {
     if (!property) return
-    logInquiry()
+    logInquiry({ details, channel: 'whatsapp', maxGuests: attrs?.max_guests_day_event ?? null })
     openWhatsApp(buildEnquiryWaUrl(property.owner_whatsapp, property.name, details))
     setEnquiryDetails(details)
     setShowEnquiry(false)
@@ -183,7 +207,7 @@ export default function PropertyDetailClient({ slug, initialProperty, similarPro
   // Skip date/pax when visitor just wants to ask a quick question
   function skipEnquiry() {
     if (!property) return
-    logInquiry()
+    logInquiry({ channel: 'whatsapp_skip' })
     openWhatsApp(buildEnquiryWaUrl(property.owner_whatsapp, property.name))
     setEnquiryDetails(undefined)
     setShowEnquiry(false)
@@ -398,7 +422,7 @@ export default function PropertyDetailClient({ slug, initialProperty, similarPro
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
               <p style={{ ...sans, fontSize: 14, color: C.muted, lineHeight: 1.65, margin: 0, fontWeight: 300, flex: '1 1 260px' }}>{property.tagline}</p>
               {(property as any).maps_url && (
-                <a href={(property as any).maps_url} target="_blank" rel="noopener noreferrer"
+                <a href={(property as any).maps_url} onClick={() => logInquiry({ channel: 'maps' })} target="_blank" rel="noopener noreferrer"
                   style={{ ...sans, fontSize: 11.5, color: C.terra, background: '#FDF4EF', border: `1px solid rgba(155,61,30,.25)`, padding: '6px 12px', borderRadius: 999, textDecoration: 'none', whiteSpace: 'nowrap', flexShrink: 0 }}>
                   📍 View location ↗
                 </a>
@@ -478,7 +502,7 @@ export default function PropertyDetailClient({ slug, initialProperty, similarPro
               <svg viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 00-7.8 13.5L3 21l4.6-1.2A9 9 0 1012 3z"/></svg>
               Check availability &amp; price
             </button>
-            <a href={familyShareUrl} target="_blank" rel="noopener noreferrer"
+            <a href={familyShareUrl} onClick={() => logInquiry({ channel: 'share_family' })} target="_blank" rel="noopener noreferrer"
               style={{ ...sans, flex: '1 1 180px', height: 46, borderRadius: 12, border: `1px solid rgba(255,255,255,.28)`, background: 'rgba(255,255,255,.08)', color: 'white', fontSize: 12, fontWeight: 500, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
               Share with family on WhatsApp
             </a>
@@ -511,13 +535,13 @@ export default function PropertyDetailClient({ slug, initialProperty, similarPro
           {((property as any).maps_url || (property as any).instagram_url) && (
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
               {(property as any).maps_url && (
-                <a href={(property as any).maps_url} target="_blank" rel="noopener noreferrer"
+                <a href={(property as any).maps_url} onClick={() => logInquiry({ channel: 'maps' })} target="_blank" rel="noopener noreferrer"
                   style={{ ...sans, fontSize: 12, color: C.terra, background: '#FDF4EF', border: `1px solid rgba(155,61,30,.28)`, padding: '7px 14px', borderRadius: 999, textDecoration: 'none' }}>
                   📍 View on Google Maps →
                 </a>
               )}
               {(property as any).instagram_url && (
-                <a href={(property as any).instagram_url} target="_blank" rel="noopener noreferrer"
+                <a href={(property as any).instagram_url} onClick={() => logInquiry({ channel: 'instagram' })} target="_blank" rel="noopener noreferrer"
                   style={{ ...sans, fontSize: 12, color: C.terra, background: '#FDF4EF', border: `1px solid rgba(155,61,30,.28)`, padding: '7px 14px', borderRadius: 999, textDecoration: 'none' }}>
                   Instagram →
                 </a>
@@ -588,7 +612,7 @@ export default function PropertyDetailClient({ slug, initialProperty, similarPro
             <svg viewBox="0 0 20 20" fill="none" width={18} height={18} stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M12 5L7 10l5 5"/></svg>
           </Link>
           {ownerPhone && (
-            <a href={`tel:+${ownerPhone}`} onClick={logInquiry} aria-label="Call the owner"
+            <a href={`tel:+${ownerPhone}`} onClick={() => logInquiry({ channel: 'phone' })} aria-label="Call the owner"
               style={{ ...sans, height: 50, padding: '0 16px', borderRadius: 14, border: `1px solid ${C.green}`, color: C.green, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, textDecoration: 'none', flexShrink: 0, background: 'white', fontSize: 12, fontWeight: 600 }}>
               <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 01-2.2 2 19.8 19.8 0 01-8.6-3.1 19.5 19.5 0 01-6-6A19.8 19.8 0 012.1 4.2 2 2 0 014.1 2h3a2 2 0 012 1.7c.1.9.4 1.8.7 2.7a2 2 0 01-.5 2.1L8 9.8a16 16 0 006 6l1.3-1.3a2 2 0 012.1-.4c.9.3 1.8.6 2.7.7a2 2 0 011.7 2z"/></svg>
               Call

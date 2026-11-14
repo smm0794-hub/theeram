@@ -11,12 +11,33 @@ export async function GET() {
   try {
     const db = createServiceClient()
 
+    // Try selecting the v4 enriched inquiry columns first; fall back cleanly if migration hasn't been applied yet
+    async function fetchEnquiries() {
+      try {
+        return await fetchAll((from, to) =>
+          db.from('inquiries')
+            .select('id, created_at, property_id, view_id, event_type, event_date, is_flexible_date, guest_count, is_over_capacity, channel, session_id, properties(id, name, slug, town_id, is_featured, photos, towns(id, name, hero_bg_color))')
+            .order('created_at', { ascending: false }).order('id').range(from, to)
+        )
+      } catch {
+        return await fetchAll((from, to) =>
+          db.from('inquiries')
+            .select('id, created_at, property_id, view_id, event_type, properties(id, name, slug, town_id, is_featured, photos, towns(id, name, hero_bg_color))')
+            .order('created_at', { ascending: false }).order('id').range(from, to)
+        )
+      }
+    }
+
     // fetchAll pages past Supabase's 1000-row response cap (this was why totals stuck at 1000)
-    const [enquiryRows, viewRows, propsResult] = await Promise.all([
-      fetchAll((from, to) => db.from('inquiries').select('id, created_at, property_id, view_id, properties(id, name, slug, town_id, is_featured, photos, towns(id, name, hero_bg_color))').order('created_at', { ascending: false }).order('id').range(from, to)),
+    const [rawEnquiryRows, viewRows, propsResult] = await Promise.all([
+      fetchEnquiries(),
       fetchAll((from, to) => db.from('property_views').select('id, viewed_at, duration_seconds, property_id, session_id, visitor_country, visitor_region, properties(id, name, slug, town_id, is_featured, photos, towns(id, name, hero_bg_color))').order('viewed_at', { ascending: false }).order('id').range(from, to)),
       db.from('properties').select('id, name, slug, town_id, is_active, is_featured, photos, created_at, towns(id, name, hero_bg_color)').eq('is_active', true),
     ])
+
+    // Direct owner contact (WhatsApp / phone) vs micro-signals (share / maps / instagram)
+    const isDirectLead = (r: any) => !r.channel || r.channel === 'whatsapp' || r.channel === 'whatsapp_skip' || r.channel === 'phone'
+    const enquiryRows = rawEnquiryRows.filter(isDirectLead)
 
     const allProps = propsResult.data ?? []
 
@@ -24,6 +45,96 @@ export async function GET() {
     const day7 = 7 * 24 * 60 * 60 * 1000
     const day14 = 14 * 24 * 60 * 60 * 1000
     const day30 = 30 * 24 * 60 * 60 * 1000
+
+    // ── Demand Intelligence (Dates, Pax, Over-Capacity, Channels, Cross-Shopping) ──
+    const dateCountMap: Record<string, { date: string; count: number; totalPax: number; properties: Set<string> }> = {}
+    const paxBuckets: Record<string, number> = {
+      'Up to 50 (Intimate)': 0,
+      '51–100 (Gathering)': 0,
+      '101–200 (Celebration)': 0,
+      '201–350 (Large)': 0,
+      '350+ (Grand)': 0,
+    }
+    const channelCounts: Record<string, number> = {
+      whatsapp: 0,
+      whatsapp_skip: 0,
+      phone: 0,
+      share_family: 0,
+      share_link: 0,
+      maps: 0,
+      instagram: 0,
+    }
+    const occasionCounts: Record<string, number> = {}
+    let flexibleDateCount = 0
+    let fixedDateCount = 0
+    let overCapacityCount = 0
+    let leadTimeDaysSum = 0
+    let leadTimeCount = 0
+    let paxSum = 0
+    let paxCount = 0
+
+    rawEnquiryRows.forEach((r: any) => {
+      const ch = r.channel || 'whatsapp'
+      channelCounts[ch] = (channelCounts[ch] ?? 0) + 1
+
+      if (!isDirectLead(r)) return
+
+      if (r.event_type && r.event_type !== 'general') {
+        occasionCounts[r.event_type] = (occasionCounts[r.event_type] ?? 0) + 1
+      }
+      if (r.is_flexible_date) flexibleDateCount++
+      if (r.event_date) {
+        fixedDateCount++
+        const dStr = String(r.event_date).slice(0, 10)
+        if (!dateCountMap[dStr]) dateCountMap[dStr] = { date: dStr, count: 0, totalPax: 0, properties: new Set() }
+        dateCountMap[dStr].count++
+        if (typeof r.guest_count === 'number' && r.guest_count > 0) dateCountMap[dStr].totalPax += r.guest_count
+        if (r.properties?.name) dateCountMap[dStr].properties.add(r.properties.name)
+
+        const eventMs = new Date(`${dStr}T00:00:00Z`).getTime()
+        const createdMs = new Date(r.created_at).getTime()
+        const diffDays = Math.round((eventMs - createdMs) / (24 * 60 * 60 * 1000))
+        if (diffDays >= 0 && diffDays <= 730) {
+          leadTimeDaysSum += diffDays
+          leadTimeCount++
+        }
+      }
+      if (typeof r.guest_count === 'number' && r.guest_count > 0) {
+        const g = r.guest_count
+        paxSum += g
+        paxCount++
+        if (g <= 50) paxBuckets['Up to 50 (Intimate)']++
+        else if (g <= 100) paxBuckets['51–100 (Gathering)']++
+        else if (g <= 200) paxBuckets['101–200 (Celebration)']++
+        else if (g <= 350) paxBuckets['201–350 (Large)']++
+        else paxBuckets['350+ (Grand)']++
+      }
+      if (r.is_over_capacity) overCapacityCount++
+    })
+
+    const hotDates = Object.values(dateCountMap)
+      .sort((a, b) => b.count - a.count || a.date.localeCompare(b.date))
+      .slice(0, 8)
+      .map(d => ({
+        date: d.date,
+        count: d.count,
+        avg_pax: d.count > 0 && d.totalPax > 0 ? Math.round(d.totalPax / d.count) : null,
+        properties: Array.from(d.properties),
+      }))
+
+    const demandInsights = {
+      hot_dates: hotDates,
+      fixed_date_count: fixedDateCount,
+      flexible_date_count: flexibleDateCount,
+      avg_lead_time_days: leadTimeCount > 0 ? Math.round(leadTimeDaysSum / leadTimeCount) : null,
+      avg_guest_count: paxCount > 0 ? Math.round(paxSum / paxCount) : null,
+      over_capacity_count: overCapacityCount,
+      pax_breakdown: Object.entries(paxBuckets).map(([label, count]) => ({ label, count })),
+      channel_breakdown: channelCounts,
+      occasion_breakdown: Object.entries(occasionCounts)
+        .map(([occasion, count]) => ({ occasion, count }))
+        .sort((a, b) => b.count - a.count),
+    }
 
     const viewsWithDuration = viewRows.filter((r: any) => typeof r.duration_seconds === 'number' && r.duration_seconds > 0)
     const avgDurationSeconds = viewsWithDuration.length
@@ -191,13 +302,32 @@ export async function GET() {
         name: p.name, slug: p.slug,
         town_name: p.towns?.name ?? '', town_color: p.towns?.hero_bg_color ?? '#1C3A2B',
         enquiries: 0, views: 0,
+        shares: 0, maps_clicks: 0, phone_calls: 0, over_capacity_enquiries: 0,
+        paxSum: 0, paxCount: 0,
         photo_count: Array.isArray(p.photos) ? p.photos.length : 0,
         is_featured: !!p.is_featured,
         durationSum: 0, durationCount: 0,
         created_at: p.created_at,
       }
     })
-    enquiryRows.forEach((r: any) => { const p = r.properties; if (p && propMap[p.id]) propMap[p.id].enquiries++ })
+    rawEnquiryRows.forEach((r: any) => {
+      const p = r.properties
+      if (!p || !propMap[p.id]) return
+      const ch = r.channel || 'whatsapp'
+      if (isDirectLead(r)) {
+        propMap[p.id].enquiries++
+        if (ch === 'phone') propMap[p.id].phone_calls++
+        if (r.is_over_capacity) propMap[p.id].over_capacity_enquiries++
+        if (typeof r.guest_count === 'number' && r.guest_count > 0) {
+          propMap[p.id].paxSum += r.guest_count
+          propMap[p.id].paxCount++
+        }
+      } else if (ch === 'share_family' || ch === 'share_link') {
+        propMap[p.id].shares++
+      } else if (ch === 'maps') {
+        propMap[p.id].maps_clicks++
+      }
+    })
     viewRows.forEach((r: any) => {
       const p = r.properties
       if (p && propMap[p.id]) {
@@ -220,6 +350,9 @@ export async function GET() {
       return {
         id, name: p.name, slug: p.slug, town_name: p.town_name, town_color: p.town_color,
         enquiries: p.enquiries, views: p.views, photo_count: p.photo_count, is_featured: p.is_featured,
+        shares: p.shares, maps_clicks: p.maps_clicks, phone_calls: p.phone_calls,
+        over_capacity_enquiries: p.over_capacity_enquiries,
+        avg_pax: p.paxCount > 0 ? Math.round(p.paxSum / p.paxCount) : null,
         conversion_pct: p.views > 0 ? Math.round((p.enquiries / p.views) * 1000) / 10 : 0,
         avg_duration_seconds: p.durationCount > 0 ? Math.round(p.durationSum / p.durationCount) : null,
         avg_weekly_views: cappedWeeks > 0 ? Math.round((propViewBuckets.reduce((s, n) => s + n, 0) / cappedWeeks) * 10) / 10 : 0,
@@ -271,6 +404,7 @@ export async function GET() {
       stats, trend, daily, topProperties, townBreakdown,
       movement: { topGainer, topDecliner },
       durationStats, sessionStats, weeklyStats, locationStats, readinessStats,
+      demandInsights,
     })
 
   } catch (err: any) {

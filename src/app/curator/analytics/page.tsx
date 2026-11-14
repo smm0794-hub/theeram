@@ -9,7 +9,7 @@ const serif = { fontFamily:'Georgia,serif' } as const
 
 interface Stats { enquiries_7d:number; enquiries_30d:number; enquiries_all:number; views_7d:number; views_30d:number; views_all:number; avg_duration_seconds:number|null; views_with_duration_count:number }
 interface TrendDay { date:string; label:string; views:number; enquiries:number }
-interface PropStat { name:string; slug:string; town_name:string; town_color:string; enquiries:number; views:number; photo_count:number; is_featured:boolean; conversion_pct:number; avg_duration_seconds:number|null; avg_weekly_views:number; avg_weekly_enquiries:number; trend14:TrendDay[] }
+interface PropStat { name:string; slug:string; town_name:string; town_color:string; enquiries:number; views:number; photo_count:number; is_featured:boolean; shares?:number; maps_clicks?:number; phone_calls?:number; over_capacity_enquiries?:number; avg_pax?:number|null; conversion_pct:number; avg_duration_seconds:number|null; avg_weekly_views:number; avg_weekly_enquiries:number; trend14:TrendDay[] }
 interface TownStat { name:string; color:string; enquiries:number; views:number }
 interface MovementItem { name:string; slug:string; last7:number; prev7:number; delta:number; pct_change:number }
 interface DurationStats { avg_all:number|null; avg_viewed_only:number|null; avg_viewed_and_enquired:number|null; count_viewed_only:number; count_viewed_and_enquired:number }
@@ -19,6 +19,17 @@ interface LocationStats { views_with_location:number; by_country:{country:string
 interface ReadinessStats { threshold:number; current:number; pct_of_threshold:number; ready:boolean }
 interface DayListing { slug:string; name:string; count:number }
 interface DailyDetail { date:string; weekday:string; label:string; total_views:number; total_enquiries:number; viewed:DayListing[]; enquired:DayListing[] }
+interface DemandInsights {
+  hot_dates: { date: string; count: number; avg_pax: number | null; properties: string[] }[]
+  fixed_date_count: number
+  flexible_date_count: number
+  avg_lead_time_days: number | null
+  avg_guest_count: number | null
+  over_capacity_count: number
+  pax_breakdown: { label: string; count: number }[]
+  channel_breakdown: Record<string, number>
+  occasion_breakdown: { occasion: string; count: number }[]
+}
 
 // Catmull-Rom → cubic Bézier conversion, so lines render as smooth curves
 // instead of straight polyline segments.
@@ -239,6 +250,7 @@ export default function AnalyticsPage() {
   const [weeklyStats, setWeeklyStats] = useState<WeeklyStats | null>(null)
   const [locationStats, setLocationStats] = useState<LocationStats | null>(null)
   const [readinessStats, setReadinessStats] = useState<ReadinessStats | null>(null)
+  const [demandInsights, setDemandInsights] = useState<DemandInsights | null>(null)
   const [expandedSlug, setExpandedSlug] = useState<string | null>(null)
   const [daily, setDaily] = useState<DailyDetail[]>([])
   const [openDay, setOpenDay] = useState<string | null>(null)
@@ -259,6 +271,7 @@ export default function AnalyticsPage() {
     setWeeklyStats(data.weeklyStats ?? null)
     setLocationStats(data.locationStats ?? null)
     setReadinessStats(data.readinessStats ?? null)
+    setDemandInsights(data.demandInsights ?? null)
     setDaily(data.daily ?? [])
     setOpenDay(data.daily?.[0]?.date ?? null)
     setLoading(false)
@@ -335,6 +348,94 @@ export default function AnalyticsPage() {
             {weeklyStats && (
               <div style={{ ...sans, fontSize:10, color:C.muted, textAlign:'center', marginBottom:16 }}>
                 Averaged over the trailing {weeklyStats.weeks_window} weeks · per-listing weekly averages are in the table below
+              </div>
+            )}
+
+            {/* ── Demand Intelligence (Dates, Guest Count, Channels, Over-Capacity) ── */}
+            {demandInsights && (
+              <div style={{ background:'white', border:`1px solid ${C.cream3}`, padding:'14px', marginBottom:16 }}>
+                <div style={{ ...sans, fontSize:10, color:C.terra, letterSpacing:'.07em', fontWeight:700, marginBottom:4 }}>
+                  OWNER VALUE-ADD · DEMAND INTELLIGENCE
+                </div>
+                <div style={{ ...sans, fontSize:9, color:C.muted, marginBottom:12, fontStyle:'italic' as const }}>
+                  Captured from the WhatsApp enquiry modal &amp; listing micro-actions
+                </div>
+
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:8, marginBottom:14 }}>
+                  <div style={{ background:C.cream, padding:'10px 8px', textAlign:'center' }}>
+                    <div style={{ ...serif, fontSize:20, color:C.text, fontWeight:300 }}>
+                      {demandInsights.avg_guest_count ?? '—'}
+                    </div>
+                    <div style={{ ...sans, fontSize:8.5, color:C.muted, letterSpacing:'.04em', marginTop:2 }}>AVG GUESTS</div>
+                  </div>
+                  <div style={{ background:C.cream, padding:'10px 8px', textAlign:'center' }}>
+                    <div style={{ ...serif, fontSize:20, color:C.text, fontWeight:300 }}>
+                      {demandInsights.avg_lead_time_days !== null ? `${demandInsights.avg_lead_time_days}d` : '—'}
+                    </div>
+                    <div style={{ ...sans, fontSize:8.5, color:C.muted, letterSpacing:'.04em', marginTop:2 }}>AVG LEAD TIME</div>
+                  </div>
+                  <div style={{ background:C.cream, padding:'10px 8px', textAlign:'center' }}>
+                    <div style={{ ...serif, fontSize:20, color: demandInsights.over_capacity_count > 0 ? C.terra : C.text, fontWeight:300 }}>
+                      {demandInsights.over_capacity_count}
+                    </div>
+                    <div style={{ ...sans, fontSize:8.5, color:C.muted, letterSpacing:'.04em', marginTop:2 }}>OVER-CAPACITY</div>
+                  </div>
+                </div>
+
+                {/* High-intent micro-signals */}
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:6, marginBottom:14 }}>
+                  {[
+                    ['WhatsApp', (demandInsights.channel_breakdown?.whatsapp ?? 0) + (demandInsights.channel_breakdown?.whatsapp_skip ?? 0)],
+                    ['Calls', demandInsights.channel_breakdown?.phone ?? 0],
+                    ['Shares', (demandInsights.channel_breakdown?.share_family ?? 0) + (demandInsights.channel_breakdown?.share_link ?? 0)],
+                    ['Maps / IG', (demandInsights.channel_breakdown?.maps ?? 0) + (demandInsights.channel_breakdown?.instagram ?? 0)],
+                  ].map(([lbl, cnt]) => (
+                    <div key={lbl as string} style={{ border:`1px solid ${C.cream3}`, padding:'8px 6px', textAlign:'center' }}>
+                      <div style={{ ...serif, fontSize:16, color:C.text }}>{cnt as number}</div>
+                      <div style={{ ...sans, fontSize:8.5, color:C.muted }}>{lbl as string}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Hot requested dates */}
+                {demandInsights.hot_dates.length > 0 && (
+                  <div style={{ marginBottom:12 }}>
+                    <div style={{ ...sans, fontSize:9, color:C.muted, letterSpacing:'.05em', marginBottom:6 }}>MOST REQUESTED EVENT DATES</div>
+                    {demandInsights.hot_dates.map(hd => (
+                      <div key={hd.date} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'6px 8px', background:C.cream, marginBottom:4, borderLeft:`3px solid ${C.gold}` }}>
+                        <div>
+                          <span style={{ ...sans, fontSize:11.5, color:C.text, fontWeight:600 }}>{hd.date}</span>
+                          {hd.avg_pax && <span style={{ ...sans, fontSize:10.5, color:C.muted }}> · ~{hd.avg_pax} guests</span>}
+                          {hd.properties.length > 0 && (
+                            <div style={{ ...sans, fontSize:9.5, color:C.muted }}>{hd.properties.slice(0, 3).join(', ')}</div>
+                          )}
+                        </div>
+                        <span style={{ ...sans, fontSize:11, color:C.terra, fontWeight:700 }}>{hd.count} {hd.count === 1 ? 'enq' : 'enqs'}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Guest size distribution */}
+                {demandInsights.pax_breakdown.some(b => b.count > 0) && (
+                  <div>
+                    <div style={{ ...sans, fontSize:9, color:C.muted, letterSpacing:'.05em', marginBottom:6 }}>GUEST SIZE DISTRIBUTION</div>
+                    {(() => {
+                      const maxPaxCount = Math.max(1, ...demandInsights.pax_breakdown.map(b => b.count))
+                      return demandInsights.pax_breakdown.map(b => (
+                        <div key={b.label} style={{ marginBottom:6 }}>
+                          <div style={{ display:'flex', justifyContent:'space-between', marginBottom:2 }}>
+                            <span style={{ ...sans, fontSize:11, color:C.text }}>{b.label}</span>
+                            <span style={{ ...sans, fontSize:11, color:C.muted }}>{b.count}</span>
+                          </div>
+                          <div style={{ background:C.cream2, borderRadius:2, overflow:'hidden' }}>
+                            <div style={{ height:4, background:C.terra, width:`${(b.count / maxPaxCount) * 100}%` }}/>
+                          </div>
+                        </div>
+                      ))
+                    })()}
+                  </div>
+                )}
               </div>
             )}
 
@@ -525,17 +626,56 @@ export default function AnalyticsPage() {
                       </div>
                       {isOpen && (
                         <div style={{ padding:'14px', background:C.cream, borderBottom: i < topProperties.length - 1 ? `1px solid ${C.cream2}` : 'none' }}>
-                          <div style={{ display:'flex', gap:16, marginBottom:10 }}>
+                          <div style={{ display:'flex', gap:16, marginBottom:10, flexWrap:'wrap' as const }}>
                             <div>
                               <div style={{ ...serif, fontSize:16, color:'#2D7A4F', fontWeight:300 }}>{p.avg_weekly_views}</div>
-                              <div style={{ ...sans, fontSize:9, color:C.muted }}>AVG VIEWS / WEEK</div>
+                              <div style={{ ...sans, fontSize:9, color:C.muted }}>AVG VIEWS / WK</div>
                             </div>
                             <div>
                               <div style={{ ...serif, fontSize:16, color:C.terra, fontWeight:300 }}>{p.avg_weekly_enquiries}</div>
-                              <div style={{ ...sans, fontSize:9, color:C.muted }}>AVG ENQ. / WEEK</div>
+                              <div style={{ ...sans, fontSize:9, color:C.muted }}>AVG ENQ. / WK</div>
                             </div>
+                            {p.avg_pax && (
+                              <div>
+                                <div style={{ ...serif, fontSize:16, color:C.text, fontWeight:300 }}>~{p.avg_pax}</div>
+                                <div style={{ ...sans, fontSize:9, color:C.muted }}>AVG GUESTS</div>
+                              </div>
+                            )}
+                            {!!p.shares && (
+                              <div>
+                                <div style={{ ...serif, fontSize:16, color:C.text, fontWeight:300 }}>{p.shares}</div>
+                                <div style={{ ...sans, fontSize:9, color:C.muted }}>SHARES</div>
+                              </div>
+                            )}
+                            {!!p.maps_clicks && (
+                              <div>
+                                <div style={{ ...serif, fontSize:16, color:C.text, fontWeight:300 }}>{p.maps_clicks}</div>
+                                <div style={{ ...sans, fontSize:9, color:C.muted }}>MAP CLICKS</div>
+                              </div>
+                            )}
+                            {!!p.over_capacity_enquiries && (
+                              <div>
+                                <div style={{ ...serif, fontSize:16, color:C.terra, fontWeight:300 }}>{p.over_capacity_enquiries}</div>
+                                <div style={{ ...sans, fontSize:9, color:C.terra }}>OVER-CAP</div>
+                              </div>
+                            )}
                           </div>
                           <LineChart data={p.trend14} width={280} height={100}/>
+                          <div style={{ display:'flex', gap:8, marginTop:12, flexWrap:'wrap' as const }}>
+                            <Link href={`/report/${p.slug}`} target="_blank"
+                              style={{ ...sans, fontSize:11, fontWeight:600, color:'white', background:C.green, padding:'7px 12px', borderRadius:8, textDecoration:'none' }}>
+                              📊 Open Owner Report ↗
+                            </Link>
+                            <button type="button"
+                              onClick={() => {
+                                const url = `${window.location.origin}/report/${p.slug}`
+                                const msg = `Hi! Here is the latest Theeram Pulse report for ${p.name} (${p.views} views, ${p.enquiries} direct leads): ${url}`
+                                navigator.clipboard?.writeText(msg)
+                              }}
+                              style={{ ...sans, fontSize:11, fontWeight:500, color:C.terra, background:'white', border:`1px solid ${C.cream3}`, padding:'7px 12px', borderRadius:8, cursor:'pointer' }}>
+                              Copy WhatsApp summary
+                            </button>
+                          </div>
                         </div>
                       )}
                     </div>

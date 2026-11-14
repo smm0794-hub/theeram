@@ -6,6 +6,7 @@ import { C, sans, serif } from '@/lib/design'
 export interface EnquiryDetails {
   date: string | null // ISO yyyy-mm-dd, or null when flexible
   pax: number
+  occasion?: string | null // optional 1-tap event type
 }
 
 function formatDate(iso: string) {
@@ -14,10 +15,23 @@ function formatDate(iso: string) {
   return d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
 }
 
+const OCCASION_PRESETS = [
+  { id: 'wedding', label: 'Wedding / Engagement' },
+  { id: 'baptism', label: 'Baptism / Communion' },
+  { id: 'family_gathering', label: 'Family Gathering' },
+  { id: 'birthday', label: 'Birthday' },
+  { id: 'staycation', label: 'Staycation' },
+  { id: 'corporate', label: 'Corporate / Retreat' },
+]
+
 export function buildEnquiryMessage(propertyName: string, details?: EnquiryDetails) {
   const lines = [`Hi! I found ${propertyName} on Theeram (theeramspaces.in) and I'm interested in booking.`]
   if (details) {
     lines.push('')
+    if (details.occasion) {
+      const occLabel = OCCASION_PRESETS.find(o => o.id === details.occasion)?.label ?? details.occasion
+      lines.push(`✨ Occasion: ${occLabel}`)
+    }
     lines.push(`📅 Tentative date: ${details.date ? formatDate(details.date) : 'Flexible / not fixed yet'}`)
     lines.push(`👥 Guests: approx. ${details.pax}`)
   }
@@ -73,6 +87,7 @@ export default function EnquiryModal({ propertyName, maxGuests, onSubmit, onSkip
   const [date, setDate] = useState('')
   const [flexible, setFlexible] = useState(false)
   const [pax, setPax] = useState('')
+  const [occasion, setOccasion] = useState<string | null>(null)
   const [touched, setTouched] = useState(false)
   const closeRef = useRef(onClose)
   closeRef.current = onClose
@@ -98,7 +113,7 @@ export default function EnquiryModal({ propertyName, maxGuests, onSubmit, onSkip
   function submit() {
     setTouched(true)
     if (!dateOk || !paxOk) return
-    onSubmit({ date: flexible ? null : date, pax: paxNum })
+    onSubmit({ date: flexible ? null : date, pax: paxNum, occasion })
   }
 
   const field = (bad: boolean): React.CSSProperties => ({
@@ -161,6 +176,29 @@ export default function EnquiryModal({ propertyName, maxGuests, onSubmit, onSkip
         </div>
 
         <div className="enq-scroll" style={{ padding: '20px 0 22px', overflowY: 'auto' }}>
+          {/* Optional 1-tap occasion */}
+          <div style={{ padding: '0 20px' }}>
+            <Label ml="ചടങ്ങ്" en="Occasion (optional)"/>
+          </div>
+          <div className="enq-scroll" style={{ display: 'flex', gap: 7, overflowX: 'auto', padding: '0 20px 16px' }}>
+            {OCCASION_PRESETS.map(o => {
+              const active = occasion === o.id
+              return (
+                <button key={o.id} type="button" onClick={() => setOccasion(active ? null : o.id)} className="enq-chip"
+                  style={{
+                    flexShrink: 0, cursor: 'pointer',
+                    background: active ? '#fdf0eb' : 'white',
+                    border: active ? `1.5px solid ${C.terra}` : `1px solid ${C.cream3}`,
+                    borderRadius: 999, padding: '7px 13px',
+                    ...sans, fontSize: 11.5, color: active ? C.terra : C.text, fontWeight: active ? 500 : 300,
+                    boxShadow: active ? '0 2px 6px rgba(155,61,30,.1)' : 'none',
+                  }}>
+                  {o.label}
+                </button>
+              )
+            })}
+          </div>
+
           {/* Date */}
           <div style={{ padding: '0 20px' }}>
             <Label ml="തീയതി" en="Tentative date"/>

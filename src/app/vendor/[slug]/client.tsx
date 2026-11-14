@@ -8,6 +8,19 @@ import { C, sans, serif } from '@/lib/design'
 import Header from '@/components/Header'
 import GratitudeModal from '@/components/GratitudeModal'
 
+function getSessionId(): string {
+  try {
+    let id = sessionStorage.getItem('theeram_session_id')
+    if (!id) {
+      id = crypto.randomUUID()
+      sessionStorage.setItem('theeram_session_id', id)
+    }
+    return id
+  } catch {
+    return 'unknown'
+  }
+}
+
 export default function VendorDetailClient({ slug, initialVendor }: { slug: string; initialVendor?: Vendor | null }) {
   const router = useRouter()
   const [vendor, setVendor] = useState<Vendor | null>(initialVendor ?? null)
@@ -15,27 +28,89 @@ export default function VendorDetailClient({ slug, initialVendor }: { slug: stri
   const [copied, setCopied] = useState(false)
   const [activePhoto, setActivePhoto] = useState<string | null>(null)
   const [showModal, setShowModal] = useState(false)
+  const [currentViewId, setCurrentViewId] = useState<string | null>(null)
 
   useEffect(() => {
+    let cancelled = false
+
+    async function trackView(vendorId: string) {
+      try {
+        const res = await fetch('/api/vendor-views', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ vendor_id: vendorId, session_id: getSessionId() }),
+        })
+        const { view_id } = await res.json()
+        if (!cancelled && view_id) {
+          setCurrentViewId(view_id)
+          startDurationTracking(view_id)
+        }
+      } catch {}
+    }
+
     if (initialVendor?.id) {
       setLoading(false)
-      return
+      trackView(initialVendor.id)
+      return () => { cancelled = true }
     }
     supabase.from('vendors').select('*').eq('slug', slug).eq('is_active', true).single()
-      .then(({ data }) => { setVendor(data as Vendor); setLoading(false) })
+      .then(({ data }) => {
+        if (!cancelled) {
+          setVendor(data as Vendor)
+          setLoading(false)
+          if (data?.id) trackView(data.id)
+        }
+      })
+    return () => { cancelled = true }
   }, [slug, initialVendor])
 
+  function startDurationTracking(viewId: string) {
+    let activeMs = 0
+    let lastResumeAt = Date.now()
+    let isVisible = document.visibilityState === 'visible'
+
+    function onVisibilityChange() {
+      const now = Date.now()
+      if (document.visibilityState === 'hidden' && isVisible) {
+        activeMs += now - lastResumeAt
+        isVisible = false
+      } else if (document.visibilityState === 'visible' && !isVisible) {
+        lastResumeAt = now
+        isVisible = true
+      }
+    }
+
+    function sendDuration() {
+      if (isVisible) activeMs += Date.now() - lastResumeAt
+      const seconds = Math.round(activeMs / 1000)
+      if (seconds < 1) return
+      const payload = JSON.stringify({ view_id: viewId, duration_seconds: seconds })
+      try {
+        navigator.sendBeacon('/api/vendor-views', new Blob([payload], { type: 'application/json' }))
+      } catch {}
+    }
+
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    window.addEventListener('pagehide', sendDuration)
+    window.addEventListener('beforeunload', sendDuration)
+  }
+
   async function handleShare() {
+    logInquiry('share')
     const url = window.location.href
     try { if (navigator.share) await navigator.share({ title: vendor?.name ?? '', url }); else { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 2000) } } catch {}
   }
 
-  function logInquiry() {
+  function logInquiry(channel: 'whatsapp' | 'phone' | 'instagram' | 'share' = 'whatsapp') {
     if (!vendor) return
     fetch('/api/vendor-inquiries', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ vendor_id: vendor.id }),
+      body: JSON.stringify({
+        vendor_id: vendor.id,
+        channel,
+        ...(currentViewId ? { view_id: currentViewId } : {}),
+      }),
     }).catch(() => {})
   }
 
@@ -59,7 +134,7 @@ export default function VendorDetailClient({ slug, initialVendor }: { slug: stri
   const waUrl = `https://wa.me/${waDigits}?text=${encodeURIComponent(`Hi! I found ${vendor.name} on Theeram (theeramspaces.in) and I'm interested in your services. Could you share availability and pricing?`)}`
 
   function handleWhatsApp() {
-    logInquiry()
+    logInquiry('whatsapp')
     const w = window.open(waUrl, '_blank', 'noopener,noreferrer')
     if (!w) window.location.href = waUrl
     setShowModal(true)
@@ -80,6 +155,7 @@ export default function VendorDetailClient({ slug, initialVendor }: { slug: stri
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <a
               href={`https://wa.me/?text=${encodeURIComponent(`Check out ${vendor.name} (${VENDOR_CATEGORY_LABELS[vendor.category]}) on Theeram Spaces: https://www.theeramspaces.in/vendor/${vendor.slug}`)}`}
+              onClick={() => logInquiry('share')}
               target="_blank"
               rel="noopener noreferrer"
               style={{
@@ -139,6 +215,7 @@ export default function VendorDetailClient({ slug, initialVendor }: { slug: stri
               )}
               {vendor.instagram_url && (
                 <a href={vendor.instagram_url.startsWith('http') ? vendor.instagram_url : `https://instagram.com/${vendor.instagram_url.replace('@','')}`}
+                  onClick={() => logInquiry('instagram')}
                   target="_blank" rel="noopener noreferrer"
                   style={{ ...sans, fontSize: 11.5, color: C.terra, background: '#FDF4EF', border: `1px solid rgba(155,61,30,.28)`, padding: '6px 13px', borderRadius: 999, textDecoration: 'none' }}>
                   Instagram →
@@ -179,7 +256,7 @@ export default function VendorDetailClient({ slug, initialVendor }: { slug: stri
             <svg viewBox="0 0 20 20" fill="none" width={18} height={18} stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M12 5L7 10l5 5"/></svg>
           </Link>
           {phoneDigits && (
-            <a href={`tel:+${phoneDigits}`} onClick={logInquiry} style={{ ...sans, height: 48, borderRadius: 14, border: `1px solid ${C.green}`, background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.green, textDecoration: 'none', padding: '0 16px', fontSize: 12, fontWeight: 600 }}>
+            <a href={`tel:+${phoneDigits}`} onClick={() => logInquiry('phone')} style={{ ...sans, height: 48, borderRadius: 14, border: `1px solid ${C.green}`, background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.green, textDecoration: 'none', padding: '0 16px', fontSize: 12, fontWeight: 600 }}>
               📞 Call
             </a>
           )}

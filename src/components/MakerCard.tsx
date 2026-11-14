@@ -49,16 +49,16 @@ export default function MakerCard({ maker }: MakerCardProps) {
   const phoneDigits = (maker.phone || maker.whatsapp || '').replace(/\D/g, '')
   const waUrl = `https://wa.me/${waDigits}?text=${encodeURIComponent(`Hi! I found ${maker.name} on Theeram (theeramspaces.in) and I'm interested in your services. Could you share availability and pricing?`)}`
 
-  function logInquiry() {
+  function logInquiry(channel: 'whatsapp' | 'phone' | 'instagram' = 'whatsapp') {
     fetch('/api/vendor-inquiries', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ vendor_id: maker.id }),
+      body: JSON.stringify({ vendor_id: maker.id, channel }),
     }).catch(() => {})
   }
 
   function handleContact() {
-    logInquiry()
+    logInquiry('whatsapp')
     const w = window.open(waUrl, '_blank', 'noopener,noreferrer')
     if (!w) window.location.href = waUrl
     setShowModal(true)
@@ -155,7 +155,7 @@ export default function MakerCard({ maker }: MakerCardProps) {
             )}
 
             {maker.instagram_url && (
-              <a href={maker.instagram_url} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10, padding: '8px 10px', background: '#fdf0eb', borderRadius: 10, textDecoration: 'none' }}>
+              <a href={maker.instagram_url} onClick={() => logInquiry('instagram')} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10, padding: '8px 10px', background: '#fdf0eb', borderRadius: 10, textDecoration: 'none' }}>
                 <div style={{ width: 16, height: 16, borderRadius: 4, background: 'linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)', flexShrink: 0 }}/>
                 <span style={{ ...sans, fontSize: 11, color: C.terra, fontWeight: 500 }}>{maker.instagram_url.replace(/https?:\/\/(www\.)?instagram\.com\//, '@').replace(/\/$/, '')}</span>
                 {!!attrs?.instagram_followers && attrs.instagram_followers > 0 && (
@@ -184,7 +184,7 @@ export default function MakerCard({ maker }: MakerCardProps) {
                 Check availability
               </button>
               {phoneDigits && (
-                <a href={`tel:+${phoneDigits}`} onClick={logInquiry} aria-label={`Call ${maker.name}`}
+                <a href={`tel:+${phoneDigits}`} onClick={() => logInquiry('phone')} aria-label={`Call ${maker.name}`}
                   style={{
                     width: 44, height: 44, borderRadius: 14, border: `1px solid ${C.cream3}`, background: C.cream,
                     color: C.green, display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', flexShrink: 0,
