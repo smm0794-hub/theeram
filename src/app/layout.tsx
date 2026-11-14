@@ -28,14 +28,26 @@ export const metadata: Metadata = {
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const orgJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: 'Theeram Spaces',
+    url: 'https://www.theeramspaces.in',
+    logo: 'https://www.theeramspaces.in/favicon.svg',
+    description: 'A hand-curated directory of event spaces, villas, heritage tharavadus, and event makers across Kerala.',
+    areaServed: {
+      '@type': 'State',
+      name: 'Kerala',
+      containedInPlace: { '@type': 'Country', name: 'India' },
+    },
+  }
+
   return (
     <html lang="en">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com"/>
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous"/>
-        <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&display=swap" rel="stylesheet"/>
-      </head>
-      <body style={{ margin: 0, padding: 0, backgroundColor: '#F5F0E8' }}>{children}</body>
+      <body style={{ margin: 0, padding: 0, backgroundColor: '#F5F0E8' }}>
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }} />
+        {children}
+      </body>
     </html>
   )
 }

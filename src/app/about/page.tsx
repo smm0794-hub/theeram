@@ -1,6 +1,9 @@
 import Link from 'next/link'
 import { Metadata } from 'next'
 import Header from '@/components/Header'
+import { createServiceClient } from '@/lib/supabase'
+
+export const revalidate = 60
 
 export const metadata: Metadata = {
   title: 'About Theeram Spaces — Event Venues & Spaces in Kerala',
@@ -64,7 +67,20 @@ const faqs = [
   },
 ]
 
-export default function AboutPage() {
+export default async function AboutPage() {
+  let townLinks: [string, string][] = [['Pala', '/'], ['Thodupuzha', '/thodupuzha'], ['Kanjirappally', '/kanjirappally'], ['Theekoy', '/theekoy']]
+  try {
+    const supabase = createServiceClient()
+    const { data } = await supabase
+      .from('towns')
+      .select('name, slug')
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true })
+    if (data && data.length > 0) {
+      townLinks = data.map((t: { name: string; slug: string }) => [t.name, t.slug === 'pala' ? '/' : `/${t.slug}`])
+    }
+  } catch {}
+
   const faqJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'FAQPage',
@@ -149,7 +165,7 @@ export default function AboutPage() {
             Theeram currently covers Pala, Thodupuzha, Kanjirappally, and Theekoy in central Kerala — towns with rich traditions of family celebration, surrounded by rubber plantations, river valleys, and the foothills of the Western Ghats.
           </p>
           <div style={{ display:'flex',gap:8,flexWrap:'wrap' as const }}>
-            {[['Pala','/pala'],['Thodupuzha','/thodupuzha'],['Kanjirappally','/kanjirappally'],['Theekoy','/theekoy']].map(([name,href]) => (
+            {townLinks.map(([name,href]) => (
               <Link key={name} href={href} style={{ ...sans,fontSize:11.5,color:C.gold,border:`1px solid rgba(201,168,76,.45)`,borderRadius:999,padding:'6px 14px',textDecoration:'none' }}>{name} →</Link>
             ))}
           </div>

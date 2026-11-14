@@ -77,12 +77,25 @@ export default function VendorDetailClient({ slug, initialVendor }: { slug: stri
           }}>
             ← Back
           </button>
-          <button onClick={handleShare} style={{
-            ...sans, fontSize: 12, color: C.text, background: 'white', border: `1px solid ${C.cream3}`,
-            padding: '7px 14px', borderRadius: 999, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6,
-          }}>
-            {copied ? '✓ Link copied' : '↗ Share'}
-          </button>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <a
+              href={`https://wa.me/?text=${encodeURIComponent(`Check out ${vendor.name} (${VENDOR_CATEGORY_LABELS[vendor.category]}) on Theeram Spaces: https://www.theeramspaces.in/vendor/${vendor.slug}`)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                ...sans, fontSize: 12, color: C.green, background: '#EEF5F0', border: `1px solid rgba(28,58,43,.2)`,
+                padding: '7px 13px', borderRadius: 999, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 5,
+              }}
+            >
+              💬 WhatsApp
+            </a>
+            <button onClick={handleShare} style={{
+              ...sans, fontSize: 12, color: C.text, background: 'white', border: `1px solid ${C.cream3}`,
+              padding: '7px 14px', borderRadius: 999, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6,
+            }}>
+              {copied ? '✓ Link copied' : '↗ Share'}
+            </button>
+          </div>
         </div>
 
         {/* Rounded Hero Card */}

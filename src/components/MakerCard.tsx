@@ -108,19 +108,19 @@ export default function MakerCard({ maker }: MakerCardProps) {
         {isVisual ? (
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 4, padding: '10px 14px', height: 148 }}>
             <div style={{ gridRow: 'span 2', background: C.green, position: 'relative', overflow: 'hidden', borderRadius: 14 }}>
-              {photos[0] && <img src={photos[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>}
+              {photos[0] && <img src={photos[0]} alt={`${maker.name} — ${cat.en}`} loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>}
             </div>
             <div style={{ background: '#8A7040', position: 'relative', overflow: 'hidden', borderRadius: 12 }}>
-              {photos[1] && <img src={photos[1]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>}
+              {photos[1] && <img src={photos[1]} alt={`${maker.name} portfolio 2`} loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>}
             </div>
             <div style={{ background: C.green2, position: 'relative', overflow: 'hidden', borderRadius: 12 }}>
-              {photos[2] && <img src={photos[2]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>}
+              {photos[2] && <img src={photos[2]} alt={`${maker.name} portfolio 3`} loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>}
             </div>
           </div>
         ) : (
           <>
             <div style={{ height: 118, background: '#7B3B2A', position: 'relative', margin: '10px 14px 0', overflow: 'hidden', borderRadius: 14 }}>
-              {photos[0] && <img src={photos[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>}
+              {photos[0] && <img src={photos[0]} alt={`${maker.name} — ${cat.en}`} loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>}
             </div>
             {(attrs?.min_guests || attrs?.years_experience) && (
               <div style={{ display: 'flex', padding: '10px 14px 0' }}>

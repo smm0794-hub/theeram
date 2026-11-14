@@ -25,7 +25,7 @@ const TYPE_LABEL: Record<string, string> = {
 function PropIllustration({ type, photos, name }: { type: string; photos: string[]; name: string }) {
   const isPlaceholder = !photos || photos.length === 0
   if (!isPlaceholder) {
-    return <img src={photos[0]} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', position: 'absolute', inset: 0 }}/>
+    return <img src={photos[0]} alt={name} loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', position: 'absolute', inset: 0 }}/>
   }
   const stroke = 'rgba(255,255,255,0.45)'
   const sw = 1
@@ -403,8 +403,11 @@ export default function TownPage({ town, allTowns, initialProperties, initialVen
           </div>
 
           {/* Hero headline */}
-          <h1 style={{ ...serif, fontSize: 36, lineHeight: 1.15, color: 'white', marginBottom: 16, fontWeight: 300 }}
+          <h1 style={{ ...serif, fontSize: 36, lineHeight: 1.15, color: 'white', marginBottom: 12, fontWeight: 300 }}
             dangerouslySetInnerHTML={{ __html: town.hero_headline || `Event spaces in <em style="color:${C.gold}">${town.name}</em>` }}/>
+          <h2 style={{ ...sans, fontSize: 12, color: C.gold, letterSpacing: '.06em', textTransform: 'uppercase', fontWeight: 500, margin: '0 0 14px' }}>
+            Event spaces, wedding venues &amp; villas in {town.name}, {town.district}
+          </h2>
           <div style={{ width: 34, height: 2, background: C.gold, marginBottom: 18 }}/>
           <p style={{ ...sans, fontSize: 13, color: 'rgba(255,255,255,.68)', lineHeight: 1.75, maxWidth: 420, marginBottom: 28, fontWeight: 300 }}>
             {town.hero_subtext}
@@ -722,7 +725,10 @@ export default function TownPage({ town, allTowns, initialProperties, initialVen
         <div style={{ marginBottom: 10 }}>
           <div style={{ ...sans, fontSize: 9, color: 'rgba(255,255,255,.25)', letterSpacing: '.1em', marginBottom: 8 }}>LOCATIONS</div>
           <div style={{ display: 'flex', justifyContent: 'center', gap: 16, flexWrap: 'wrap' as const }}>
-            {[['Pala', '/pala'], ['Thodupuzha', '/thodupuzha'], ['Kanjirappally', '/kanjirappally'], ['Theekoy', '/theekoy']].map(([label, href]) => (
+            {(allTowns.length > 0
+              ? allTowns.map(t => [t.name, t.slug === 'pala' ? '/' : `/${t.slug}`])
+              : [['Pala', '/'], ['Thodupuzha', '/thodupuzha'], ['Kanjirappally', '/kanjirappally'], ['Theekoy', '/theekoy']]
+            ).map(([label, href]) => (
               <Link key={label} href={href} style={{ ...sans, fontSize: 10, color: 'rgba(255,255,255,.45)', textDecoration: 'none', letterSpacing: '.04em' }}>{label}</Link>
             ))}
           </div>
