@@ -50,7 +50,7 @@ export default function Header({ sticky = true, minimal = false }: Props) {
           <div style={{ maxWidth: 1020, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
             {[
               { label: 'Spaces', href: '/', note: null },
-              { label: 'Makers', href: '/?tab=makers', note: null },
+              { label: 'Makers', href: '/services', note: null },
               { label: 'About', href: '/about', note: null },
               { label: 'List your space', href: '/list', note: 'Owner' },
               { label: 'List your service', href: '/join', note: 'Maker' },

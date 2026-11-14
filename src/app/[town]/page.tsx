@@ -21,10 +21,34 @@ export async function generateMetadata({ params }: { params: { town: string } })
   const { data } = await supabaseServer.from('towns').select('*').eq('slug', params.town).single()
   if (!data) return { title: 'Not found' }
   const t = data as Town
+  const title = `Event Spaces & Villas in ${t.name}, ${t.district}`
+  const description = t.hero_subtext || `Find hand-curated event spaces, wedding venues, villas, and halls in ${t.name}, ${t.district} district, Kerala. Talk directly to owners on WhatsApp.`
+  const canonicalUrl = t.slug === 'pala' ? 'https://www.theeramspaces.in' : `https://www.theeramspaces.in/${t.slug}`
+
   return {
-    title: `Event Spaces in ${t.name}, ${t.district} - Theeram Spaces`,
-    description: t.hero_subtext || `Find event spaces, villas, and venues in ${t.name}, ${t.district} district, Kerala.`,
-    alternates: { canonical: `https://www.theeramspaces.in/${t.slug}` },
+    title,
+    description,
+    keywords: [
+      `event space ${t.name}`,
+      `wedding venue ${t.name}`,
+      `party hall ${t.name}`,
+      `villa for rent ${t.name}`,
+      `event venues ${t.district} Kerala`,
+    ],
+    openGraph: {
+      type: 'website',
+      locale: 'en_IN',
+      url: `https://www.theeramspaces.in/${t.slug}`,
+      siteName: 'Theeram Spaces',
+      title: `${title} | Theeram Spaces`,
+      description,
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `${title} | Theeram Spaces`,
+      description,
+    },
+    alternates: { canonical: canonicalUrl },
   }
 }
 
@@ -50,12 +74,27 @@ export default async function TownRoute({ params }: { params: { town: string } }
       })) as Vendor[]
     : undefined
 
+  const t = town as Town
+  const props = (!pr.error && pr.data) ? (pr.data as Property[]) : []
+
+  const breadcrumbJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Theeram Spaces', item: 'https://www.theeramspaces.in' },
+      { '@type': 'ListItem', position: 2, name: `${t.name}, ${t.district}`, item: `https://www.theeramspaces.in/${t.slug}` },
+    ],
+  }
+
   return (
-    <TownPage
-      town={town as Town}
-      allTowns={(ar.data ?? []) as Town[]}
-      initialProperties={(!pr.error && pr.data) ? (pr.data as Property[]) : undefined}
-      initialVendors={initialVendors}
-    />
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
+      <TownPage
+        town={t}
+        allTowns={(ar.data ?? []) as Town[]}
+        initialProperties={!pr.error && pr.data ? props : undefined}
+        initialVendors={initialVendors}
+      />
+    </>
   )
 }

@@ -6,7 +6,7 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: '*',
         allow: '/',
-        disallow: ['/curator', '/api/'],
+        disallow: ['/curator', '/curator-login', '/api/'],
       },
     ],
     sitemap: 'https://www.theeramspaces.in/sitemap.xml',

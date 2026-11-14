@@ -5,6 +5,19 @@ import Header from '@/components/Header'
 export const metadata: Metadata = {
   title: 'About Theeram Spaces — Event Venues & Spaces in Kerala',
   description: 'Theeram Spaces is a hand-curated directory of event spaces, villas, and venues across Kerala. Weddings, family gatherings, corporate events. No booking fees. Talk directly to owners on WhatsApp.',
+  openGraph: {
+    type: 'website',
+    locale: 'en_IN',
+    url: 'https://www.theeramspaces.in/about',
+    siteName: 'Theeram Spaces',
+    title: 'About Theeram Spaces — Event Venues & Spaces in Kerala',
+    description: 'A personal guide to the best event spaces in Kerala — curated, verified, and one WhatsApp away. No booking fees.',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'About Theeram Spaces — Event Venues & Spaces in Kerala',
+    description: 'A personal guide to the best event spaces in Kerala — curated, verified, and one WhatsApp away.',
+  },
   alternates: { canonical: 'https://www.theeramspaces.in/about' },
 }
 
@@ -52,8 +65,22 @@ const faqs = [
 ]
 
 export default function AboutPage() {
+  const faqJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqs.map(({ q, a }) => ({
+      '@type': 'Question',
+      name: q,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: a,
+      },
+    })),
+  }
+
   return (
     <div style={{ background:C.cream, minHeight:'100vh', paddingBottom:56 }}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
       <Header/>
 
       {/* Hero with Rounded Bottom Arch */}

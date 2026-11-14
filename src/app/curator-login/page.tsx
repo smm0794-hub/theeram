@@ -1,5 +1,11 @@
+import { Metadata } from 'next'
 import { Suspense } from 'react'
 import CuratorLoginClient from './client'
+
+export const metadata: Metadata = {
+  title: 'Curator Login | Theeram Spaces',
+  robots: { index: false, follow: false },
+}
 
 export default function CuratorLoginPage() {
   return (

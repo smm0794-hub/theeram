@@ -1,5 +1,6 @@
 import { Metadata } from 'next'
 import { createServiceClient, PROPERTY_TYPE_LABELS, EVENT_TYPE_LABELS, Property } from '@/lib/supabase'
+import { cloudinaryOgImage } from '@/lib/seo'
 import PropertyDetailClient from './client'
 
 export const revalidate = 60
@@ -29,7 +30,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     const location = town ? `${town.name}, ${town.district} district, Kerala` : 'Kerala'
     const title = `${p.name} — ${typeLabel} in ${location}`
     const desc = `${p.tagline} · ${p.price_guide ?? 'Ask owner for pricing'}${eventTypes ? ` · Ideal for ${eventTypes}` : ''}. Book directly on WhatsApp — no commission, no middleman.`
-    const firstPhoto = (p as any).photos?.[0]
+    const ogPhoto = cloudinaryOgImage((p as any).photos?.[0])
 
     return {
       title,
@@ -42,17 +43,19 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         `party hall ${town?.name ?? 'Kerala'}`,
       ],
       openGraph: {
-        title: `${p.name} | Theeram Spaces`,
-        description: p.tagline,
+        title: `${p.name} — ${typeLabel} in ${town?.name ?? 'Kerala'}`,
+        description: desc,
         url: `https://www.theeramspaces.in/property/${params.slug}`,
-        images: firstPhoto ? [{ url: firstPhoto, alt: p.name }] : [],
+        siteName: 'Theeram Spaces',
+        locale: 'en_IN',
+        images: ogPhoto ? [{ url: ogPhoto, width: 1200, height: 630, alt: `${p.name} in ${town?.name ?? 'Kerala'}` }] : [],
         type: 'website',
       },
       twitter: {
-        card: firstPhoto ? 'summary_large_image' : 'summary',
-        title: `${p.name} | Theeram Spaces`,
-        description: p.tagline,
-        images: firstPhoto ? [firstPhoto] : [],
+        card: ogPhoto ? 'summary_large_image' : 'summary',
+        title: `${p.name} — ${typeLabel} in ${town?.name ?? 'Kerala'}`,
+        description: desc,
+        images: ogPhoto ? [ogPhoto] : [],
       },
       alternates: {
         canonical: `https://www.theeramspaces.in/property/${params.slug}`,
@@ -92,5 +95,32 @@ export default async function PropertyDetailPage({ params }: PageProps) {
     }
   } catch {}
 
-  return <PropertyDetailClient slug={params.slug} initialProperty={initialProperty} similarProperties={similarProperties} />
+  const townObj = (initialProperty as any)?.towns
+  const breadcrumbJsonLd = initialProperty
+    ? {
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Theeram Spaces', item: 'https://www.theeramspaces.in' },
+          ...(townObj
+            ? [{ '@type': 'ListItem', position: 2, name: townObj.name, item: `https://www.theeramspaces.in/${townObj.slug}` }]
+            : []),
+          {
+            '@type': 'ListItem',
+            position: townObj ? 3 : 2,
+            name: initialProperty.name,
+            item: `https://www.theeramspaces.in/property/${params.slug}`,
+          },
+        ],
+      }
+    : null
+
+  return (
+    <>
+      {breadcrumbJsonLd && (
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
+      )}
+      <PropertyDetailClient slug={params.slug} initialProperty={initialProperty} similarProperties={similarProperties} />
+    </>
+  )
 }

@@ -11,6 +11,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${baseUrl}/list`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.6 },
     { url: `${baseUrl}/join`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.5 },
     { url: `${baseUrl}/privacy`, lastModified: new Date(), changeFrequency: 'yearly', priority: 0.2 },
+    { url: `${baseUrl}/terms`, lastModified: new Date(), changeFrequency: 'yearly', priority: 0.2 },
   ]
 
   try {
@@ -21,12 +22,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .select('slug, created_at')
       .eq('is_active', true)
 
-    const townPages: MetadataRoute.Sitemap = (towns ?? []).map((t) => ({
-      url: `${baseUrl}/${t.slug}`,
-      lastModified: t.created_at ? new Date(t.created_at) : new Date(),
-      changeFrequency: 'daily' as const,
-      priority: 0.9,
-    }))
+    const townPages: MetadataRoute.Sitemap = (towns ?? [])
+      .filter((t) => t.slug !== 'pala')
+      .map((t) => ({
+        url: `${baseUrl}/${t.slug}`,
+        lastModified: t.created_at ? new Date(t.created_at) : new Date(),
+        changeFrequency: 'daily' as const,
+        priority: 0.9,
+      }))
 
     const { data: properties } = await supabase
       .from('properties')
