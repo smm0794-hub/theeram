@@ -17,10 +17,10 @@ const TYPE_LABEL: Record<string, string> = {
 }
 
 const CARD_BG: Record<string, string> = {
-  villa_with_pool: '#1C3A2B', villa_without_pool: '#2E5C4E',
+  villa_with_pool: '#173B13', villa_without_pool: '#0F290C',
   heritage_home: '#8A7040', open_event_space: '#4A6741',
-  auditorium: '#2E5C4E', river_frontage: '#7B3B2A',
-  lodging: '#1C3A2B', resort: '#2E5C4E',
+  auditorium: '#0F290C', river_frontage: '#7B3B2A',
+  lodging: '#173B13', resort: '#0F290C',
 }
 
 function getSessionId(): string {

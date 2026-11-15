@@ -4,13 +4,13 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 
 const C = {
-  green: '#1C3A2B', green2: '#163023',
-  cream: '#F5F0E8', cream2: '#EDE8DC', cream3: '#E5DFD0',
-  gold: '#C9A84C', terra: '#9B3D1E',
-  text: '#1C1C1A', muted: '#6B5E4E',
+  green: '#173B13', green2: '#0F290C',
+  cream: '#F4F5F3', cream2: '#EAECE8', cream3: '#DCE0D8',
+  gold: '#FCE08B', terra: '#173B13',
+  text: '#111211', muted: '#525750',
 }
-const sans = { fontFamily: 'system-ui, sans-serif' } as const
-const serif = { fontFamily: 'Georgia, serif' } as const
+const sans = { fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif' } as const
+const serif = { fontFamily: 'var(--font-montserrat), Montserrat, sans-serif' } as const
 const mono = { fontFamily: 'monospace' } as const
 const inp: React.CSSProperties = {
   ...sans, width: '100%', border: `1px solid ${C.cream3}`,
@@ -63,7 +63,7 @@ const PROPERTY_TYPES: Record<string, string> = {
 }
 
 const CONFIDENCE_COLOR: Record<string, string> = {
-  high: '#2D7A4F', medium: '#8A7040', low: '#9B3D1E',
+  high: '#2D7A4F', medium: '#8A7040', low: '#173B13',
 }
 
 const PROVIDER_STYLE: Record<'gemini' | 'claude', { label: string; bg: string; border: string; color: string }> = {
@@ -564,7 +564,7 @@ export default function AgentPage() {
                   <label style={{ ...sans, fontSize: 9, color: C.terra, letterSpacing: '.07em', display: 'block', marginBottom: 6 }}>PROPERTY TYPE</label>
                   <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 6 }}>
                     {Object.entries(PROPERTY_TYPES).map(([key, label]) => (
-                      <button key={key} onClick={() => update(v.id, 'type', key)} style={{ ...sans, fontSize: 10, padding: '5px 10px', border: `1px solid ${v.type === key ? C.terra : C.cream3}`, background: v.type === key ? '#fdf0eb' : 'white', color: v.type === key ? C.terra : C.muted, cursor: 'pointer' }}>{label}</button>
+                      <button key={key} onClick={() => update(v.id, 'type', key)} style={{ ...sans, fontSize: 10, padding: '5px 10px', border: `1px solid ${v.type === key ? C.terra : C.cream3}`, background: v.type === key ? '#EDFCE6' : 'white', color: v.type === key ? C.terra : C.muted, cursor: 'pointer' }}>{label}</button>
                     ))}
                   </div>
                 </div>
@@ -590,7 +590,7 @@ export default function AgentPage() {
                   <label style={{ ...sans, fontSize: 9, color: C.terra, letterSpacing: '.07em', display: 'block', marginBottom: 8 }}>EVENT TYPES</label>
                   <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 6 }}>
                     {EVENT_TYPES.map(et => (
-                      <button key={et.id} onClick={() => toggleET(v.id, et.id)} style={{ ...sans, fontSize: 11, padding: '6px 12px', border: `1px solid ${v.event_types.includes(et.id) ? C.terra : C.cream3}`, background: v.event_types.includes(et.id) ? '#fdf0eb' : 'white', color: v.event_types.includes(et.id) ? C.terra : C.muted, cursor: 'pointer' }}>{et.label}</button>
+                      <button key={et.id} onClick={() => toggleET(v.id, et.id)} style={{ ...sans, fontSize: 11, padding: '6px 12px', border: `1px solid ${v.event_types.includes(et.id) ? C.terra : C.cream3}`, background: v.event_types.includes(et.id) ? '#EDFCE6' : 'white', color: v.event_types.includes(et.id) ? C.terra : C.muted, cursor: 'pointer' }}>{et.label}</button>
                     ))}
                   </div>
                 </div>
@@ -753,7 +753,7 @@ export default function AgentPage() {
         )}
 
         {error && (
-          <div style={{ background: '#fdf0eb', border: `1px solid ${C.terra}`, padding: '12px 14px', marginBottom: 20 }}>
+          <div style={{ background: '#EDFCE6', border: `1px solid ${C.terra}`, padding: '12px 14px', marginBottom: 20 }}>
             <p style={{ ...sans, fontSize: 13, color: C.terra, margin: 0 }}>{error}</p>
           </div>
         )}

@@ -4,9 +4,9 @@ import Header from '@/components/Header'
 
 export const metadata: Metadata = { title:'Privacy Policy | Theeram Spaces', description:'How Theeram Spaces collects, uses and protects your data.' }
 
-const C = { green:'#1C3A2B',cream:'#F5F0E8',cream3:'#E5DFD0',terra:'#9B3D1E',text:'#1C1C1A',muted:'#6B5E4E' }
-const serif = { fontFamily:'Georgia,serif' } as const
-const sans = { fontFamily:'system-ui,sans-serif' } as const
+const C = { green:'#173B13',cream:'#F4F5F3',cream3:'#DCE0D8',terra:'#173B13',text:'#111211',muted:'#525750' }
+const serif = { fontFamily:'var(--font-montserrat), Montserrat, sans-serif' } as const
+const sans = { fontFamily:'var(--font-inter), Inter, system-ui, sans-serif' } as const
 
 const sections = [
   { title:'What we collect', body:`When you use Theeram Spaces, we may collect:\n\n• Inquiry data: When you tap "Check availability," we log the property and event type with a timestamp. We do not collect your name or phone number.\n\n• Vendor applications: Business name, category, contact details, and description submitted via /join.\n\n• Property submissions: Details submitted via /list.\n\n• Technical data: Standard server logs including IP address and pages visited, collected by our hosting provider (Vercel).` },

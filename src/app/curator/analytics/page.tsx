@@ -3,9 +3,9 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 
-const C = { green:'#1C3A2B', cream:'#F5F0E8', cream2:'#EDE8DC', cream3:'#E5DFD0', gold:'#C9A84C', terra:'#9B3D1E', text:'#1C1C1A', muted:'#6B5E4E' }
-const sans = { fontFamily:'system-ui,sans-serif' } as const
-const serif = { fontFamily:'Georgia,serif' } as const
+const C = { green:'#173B13', cream:'#F4F5F3', cream2:'#EAECE8', cream3:'#DCE0D8', gold:'#FCE08B', terra:'#173B13', text:'#111211', muted:'#525750' }
+const sans = { fontFamily:'var(--font-inter), Inter, system-ui, sans-serif' } as const
+const serif = { fontFamily:'var(--font-montserrat), Montserrat, sans-serif' } as const
 
 interface Stats { enquiries_7d:number; enquiries_30d:number; enquiries_all:number; views_7d:number; views_30d:number; views_all:number; avg_duration_seconds:number|null; views_with_duration_count:number }
 interface TrendDay { date:string; label:string; views:number; enquiries:number }
@@ -284,7 +284,7 @@ export default function AnalyticsPage() {
       <div style={{ background:C.cream, borderBottom:`1px solid ${C.cream3}`, padding:'13px 16px', display:'flex', justifyContent:'space-between', alignItems:'center', position:'sticky', top:0, zIndex:40 }}>
         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
           <Link href="/curator" style={{ ...sans, fontSize:12, color:C.muted, textDecoration:'none' }}>← Curator</Link>
-          <span style={{ fontFamily:'Georgia,serif', fontSize:18, color:C.text }}>Analytics</span>
+          <span style={{ fontFamily:'var(--font-montserrat), Montserrat, sans-serif', fontSize:18, color:C.text }}>Analytics</span>
         </div>
       </div>
 
@@ -327,7 +327,7 @@ export default function AnalyticsPage() {
                 ['Page views · all time', stats.views_all, '#2D7A4F'],
               ].map(([label, val, color]) => (
                 <div key={label as string} style={{ background:'white', border:`1px solid ${C.cream3}`, padding:'14px 10px', textAlign:'center' }}>
-                  <div style={{ fontFamily:'Georgia,serif', fontSize:28, color: color as string, fontWeight:300, marginBottom:3 }}>{val as number}</div>
+                  <div style={{ fontFamily:'var(--font-montserrat), Montserrat, sans-serif', fontSize:28, color: color as string, fontWeight:300, marginBottom:3 }}>{val as number}</div>
                   <div style={{ ...sans, fontSize:9, color:C.muted, letterSpacing:'.05em' }}>{(label as string).toUpperCase()}</div>
                 </div>
               ))}
@@ -337,11 +337,11 @@ export default function AnalyticsPage() {
             {weeklyStats && (
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:8 }}>
                 <div style={{ background:'white', border:`1px solid ${C.cream3}`, padding:'14px 10px', textAlign:'center' }}>
-                  <div style={{ fontFamily:'Georgia,serif', fontSize:24, color:'#2D7A4F', fontWeight:300, marginBottom:3 }}>{weeklyStats.avg_views_per_week}</div>
+                  <div style={{ fontFamily:'var(--font-montserrat), Montserrat, sans-serif', fontSize:24, color:'#2D7A4F', fontWeight:300, marginBottom:3 }}>{weeklyStats.avg_views_per_week}</div>
                   <div style={{ ...sans, fontSize:9, color:C.muted, letterSpacing:'.05em' }}>AVG. VIEWS / WEEK · SITE-WIDE</div>
                 </div>
                 <div style={{ background:'white', border:`1px solid ${C.cream3}`, padding:'14px 10px', textAlign:'center' }}>
-                  <div style={{ fontFamily:'Georgia,serif', fontSize:24, color:C.terra, fontWeight:300, marginBottom:3 }}>{weeklyStats.avg_enquiries_per_week}</div>
+                  <div style={{ fontFamily:'var(--font-montserrat), Montserrat, sans-serif', fontSize:24, color:C.terra, fontWeight:300, marginBottom:3 }}>{weeklyStats.avg_enquiries_per_week}</div>
                   <div style={{ ...sans, fontSize:9, color:C.muted, letterSpacing:'.05em' }}>AVG. ENQUIRIES / WEEK · SITE-WIDE</div>
                 </div>
               </div>
@@ -442,7 +442,7 @@ export default function AnalyticsPage() {
 
             {/* ── Avg. time on page ────────────────────────────────────────── */}
             <div style={{ background:'white', border:`1px solid ${C.cream3}`, padding:'14px 10px', textAlign:'center', marginBottom:8 }}>
-              <div style={{ fontFamily:'Georgia,serif', fontSize:24, color:C.gold, fontWeight:300, marginBottom:3 }}>
+              <div style={{ fontFamily:'var(--font-montserrat), Montserrat, sans-serif', fontSize:24, color:C.gold, fontWeight:300, marginBottom:3 }}>
                 {stats.avg_duration_seconds !== null ? formatDuration(stats.avg_duration_seconds) : '—'}
               </div>
               <div style={{ ...sans, fontSize:9, color:C.muted, letterSpacing:'.05em' }}>

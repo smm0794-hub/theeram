@@ -1,5 +1,20 @@
 import type { Metadata } from 'next'
+import { Inter, Montserrat } from 'next/font/google'
 import './globals.css'
+
+const inter = Inter({
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700'],
+  variable: '--font-inter',
+  display: 'swap',
+})
+
+const montserrat = Montserrat({
+  subsets: ['latin'],
+  weight: ['600', '700', '800', '900'],
+  variable: '--font-montserrat',
+  display: 'swap',
+})
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.theeramspaces.in'),
@@ -43,8 +58,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   }
 
   return (
-    <html lang="en">
-      <body style={{ margin: 0, padding: 0, backgroundColor: '#F5F0E8' }}>
+    <html lang="en" className={`${inter.variable} ${montserrat.variable}`}>
+      <body className={inter.className} style={{ margin: 0, padding: 0, backgroundColor: '#F4F5F3', color: '#111211' }}>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }} />
         {children}
       </body>

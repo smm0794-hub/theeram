@@ -4,13 +4,13 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 
 const C = {
-  green: '#1C3A2B', green2: '#163023',
-  cream: '#F5F0E8', cream2: '#EDE8DC', cream3: '#E5DFD0',
-  gold: '#C9A84C', terra: '#9B3D1E',
-  text: '#1C1C1A', muted: '#6B5E4E',
+  green: '#173B13', green2: '#0F290C',
+  cream: '#F4F5F3', cream2: '#EAECE8', cream3: '#DCE0D8',
+  gold: '#FCE08B', terra: '#173B13',
+  text: '#111211', muted: '#525750',
 }
-const sans = { fontFamily: 'system-ui, sans-serif' } as const
-const serif = { fontFamily: 'Georgia, serif' } as const
+const sans = { fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif' } as const
+const serif = { fontFamily: 'var(--font-montserrat), Montserrat, sans-serif' } as const
 const mono = { fontFamily: 'monospace' } as const
 const inp: React.CSSProperties = {
   ...sans, width: '100%', border: `1px solid ${C.cream3}`,
@@ -48,7 +48,7 @@ interface Maker {
   exportData: any
 }
 
-const CONFIDENCE_COLOR: Record<string, string> = { high: '#2D7A4F', medium: '#8A7040', low: '#9B3D1E' }
+const CONFIDENCE_COLOR: Record<string, string> = { high: '#2D7A4F', medium: '#8A7040', low: '#173B13' }
 
 function slugify(name: string) { return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') }
 function n(x: any): number { const v = Number(x); return Number.isFinite(v) ? Math.floor(v) : 0 }
@@ -517,7 +517,7 @@ export default function MakerAgentPage() {
           <label style={{ ...sans, fontSize: 10, color: C.terra, letterSpacing: '.08em', display: 'block', marginBottom: 8 }}>DISTRICTS SERVED (optional, guides search)</label>
           <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 6 }}>
             {districts.map(d => (
-              <button key={d.id} onClick={() => toggleDistrict(d.id)} style={{ ...sans, fontSize: 11, padding: '6px 12px', border: `1px solid ${selectedDistricts.includes(d.id) ? C.terra : C.cream3}`, background: selectedDistricts.includes(d.id) ? '#fdf0eb' : 'white', color: selectedDistricts.includes(d.id) ? C.terra : C.muted, cursor: 'pointer' }}>{d.name}</button>
+              <button key={d.id} onClick={() => toggleDistrict(d.id)} style={{ ...sans, fontSize: 11, padding: '6px 12px', border: `1px solid ${selectedDistricts.includes(d.id) ? C.terra : C.cream3}`, background: selectedDistricts.includes(d.id) ? '#EDFCE6' : 'white', color: selectedDistricts.includes(d.id) ? C.terra : C.muted, cursor: 'pointer' }}>{d.name}</button>
             ))}
           </div>
         </div>
@@ -557,7 +557,7 @@ export default function MakerAgentPage() {
             </Link>
           </div>
         )}
-        {error && <div style={{ background: '#fdf0eb', border: `1px solid ${C.terra}`, padding: '12px 14px', marginBottom: 20 }}><p style={{ ...sans, fontSize: 13, color: C.terra, margin: 0 }}>{error}</p></div>}
+        {error && <div style={{ background: '#EDFCE6', border: `1px solid ${C.terra}`, padding: '12px 14px', marginBottom: 20 }}><p style={{ ...sans, fontSize: 13, color: C.terra, margin: 0 }}>{error}</p></div>}
 
         {newMakers.length > 0 && (
           <>

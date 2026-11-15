@@ -32,17 +32,17 @@ export default async function TownOgImage({ params }: { params: { town: string }
         style={{
           width: '100%',
           height: '100%',
-          background: '#1C3A2B',
+          background: '#173B13',
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
           padding: '64px 72px',
           color: '#FFFFFF',
-          fontFamily: 'Georgia, serif',
+          fontFamily: 'var(--font-montserrat), Montserrat, sans-serif',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontSize: 22, letterSpacing: '0.14em', color: '#C9A84C', fontFamily: 'sans-serif', textTransform: 'uppercase' }}>
+          <span style={{ fontSize: 22, letterSpacing: '0.14em', color: '#FCE08B', fontFamily: 'sans-serif', textTransform: 'uppercase' }}>
             Theeram Spaces
           </span>
           <span style={{ fontSize: 20, color: 'rgba(255,255,255,0.65)', fontFamily: 'sans-serif' }}>
@@ -54,7 +54,7 @@ export default async function TownOgImage({ params }: { params: { town: string }
           <div style={{ fontSize: 68, lineHeight: 1.12, fontWeight: 400 }}>
             Event Spaces &amp; Villas in {townName}
           </div>
-          <div style={{ width: 64, height: 3, background: '#C9A84C' }} />
+          <div style={{ width: 64, height: 3, background: '#FCE08B' }} />
           <div style={{ fontSize: 26, color: 'rgba(255,255,255,0.78)', fontFamily: 'sans-serif', lineHeight: 1.4 }}>
             Weddings, family gatherings &amp; stays · No commission · Direct owner WhatsApp
           </div>

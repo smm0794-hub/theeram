@@ -4,9 +4,9 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { supabase, Town } from '@/lib/supabase'
 
-const C = { green:'#1C3A2B',green2:'#163023',cream:'#F5F0E8',cream2:'#EDE8DC',cream3:'#E5DFD0',gold:'#C9A84C',terra:'#9B3D1E',text:'#1C1C1A',muted:'#6B5E4E' }
-const sans = { fontFamily:'system-ui,sans-serif' } as const
-const serif = { fontFamily:'Georgia,serif' } as const
+const C = { green:'#173B13',green2:'#0F290C',cream:'#F4F5F3',cream2:'#EAECE8',cream3:'#DCE0D8',gold:'#FCE08B',terra:'#173B13',text:'#111211',muted:'#525750' }
+const sans = { fontFamily:'var(--font-inter), Inter, system-ui, sans-serif' } as const
+const serif = { fontFamily:'var(--font-montserrat), Montserrat, sans-serif' } as const
 const mono = { fontFamily:'monospace' } as const
 const inp: React.CSSProperties = { ...sans,width:'100%',border:`1px solid ${C.cream3}`,padding:'10px 12px',fontSize:13,background:C.cream,outline:'none',color:C.text,fontWeight:300,boxSizing:'border-box',marginBottom:10 }
 
@@ -96,7 +96,7 @@ export default function TownsPage() {
       <div style={{ background:C.green,padding:'6px 16px' }}><span style={{ ...sans,fontSize:10,color:'rgba(255,255,255,.5)' }}>theeram</span></div>
       <div style={{ background:C.cream,borderBottom:`1px solid ${C.cream3}`,padding:'13px 16px',display:'flex',gap:10,alignItems:'center' }}>
         <button onClick={() => { setMode('list'); setAgentResult(null); setAgentLog([]) }} style={{ ...sans,fontSize:12,color:C.muted,background:'none',border:'none',cursor:'pointer' }}>Back</button>
-        <span style={{ fontFamily:'Georgia,serif',fontSize:18,color:C.text }}>Town Content Agent</span>
+        <span style={{ fontFamily:'var(--font-montserrat), Montserrat, sans-serif',fontSize:18,color:C.text }}>Town Content Agent</span>
       </div>
       <div style={{ padding:'20px 16px' }}>
         <div style={{ background:C.green,padding:'16px',marginBottom:20 }}>
@@ -114,7 +114,7 @@ export default function TownsPage() {
         {agentResult && (
           <div style={{ border:`1px solid ${C.cream3}`,background:'white',padding:16,marginBottom:20 }}>
             <div style={{ width:24,height:24,background:agentResult.hero_bg_color,marginBottom:10 }}/>
-            <div style={{ fontFamily:'Georgia,serif',fontSize:18,color:C.text,marginBottom:4 }}>{agentResult.name}</div>
+            <div style={{ fontFamily:'var(--font-montserrat), Montserrat, sans-serif',fontSize:18,color:C.text,marginBottom:4 }}>{agentResult.name}</div>
             <div style={{ ...sans,fontSize:11,color:C.muted,marginBottom:8 }}>{agentResult.district} District</div>
             <div style={{ ...sans,fontSize:12,color:C.muted,lineHeight:1.6,marginBottom:10,fontWeight:300 }}>{agentResult.tagline}</div>
             {agentResult.suggested_search_queries?.length > 0 && <div style={{ marginBottom:12 }}><p style={{ ...sans,fontSize:9,color:C.terra,letterSpacing:'.07em',marginBottom:6 }}>SUGGESTED SEARCHES</p>{agentResult.suggested_search_queries.map((q: string) => <p key={q} style={{ ...sans,fontSize:11,color:C.muted,marginBottom:3 }}>- {q}</p>)}</div>}
@@ -130,7 +130,7 @@ export default function TownsPage() {
       <div style={{ background:C.green,padding:'6px 16px' }}><span style={{ ...sans,fontSize:10,color:'rgba(255,255,255,.5)' }}>theeram</span></div>
       <div style={{ background:C.cream,borderBottom:`1px solid ${C.cream3}`,padding:'13px 16px',display:'flex',gap:10,alignItems:'center',position:'sticky',top:0,zIndex:40 }}>
         <button onClick={() => { setMode('list'); setEditing(null) }} style={{ ...sans,fontSize:12,color:C.muted,background:'none',border:'none',cursor:'pointer' }}>Back</button>
-        <span style={{ fontFamily:'Georgia,serif',fontSize:18,color:C.text }}>{editing.id ? `Edit ${editing.name}` : 'New town'}</span>
+        <span style={{ fontFamily:'var(--font-montserrat), Montserrat, sans-serif',fontSize:18,color:C.text }}>{editing.id ? `Edit ${editing.name}` : 'New town'}</span>
       </div>
       <div style={{ padding:'20px 16px 0' }}>
         {field('Town name', 'name')}
@@ -172,11 +172,11 @@ export default function TownsPage() {
       <div style={{ background:C.cream,borderBottom:`1px solid ${C.cream3}`,padding:'13px 16px',display:'flex',justifyContent:'space-between',alignItems:'center',position:'sticky',top:0,zIndex:40 }}>
         <div style={{ display:'flex',alignItems:'center',gap:10 }}>
           <Link href="/curator" style={{ ...sans,fontSize:12,color:C.muted,textDecoration:'none' }}>Curator</Link>
-          <span style={{ fontFamily:'Georgia,serif',fontSize:18,color:C.text }}>Towns</span>
+          <span style={{ fontFamily:'var(--font-montserrat), Montserrat, sans-serif',fontSize:18,color:C.text }}>Towns</span>
         </div>
         <div style={{ display:'flex',gap:8 }}>
           <button onClick={() => setMode('agent')} style={{ ...sans,background:'transparent',color:C.terra,fontSize:10,fontWeight:600,padding:'7px 12px',border:`1px solid ${C.terra}`,cursor:'pointer' }}>Agent</button>
-          <button onClick={() => { setEditing({ is_active:false,sort_order:towns.length+1,hero_bg_color:'#1C3A2B' }); setMode('edit') }} style={{ ...sans,background:C.green,color:'white',fontSize:10,fontWeight:700,letterSpacing:'.1em',textTransform:'uppercase' as const,padding:'7px 14px',border:'none',cursor:'pointer' }}>+ Add</button>
+          <button onClick={() => { setEditing({ is_active:false,sort_order:towns.length+1,hero_bg_color:'#173B13' }); setMode('edit') }} style={{ ...sans,background:C.green,color:'white',fontSize:10,fontWeight:700,letterSpacing:'.1em',textTransform:'uppercase' as const,padding:'7px 14px',border:'none',cursor:'pointer' }}>+ Add</button>
         </div>
       </div>
       <div style={{ padding:'16px 16px 0',display:'flex',flexDirection:'column',gap:10 }}>

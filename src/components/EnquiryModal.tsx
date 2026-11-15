@@ -72,9 +72,9 @@ interface EnquiryModalProps {
 
 function Label({ ml, en }: { ml: string; en: string }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 10 }}>
-      <div style={{ width: 14, height: 1, background: C.terra, flexShrink: 0 }}/>
-      <span style={{ ...sans, fontSize: 10, color: C.terra, letterSpacing: '.08em' }}>{ml} · {en}</span>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+      <span style={{ ...serif, fontSize: 10.5, fontWeight: 900, color: C.limeDark }}>&gt;&gt;</span>
+      <span style={{ ...sans, fontSize: 10.5, fontWeight: 700, color: C.green, letterSpacing: '.08em', textTransform: 'uppercase' }}>{ml} · {en}</span>
       <div style={{ flex: 1, height: 1, background: C.cream3 }}/>
     </div>
   )
@@ -146,30 +146,26 @@ export default function EnquiryModal({ propertyName, maxGuests, onSubmit, onSkip
           maxHeight: '92vh', display: 'flex', flexDirection: 'column',
         }}>
 
-        {/* Header — same forest-green + concentric motif as the town hero */}
+        {/* Header — Olive Garden + concentric octagon motif */}
         <div style={{ background: C.green, padding: '22px 22px 20px', position: 'relative', overflow: 'hidden', flexShrink: 0 }}>
-          <div style={{ position: 'absolute', right: -30, top: -30, opacity: .07, pointerEvents: 'none' }}>
+          <div style={{ position: 'absolute', right: -30, top: -30, opacity: .09, pointerEvents: 'none' }}>
             <svg viewBox="0 0 200 200" fill="none" width={150} height={150}>
-              <circle cx="100" cy="100" r="90" stroke="white" strokeWidth={1}/>
-              <circle cx="100" cy="100" r="60" stroke="white" strokeWidth={1}/>
-              <circle cx="100" cy="100" r="30" stroke="white" strokeWidth={1}/>
-              <line x1="10" y1="100" x2="190" y2="100" stroke="white" strokeWidth={1}/>
-              <line x1="100" y1="10" x2="100" y2="190" stroke="white" strokeWidth={1}/>
+              <polygon points="100,10 163,36 190,100 163,163 100,190 36,163 10,100 36,36" stroke="white" strokeWidth={1}/>
+              <polygon points="100,35 145,54 165,100 145,145 100,165 54,145 35,100 54,54" stroke="white" strokeWidth={1}/>
+              <polygon points="100,60 128,72 140,100 128,128 100,140 72,128 60,100 72,72" stroke={C.lime} strokeWidth={1.2}/>
             </svg>
           </div>
-          <button onClick={onClose} aria-label="Close" style={{ position: 'absolute', top: 14, right: 14, width: 32, height: 32, borderRadius: 8, background: 'rgba(255,255,255,.08)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2 }}>
-            <svg viewBox="0 0 20 20" fill="none" width={14} height={14} stroke="white" strokeWidth={1.4} strokeLinecap="round"><path d="M5 5l10 10M15 5L5 15"/></svg>
+          <button onClick={onClose} aria-label="Close" style={{ position: 'absolute', top: 14, right: 14, width: 32, height: 32, borderRadius: 8, background: 'rgba(255,255,255,.1)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2 }}>
+            <svg viewBox="0 0 20 20" fill="none" width={14} height={14} stroke="white" strokeWidth={1.6} strokeLinecap="round"><path d="M5 5l10 10M15 5L5 15"/></svg>
           </button>
 
           <div style={{ position: 'relative', zIndex: 1 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 10 }}>
-              <div style={{ width: 15, height: 1, background: C.gold }}/>
-              <span style={{ ...sans, fontSize: 10, color: C.gold, letterSpacing: '.08em' }}>അന്വേഷണം</span>
-              <div style={{ width: 15, height: 1, background: C.gold }}/>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 10, background: C.limePill, color: C.dark, padding: '3px 10px', borderRadius: 999 }}>
+              <span style={{ ...sans, fontSize: 10, fontWeight: 700, letterSpacing: '.06em' }}>അന്വേഷണം · DIRECT ENQUIRY</span>
             </div>
-            <div style={{ ...serif, fontSize: 22, color: 'white', fontWeight: 300, lineHeight: 1.2, paddingRight: 36 }}>{propertyName}</div>
-            <div style={{ width: 34, height: 2, background: C.gold, margin: '12px 0' }}/>
-            <div style={{ ...sans, fontSize: 12, color: 'rgba(255,255,255,.68)', fontWeight: 300, lineHeight: 1.6 }}>
+            <div style={{ ...serif, fontSize: 22, color: 'white', fontWeight: 800, lineHeight: 1.2, paddingRight: 36 }}>{propertyName}</div>
+            <div style={{ width: 34, height: 3, background: C.lime, margin: '12px 0', borderRadius: 2 }}/>
+            <div style={{ ...sans, fontSize: 12.5, color: 'rgba(255,255,255,.78)', fontWeight: 400, lineHeight: 1.6 }}>
               Two quick details so the owner can reply with exact availability &amp; price.
             </div>
           </div>
@@ -187,11 +183,10 @@ export default function EnquiryModal({ propertyName, maxGuests, onSubmit, onSkip
                 <button key={o.id} type="button" onClick={() => setOccasion(active ? null : o.id)} className="enq-chip"
                   style={{
                     flexShrink: 0, cursor: 'pointer',
-                    background: active ? '#fdf0eb' : 'white',
-                    border: active ? `1.5px solid ${C.terra}` : `1px solid ${C.cream3}`,
-                    borderRadius: 999, padding: '7px 13px',
-                    ...sans, fontSize: 11.5, color: active ? C.terra : C.text, fontWeight: active ? 500 : 300,
-                    boxShadow: active ? '0 2px 6px rgba(155,61,30,.1)' : 'none',
+                    background: active ? C.dark : 'white',
+                    border: active ? `1.5px solid ${C.dark}` : `1px solid ${C.cream3}`,
+                    borderRadius: 999, padding: '7px 14px',
+                    ...sans, fontSize: 11.5, color: active ? C.lime : C.text, fontWeight: active ? 700 : 500,
                   }}>
                   {o.label}
                 </button>
@@ -205,14 +200,14 @@ export default function EnquiryModal({ propertyName, maxGuests, onSubmit, onSkip
             <input type="date" min={minDate} value={date} disabled={flexible}
               onChange={e => setDate(e.target.value)}
               style={{ ...field(touched && !dateOk), opacity: flexible ? .5 : 1 }}/>
-            <label style={{ ...sans, display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: C.muted, marginTop: 10, cursor: 'pointer', userSelect: 'none', fontWeight: 300 }}>
+            <label style={{ ...sans, display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: C.muted, marginTop: 10, cursor: 'pointer', userSelect: 'none', fontWeight: 400 }}>
               <input type="checkbox" checked={flexible} onChange={e => setFlexible(e.target.checked)} style={{ accentColor: C.green, width: 15, height: 15, margin: 0 }}/>
               Dates not fixed yet / flexible
             </label>
             {touched && !dateOk && <div style={hint}>Pick a date or tick “flexible”.</div>}
           </div>
 
-          {/* Guests — chips styled like the "find by feel" filter cards */}
+          {/* Guests */}
           <div style={{ padding: '22px 20px 0' }}>
             <Label ml="അതിഥികൾ" en="Number of guests"/>
           </div>
@@ -223,17 +218,15 @@ export default function EnquiryModal({ propertyName, maxGuests, onSubmit, onSkip
                 <button key={p.n} type="button" onClick={() => setPax(String(p.n))} className="enq-chip"
                   style={{
                     flexShrink: 0, minWidth: 92, textAlign: 'left', cursor: 'pointer',
-                    background: active ? '#fdf0eb' : 'white',
-                    border: active ? `1.5px solid ${C.terra}` : `1px solid ${C.cream3}`,
+                    background: active ? C.mintTint : 'white',
+                    border: active ? `1.5px solid ${C.green}` : `1px solid ${C.cream3}`,
                     borderRadius: 12, padding: '10px 12px',
-                    boxShadow: active ? '0 2px 8px rgba(155,61,30,.12)' : '0 1px 3px rgba(0,0,0,.04)',
                   }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
-                    <div style={{ width: 6, height: 1, background: C.terra }}/>
-                    <span style={{ ...sans, fontSize: 8.5, color: C.terra, letterSpacing: '.04em', whiteSpace: 'nowrap' }}>{p.ml}</span>
+                    <span style={{ ...sans, fontSize: 9, fontWeight: 700, color: C.limeDark, letterSpacing: '.04em', whiteSpace: 'nowrap' }}>{p.ml}</span>
                   </div>
-                  <div style={{ ...serif, fontSize: 17, color: C.text, lineHeight: 1.1 }}>{p.n}{p.n === 500 ? '+' : ''}</div>
-                  <div style={{ ...sans, fontSize: 10.5, color: C.muted, fontWeight: 300 }}>{p.desc}</div>
+                  <div style={{ ...serif, fontSize: 17, fontWeight: 800, color: C.text, lineHeight: 1.1 }}>{p.n}{p.n === 500 ? '+' : ''}</div>
+                  <div style={{ ...sans, fontSize: 10.5, color: C.muted, fontWeight: 400 }}>{p.desc}</div>
                 </button>
               )
             })}
@@ -249,17 +242,17 @@ export default function EnquiryModal({ propertyName, maxGuests, onSubmit, onSkip
             )}
 
             <button onClick={submit} className="enq-chip" style={{
-              ...sans, width: '100%', height: 48, marginTop: 22, borderRadius: 12, border: 'none', cursor: 'pointer',
-              background: C.green, color: 'white', fontSize: 11.5, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 3px 10px rgba(28,58,43,.22)',
+              ...serif, width: '100%', height: 48, marginTop: 22, borderRadius: 14, border: 'none', cursor: 'pointer',
+              background: C.lime, color: C.dark, fontSize: 12, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 4px 12px rgba(17,18,17,.12)',
             }}>
-              <svg viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 00-7.8 13.5L3 21l4.6-1.2A9 9 0 1012 3z"/></svg>
+              <svg viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 00-7.8 13.5L3 21l4.6-1.2A9 9 0 1012 3z"/></svg>
               Send on WhatsApp
             </button>
             {onSkip && (
               <button type="button" onClick={onSkip} style={{
                 ...sans, width: '100%', background: 'none', border: 'none', cursor: 'pointer',
-                padding: '11px 8px 2px', fontSize: 11.5, color: C.terra, textDecoration: 'underline', fontWeight: 400,
+                padding: '11px 8px 2px', fontSize: 11.5, color: C.green, textDecoration: 'underline', fontWeight: 600,
               }}>
                 Just have a quick question? Open WhatsApp directly →
               </button>
@@ -267,8 +260,8 @@ export default function EnquiryModal({ propertyName, maxGuests, onSubmit, onSkip
             <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: 14, marginTop: 10 }}>
               {['Straight to owner', 'No commission', 'No login'].map(t => (
                 <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <div style={{ width: 4, height: 4, borderRadius: '50%', background: C.gold }}/>
-                  <span style={{ ...sans, fontSize: 10.5, color: C.muted, fontWeight: 300 }}>{t}</span>
+                  <div style={{ width: 5, height: 5, borderRadius: '50%', background: C.limeDark }}/>
+                  <span style={{ ...sans, fontSize: 10.5, color: C.muted, fontWeight: 500 }}>{t}</span>
                 </div>
               ))}
             </div>

@@ -3,10 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-
-const C = { green:'#1C3A2B', cream:'#F5F0E8', cream3:'#E5DFD0', gold:'#C9A84C', terra:'#9B3D1E', text:'#1C1C1A', muted:'#6B5E4E' }
-const sans = { fontFamily:'system-ui,sans-serif' } as const
-const serif = { fontFamily:'Georgia,serif' } as const
+import { C, display as serif, sans } from '@/lib/design'
 
 export default function CuratorLoginClient() {
   const router = useRouter()
@@ -42,55 +39,59 @@ export default function CuratorLoginClient() {
   }
 
   if (checking) return (
-    <div style={{ minHeight:'100vh', background:C.cream, display:'flex', alignItems:'center', justifyContent:'center' }}>
-      <div style={{ width:28, height:28, border:`2px solid ${C.terra}`, borderTopColor:'transparent', borderRadius:'50%', animation:'spin .8s linear infinite' }}/>
+    <div style={{ minHeight: '100vh', background: C.cream, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ width: 28, height: 28, border: `2.5px solid ${C.green}`, borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin .8s linear infinite' }}/>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   )
 
   return (
-    <div style={{ minHeight:'100vh', background:C.cream, display:'flex', flexDirection:'column' }}>
-      <div style={{ background:C.green, padding:'6px 16px' }}>
-        <span style={{ ...sans, fontSize:10, color:'rgba(255,255,255,.5)', letterSpacing:'.06em' }}>തീരം · theeram</span>
+    <div style={{ minHeight: '100vh', background: C.cream, display: 'flex', flexDirection: 'column' }}>
+      <div style={{ background: C.green, padding: '10px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ ...serif, fontSize: 13, fontWeight: 900, color: C.lime, letterSpacing: '-0.02em' }}>തീരം · theeram</span>
+        <span style={{ ...sans, fontSize: 10.5, fontWeight: 700, color: 'rgba(255,255,255,.7)', letterSpacing: '.06em', textTransform: 'uppercase' }}>Curator</span>
       </div>
-      <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:24 }}>
-        <div style={{ width:48, height:48, borderRadius:'50%', background:C.green, display:'flex', alignItems:'center', justifyContent:'center', marginBottom:20 }}>
-          <svg viewBox="0 0 20 20" fill="none" width={22} height={22}>
-            <circle cx="10" cy="10" r="6" stroke={C.gold} strokeWidth={1}/>
-            <path d="M10 6Q13 9 10 14Q7 9 10 6Z" fill={C.gold} opacity=".85"/>
-          </svg>
-        </div>
-        <h1 style={{ ...serif, fontSize:22, color:C.text, fontWeight:400, marginBottom:6 }}>Theeram Curator</h1>
-        <p style={{ ...sans, fontSize:13, color:C.muted, marginBottom:28, fontWeight:300 }}>Private access</p>
-
-        {expired && (
-          <div style={{ ...sans, fontSize:12, color:C.muted, marginBottom:16, background:'#fdf0eb', border:`1px solid ${C.terra}`, padding:'10px 14px', maxWidth:280, textAlign:'center', width:'100%', boxSizing:'border-box' as const }}>
-            Your session has expired. Please log in again.
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <div style={{ background: 'white', border: `1px solid ${C.cream3}`, borderRadius: '18px 44px 18px 18px', padding: '32px 28px', width: '100%', maxWidth: 340, boxShadow: '0 8px 28px rgba(17,18,17,.06)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <div style={{ width: 48, height: 48, borderRadius: 14, background: C.green, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 18 }}>
+            <svg viewBox="0 0 28 28" fill="none" width={24} height={24}>
+              <path d="M5 17C8.5 11 12.5 11 14 14C15.5 17 19.5 17 23 11" stroke={C.lime} strokeWidth={2.6} strokeLinecap="round"/>
+              <path d="M5 11.5C8.5 5.5 12.5 5.5 14 8.5C15.5 11.5 19.5 11.5 23 5.5" stroke={C.gold} strokeWidth={2.2} strokeLinecap="round" opacity=".9"/>
+              <circle cx="14" cy="21.5" r="2" fill={C.lime}/>
+            </svg>
           </div>
-        )}
+          <h1 style={{ ...serif, fontSize: 22, color: C.dark, fontWeight: 900, marginBottom: 4 }}>Theeram Curator</h1>
+          <p style={{ ...sans, fontSize: 12.5, color: C.muted, marginBottom: 22, fontWeight: 400 }}>Private workspace access</p>
 
-        <div style={{ width:'100%', maxWidth:280, display:'flex', flexDirection:'column', gap:10 }}>
-          <input
-            type="password"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && !loading && handleLogin()}
-            placeholder="Enter curator password"
-            autoFocus
-            style={{ ...sans, border:`1px solid ${error ? C.terra : C.cream3}`, padding:'12px 14px', fontSize:14, background:C.cream, outline:'none', color:C.text, width:'100%', boxSizing:'border-box' as const }}
-          />
-          {error && <p style={{ ...sans, fontSize:12, color:C.terra, margin:0 }}>{error}</p>}
-          <button
-            onClick={handleLogin}
-            disabled={loading || !password.trim()}
-            style={{ ...sans, background:C.green, color:'white', fontSize:11, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase' as const, padding:'13px 0', border:'none', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? .7 : 1 }}
-          >
-            {loading ? 'Checking...' : 'Enter'}
-          </button>
+          {expired && (
+            <div style={{ ...sans, fontSize: 12, color: C.dark, marginBottom: 14, background: C.butterSoft, border: `1px solid ${C.gold}`, borderRadius: 10, padding: '10px 14px', textAlign: 'center', width: '100%', boxSizing: 'border-box' }}>
+              Your session has expired. Please log in again.
+            </div>
+          )}
+
+          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <input
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && !loading && handleLogin()}
+              placeholder="Enter curator password"
+              autoFocus
+              style={{ ...sans, border: `1px solid ${error ? '#B91C1C' : C.cream3}`, borderRadius: 12, padding: '12px 14px', fontSize: 14, background: C.cream, outline: 'none', color: C.dark, width: '100%', boxSizing: 'border-box' }}
+            />
+            {error && <p style={{ ...sans, fontSize: 12, color: '#B91C1C', fontWeight: 600, margin: 0 }}>{error}</p>}
+            <button
+              onClick={handleLogin}
+              disabled={loading || !password.trim()}
+              style={{ ...serif, background: C.lime, color: C.dark, fontSize: 12, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase', padding: '13px 0', border: 'none', borderRadius: 12, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? .7 : 1 }}
+            >
+              {loading ? 'Checking...' : 'Enter Workspace →'}
+            </button>
+          </div>
+          <Link href="/" style={{ ...sans, fontSize: 12, fontWeight: 600, color: C.green, textDecoration: 'none', marginTop: 20 }}>
+            ← Back to site
+          </Link>
         </div>
-        <Link href="/" style={{ ...sans, fontSize:11, color:C.muted, textDecoration:'none', marginTop:24, borderBottom:`1px solid ${C.cream3}`, paddingBottom:1 }}>
-          ← Back to site
-        </Link>
       </div>
     </div>
   )

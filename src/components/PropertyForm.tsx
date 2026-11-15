@@ -7,10 +7,10 @@ import type { Property, PropertyType, EventType } from '@/lib/supabase'
 
 // ── Design tokens ────────────────────────────────────────────────────────────
 const C = {
-  green: '#1C3A2B', cream: '#F5F0E8', cream2: '#EDE8DC', cream3: '#E5DFD0',
-  gold: '#C9A84C', terra: '#9B3D1E', text: '#1C1C1A', muted: '#6B5E4E',
+  green: '#173B13', cream: '#F4F5F3', cream2: '#EAECE8', cream3: '#DCE0D8',
+  gold: '#FCE08B', terra: '#173B13', text: '#111211', muted: '#525750',
 }
-const sans = { fontFamily: 'system-ui, sans-serif' } as const
+const sans = { fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif' } as const
 
 // ── Shared input style ───────────────────────────────────────────────────────
 const inputStyle: React.CSSProperties = {
@@ -267,7 +267,7 @@ export default function PropertyForm({ initial, mode }: PropertyFormProps) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {PROPERTY_TYPES.map(({ value, label }) => (
             <button key={value} onClick={() => setPropertyType(value)}
-              style={{ ...sans, padding: '12px 14px', border: `1px solid ${propertyType === value ? C.terra : C.cream3}`, background: propertyType === value ? '#fdf0eb' : 'white', color: propertyType === value ? C.terra : C.muted, fontSize: 13, cursor: 'pointer', textAlign: 'left' as const }}>
+              style={{ ...sans, padding: '12px 14px', border: `1px solid ${propertyType === value ? C.terra : C.cream3}`, background: propertyType === value ? '#EDFCE6' : 'white', color: propertyType === value ? C.terra : C.muted, fontSize: 13, cursor: 'pointer', textAlign: 'left' as const }}>
               {label}
             </button>
           ))}
@@ -345,7 +345,7 @@ export default function PropertyForm({ initial, mode }: PropertyFormProps) {
         <p style={{ ...sans, fontSize: 11, color: C.muted, marginTop: 8, fontWeight: 300 }}>Draft listings are only visible in the curator. Set to Live when photos are ready.</p>
       </div>
 
-      {error && <div style={{ ...sans, fontSize: 13, color: C.terra, background: '#fdf0eb', border: `1px solid ${C.terra}`, padding: '12px 14px', marginBottom: 14 }}>{error}</div>}
+      {error && <div style={{ ...sans, fontSize: 13, color: C.terra, background: '#EDFCE6', border: `1px solid ${C.terra}`, padding: '12px 14px', marginBottom: 14 }}>{error}</div>}
 
       {/* Sticky save */}
       <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: C.cream, borderTop: `1px solid ${C.cream3}`, padding: '12px 16px', zIndex: 30 }}>

@@ -300,7 +300,7 @@ export async function GET() {
     allProps.forEach((p: any) => {
       propMap[p.id] = {
         name: p.name, slug: p.slug,
-        town_name: p.towns?.name ?? '', town_color: p.towns?.hero_bg_color ?? '#1C3A2B',
+        town_name: p.towns?.name ?? '', town_color: p.towns?.hero_bg_color ?? '#173B13',
         enquiries: 0, views: 0,
         shares: 0, maps_clicks: 0, phone_calls: 0, over_capacity_enquiries: 0,
         paxSum: 0, paxCount: 0,

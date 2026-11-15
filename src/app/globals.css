@@ -3,14 +3,18 @@
 @tailwind utilities;
 
 :root {
-  --color-bg: #FAF7F2;
-  --color-text: #2C1A0E;
-  --color-accent: #7C5C3E;
-  --color-pin: #D4735E;
-  --color-kasavu: #C9A84C;
+  --color-bg: #F4F5F3;
+  --color-text: #111211;
+  --color-accent: #173B13;
+  --color-lime: #78E040;
+  --color-lime-dark: #58C922;
+  --color-lime-pill: #C4F596;
+  --color-olive: #173B13;
+  --color-butter: #FCE08B;
+  --color-lavender: #E5DDF5;
   --color-wa: #25D366;
-  --color-border: #D6C9B8;
-  --color-avail: #6B8F71;
+  --color-border: #DCE0D8;
+  --color-avail: #58C922;
 }
 
 * {
@@ -20,11 +24,31 @@
 }
 
 html, body {
-  background-color: #FAF7F2;
-  color: #2C1A0E;
-  font-family: system-ui, -apple-system, sans-serif;
+  background-color: #F4F5F3;
+  color: #111211;
+  font-family: var(--font-inter), 'Inter', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Brand signature chamfered corners */
+.shape-chamfer-tr {
+  border-radius: 16px 52px 16px 16px;
+}
+
+.shape-chamfer-card {
+  border-radius: 16px 40px 16px 16px;
+}
+
+/* Halftone dot grids */
+.dot-grid {
+  background-image: radial-gradient(rgba(17, 18, 17, 0.14) 1.25px, transparent 1.25px);
+  background-size: 14px 14px;
+}
+
+.dot-grid-light {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.12) 1.25px, transparent 1.25px);
+  background-size: 16px 16px;
+}

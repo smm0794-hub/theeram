@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { supabase, VENDOR_CATEGORY_LABELS, VendorCategory } from '@/lib/supabase'
 
-const C = { green:'#1C3A2B',cream:'#F5F0E8',cream3:'#E5DFD0',terra:'#9B3D1E',text:'#1C1C1A',muted:'#6B5E4E' }
-const sans = { fontFamily:'system-ui,sans-serif' } as const
+const C = { green:'#173B13',cream:'#F4F5F3',cream3:'#DCE0D8',terra:'#173B13',text:'#111211',muted:'#525750' }
+const sans = { fontFamily:'var(--font-inter), Inter, system-ui, sans-serif' } as const
 
 interface PropertySubmission {
   id: string
@@ -67,13 +67,13 @@ export default function CuratorSubmissionsPage() {
   const reviewed = submissions.filter((s) => s.status !== 'pending')
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#FAF7F2' }}>
-      <header style={{ position: 'sticky', top: 0, zIndex: 20, backgroundColor: '#FAF7F2', borderBottom: '0.5px solid #D6C9B8', padding: '12px 16px', display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'space-between' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: '#F4F5F3' }}>
+      <header style={{ position: 'sticky', top: 0, zIndex: 20, backgroundColor: '#F4F5F3', borderBottom: '0.5px solid #D6C9B8', padding: '12px 16px', display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <Link href="/curator" style={{ color: '#7C5C3E', display: 'flex' }}>
             <svg viewBox="0 0 20 20" fill="none" width={20} height={20} stroke="currentColor" strokeWidth={2}><path d="M12 5L7 10l5 5" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </Link>
-          <span style={{ fontFamily: 'Georgia, serif', fontSize: 18, color: '#2C1A0E' }}>Submissions</span>
+          <span style={{ fontFamily: 'var(--font-montserrat), Montserrat, sans-serif', fontSize: 18, color: '#111211' }}>Submissions</span>
         </div>
       </header>
 
@@ -81,7 +81,7 @@ export default function CuratorSubmissionsPage() {
       <div style={{ display: 'flex', borderBottom: `1px solid ${C.cream3}` }}>
         {(['properties', 'vendors'] as Tab[]).map((t) => (
           <button key={t} onClick={() => setTab(t)}
-            style={{ flex: 1, padding: '12px 0', fontSize: 12, fontWeight: tab === t ? 600 : 400, color: tab === t ? C.terra : C.muted, backgroundColor: 'transparent', border: 'none', borderBottom: tab === t ? `2px solid ${C.terra}` : '2px solid transparent', cursor: 'pointer', fontFamily: 'system-ui,sans-serif' }}>
+            style={{ flex: 1, padding: '12px 0', fontSize: 12, fontWeight: tab === t ? 600 : 400, color: tab === t ? C.terra : C.muted, backgroundColor: 'transparent', border: 'none', borderBottom: tab === t ? `2px solid ${C.terra}` : '2px solid transparent', cursor: 'pointer', fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif' }}>
             {t === 'properties' ? `Spaces${pending.length > 0 ? ` (${pending.length})` : ''}` : 'Makers'}
           </button>
         ))}
@@ -92,11 +92,11 @@ export default function CuratorSubmissionsPage() {
           <p style={{ fontSize: 13, color: '#7C5C3E', marginBottom: 16, lineHeight: 1.6 }}>
             Vendor applications are managed separately. Tap below to review and approve pending vendor applications, or to assign featured status to paid vendors.
           </p>
-          <Link href="/curator/vendors" style={{ display: 'block', textAlign: 'center', backgroundColor: '#2C1A0E', color: 'white', fontWeight: 600, fontSize: 14, borderRadius: 12, padding: '14px 0', textDecoration: 'none', marginBottom: 12 }}>
+          <Link href="/curator/vendors" style={{ display: 'block', textAlign: 'center', backgroundColor: '#111211', color: 'white', fontWeight: 600, fontSize: 14, borderRadius: 12, padding: '14px 0', textDecoration: 'none', marginBottom: 12 }}>
             Review vendor applications
           </Link>
           <div style={{ backgroundColor: 'white', borderRadius: 14, border: '1px solid #D6C9B8', padding: 16 }}>
-            <p style={{ fontSize: 12, fontWeight: 600, color: '#2C1A0E', marginBottom: 8 }}>How to assign featured status</p>
+            <p style={{ fontSize: 12, fontWeight: 600, color: '#111211', marginBottom: 8 }}>How to assign featured status</p>
             <ol style={{ fontSize: 13, color: '#7C5C3E', lineHeight: 1.8, paddingLeft: 16 }}>
               <li>Go to <strong>Manage Vendors</strong> above</li>
               <li>Switch to the <strong>Active</strong> tab</li>
@@ -149,7 +149,7 @@ export default function CuratorSubmissionsPage() {
       )}
 
       {toast && (
-        <div style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', backgroundColor: '#2C1A0E', color: 'white', fontSize: 13, padding: '10px 20px', borderRadius: 999, zIndex: 50, whiteSpace: 'nowrap' }}>
+        <div style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', backgroundColor: '#111211', color: 'white', fontSize: 13, padding: '10px 20px', borderRadius: 999, zIndex: 50, whiteSpace: 'nowrap' }}>
           {toast}
         </div>
       )}
@@ -164,7 +164,7 @@ function SubmissionCard({ submission: s, onUpdate }: { submission: PropertySubmi
     <div style={{ backgroundColor: 'white', borderRadius: 12, border: `1px solid ${s.status === 'pending' ? '#D4735E' : '#D6C9B8'}`, padding: 16 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
         <div style={{ flex: 1 }}>
-          <p style={{ fontFamily: 'Georgia, serif', fontSize: 16, color: '#2C1A0E' }}>{s.name}</p>
+          <p style={{ fontFamily: 'var(--font-montserrat), Montserrat, sans-serif', fontSize: 16, color: '#111211' }}>{s.name}</p>
           {s.owner_name && <p style={{ fontSize: 12, color: '#7C5C3E', marginTop: 2 }}>{s.owner_name}</p>}
         </div>
         <span style={{ fontSize: 10, fontWeight: 600, padding: '3px 8px', borderRadius: 999, backgroundColor: s.status === 'pending' ? '#fdf3f1' : s.status === 'reviewed' ? '#f0f7f1' : '#f5f0eb', color: s.status === 'pending' ? '#D4735E' : s.status === 'reviewed' ? '#6B8F71' : '#7C5C3E', marginLeft: 8 }}>
@@ -185,9 +185,9 @@ function SubmissionCard({ submission: s, onUpdate }: { submission: PropertySubmi
 
       {/* Key details */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
-        {s.price_guide && <span style={{ fontSize: 11, backgroundColor: '#FAF7F2', border: '1px solid #D6C9B8', borderRadius: 999, padding: '2px 8px', color: '#7C5C3E' }}>₹ {s.price_guide}</span>}
-        {s.area && <span style={{ fontSize: 11, backgroundColor: '#FAF7F2', border: '1px solid #D6C9B8', borderRadius: 999, padding: '2px 8px', color: '#7C5C3E' }}>📍 {s.area}</span>}
-        {s.capacity && <span style={{ fontSize: 11, backgroundColor: '#FAF7F2', border: '1px solid #D6C9B8', borderRadius: 999, padding: '2px 8px', color: '#7C5C3E' }}>👥 {s.capacity}</span>}
+        {s.price_guide && <span style={{ fontSize: 11, backgroundColor: '#F4F5F3', border: '1px solid #D6C9B8', borderRadius: 999, padding: '2px 8px', color: '#7C5C3E' }}>₹ {s.price_guide}</span>}
+        {s.area && <span style={{ fontSize: 11, backgroundColor: '#F4F5F3', border: '1px solid #D6C9B8', borderRadius: 999, padding: '2px 8px', color: '#7C5C3E' }}>📍 {s.area}</span>}
+        {s.capacity && <span style={{ fontSize: 11, backgroundColor: '#F4F5F3', border: '1px solid #D6C9B8', borderRadius: 999, padding: '2px 8px', color: '#7C5C3E' }}>👥 {s.capacity}</span>}
       </div>
 
       {/* Expand for full details */}
@@ -197,7 +197,7 @@ function SubmissionCard({ submission: s, onUpdate }: { submission: PropertySubmi
 
       {expanded && (
         <div style={{ marginBottom: 12 }}>
-          {s.tagline && <p style={{ fontSize: 13, color: '#2C1A0E', fontStyle: 'italic', marginBottom: 6 }}>"{s.tagline}"</p>}
+          {s.tagline && <p style={{ fontSize: 13, color: '#111211', fontStyle: 'italic', marginBottom: 6 }}>"{s.tagline}"</p>}
           {s.description && <p style={{ fontSize: 13, color: '#555', lineHeight: 1.6, marginBottom: 6 }}>{s.description}</p>}
           {s.facilities && <p style={{ fontSize: 12, color: '#7C5C3E', marginBottom: 6 }}>Facilities: {s.facilities}</p>}
           {s.message && <p style={{ fontSize: 12, color: '#B4A898', fontStyle: 'italic' }}>"{s.message}"</p>}

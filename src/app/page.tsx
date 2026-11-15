@@ -25,7 +25,7 @@ const PALA_FALLBACK: Town = {
   stat_1_value: '45 min', stat_1_label: 'FROM KOTTAYAM',
   stat_2_value: '90 min', stat_2_label: 'FROM KOCHI',
   stat_3_value: '200+', stat_3_label: 'YEARS OF TRADITION',
-  hero_bg_color: '#1C3A2B',
+  hero_bg_color: '#173B13',
   is_active: true, sort_order: 1, created_at: '',
 }
 

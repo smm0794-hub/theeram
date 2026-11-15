@@ -12,13 +12,13 @@ export default function OgImage() {
         style={{
           width: '100%',
           height: '100%',
-          background: '#1C3A2B',
+          background: '#173B13',
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
           padding: '64px 72px',
           color: '#FFFFFF',
-          fontFamily: 'Georgia, serif',
+          fontFamily: 'var(--font-montserrat), Montserrat, sans-serif',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -27,17 +27,17 @@ export default function OgImage() {
               width: 44,
               height: 44,
               borderRadius: '50%',
-              border: '2px solid #C9A84C',
+              border: '2px solid #FCE08B',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#C9A84C',
+              color: '#FCE08B',
               fontSize: 22,
             }}
           >
             ✦
           </div>
-          <span style={{ fontSize: 24, letterSpacing: '0.14em', color: '#C9A84C', fontFamily: 'sans-serif', textTransform: 'uppercase' }}>
+          <span style={{ fontSize: 24, letterSpacing: '0.14em', color: '#FCE08B', fontFamily: 'sans-serif', textTransform: 'uppercase' }}>
             Theeram Spaces · Kerala
           </span>
         </div>
@@ -46,7 +46,7 @@ export default function OgImage() {
           <div style={{ fontSize: 64, lineHeight: 1.12, fontWeight: 400 }}>
             Event venues, heritage tharavadus &amp; villas across Kerala.
           </div>
-          <div style={{ width: 64, height: 3, background: '#C9A84C' }} />
+          <div style={{ width: 64, height: 3, background: '#FCE08B' }} />
           <div style={{ fontSize: 26, color: 'rgba(255,255,255,0.78)', fontFamily: 'sans-serif', lineHeight: 1.4 }}>
             Hand-curated spaces &amp; trusted local makers · No booking fees · Talk directly on WhatsApp
           </div>

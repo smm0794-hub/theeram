@@ -4,9 +4,9 @@ import { useEffect, useState } from 'react'
 import { supabase, Vendor, VendorSubmission, VENDOR_CATEGORY_LABELS, VENDOR_CATEGORIES, VENDOR_CATEGORY_ICONS, VendorCategory } from '@/lib/supabase'
 import Link from 'next/link'
 
-const C = { green:'#1C3A2B',cream:'#F5F0E8',cream2:'#EDE8DC',cream3:'#E5DFD0',gold:'#C9A84C',terra:'#9B3D1E',text:'#1C1C1A',muted:'#6B5E4E' }
-const sans = { fontFamily:'system-ui,sans-serif' } as const
-const serif = { fontFamily:'Georgia,serif' } as const
+const C = { green:'#173B13',cream:'#F4F5F3',cream2:'#EAECE8',cream3:'#DCE0D8',gold:'#FCE08B',terra:'#173B13',text:'#111211',muted:'#525750' }
+const sans = { fontFamily:'var(--font-inter), Inter, system-ui, sans-serif' } as const
+const serif = { fontFamily:'var(--font-montserrat), Montserrat, sans-serif' } as const
 const inp: React.CSSProperties = { ...sans,width:'100%',border:`1px solid ${C.cream3}`,padding:'10px 12px',fontSize:13,background:C.cream,outline:'none',color:C.text,fontWeight:300,boxSizing:'border-box',marginBottom:10 }
 
 type Mode = 'list' | 'edit'
@@ -262,14 +262,14 @@ export default function CuratorVendorsPage() {
       <div style={{ background:C.green,padding:'6px 16px' }}><span style={{ ...sans,fontSize:10,color:'rgba(255,255,255,.5)' }}>theeram</span></div>
       <div style={{ background:C.cream,borderBottom:`1px solid ${C.cream3}`,padding:'13px 16px',display:'flex',gap:10,alignItems:'center',position:'sticky',top:0,zIndex:40 }}>
         <button onClick={() => { setMode('list'); setEditing(null) }} style={{ ...sans,fontSize:12,color:C.muted,background:'none',border:'none',cursor:'pointer' }}>← Makers</button>
-        <span style={{ fontFamily:'Georgia,serif',fontSize:18,color:C.text }}>{editing.id ? `Edit ${editing.name}` : 'New maker'}</span>
+        <span style={{ fontFamily:'var(--font-montserrat), Montserrat, sans-serif',fontSize:18,color:C.text }}>{editing.id ? `Edit ${editing.name}` : 'New maker'}</span>
       </div>
 
       <div style={{ padding:16 }}>
         <label style={{ ...sans,fontSize:9,color:C.terra,letterSpacing:'.07em',display:'block',marginBottom:6 }}>CATEGORY</label>
         <div style={{ display:'flex',flexDirection:'column',gap:6,marginBottom:16 }}>
           {VENDOR_CATEGORIES.map(cat => (
-            <button key={cat} onClick={() => setEditing(p => ({...p!, category: cat}))} style={{ ...sans,padding:'10px 14px',border:`1px solid ${editing.category===cat?C.terra:C.cream3}`,background:editing.category===cat?'#fdf0eb':'white',color:editing.category===cat?C.terra:C.muted,fontSize:13,cursor:'pointer',textAlign:'left' as const,display:'flex',alignItems:'center',gap:10 }}>
+            <button key={cat} onClick={() => setEditing(p => ({...p!, category: cat}))} style={{ ...sans,padding:'10px 14px',border:`1px solid ${editing.category===cat?C.terra:C.cream3}`,background:editing.category===cat?'#EDFCE6':'white',color:editing.category===cat?C.terra:C.muted,fontSize:13,cursor:'pointer',textAlign:'left' as const,display:'flex',alignItems:'center',gap:10 }}>
               <span style={{ fontSize:16 }}>{VENDOR_CATEGORY_ICONS[cat]}</span>
               {VENDOR_CATEGORY_LABELS[cat]}
             </button>
@@ -292,7 +292,7 @@ export default function CuratorVendorsPage() {
         <label style={{ ...sans,fontSize:9,color:C.terra,letterSpacing:'.07em',display:'block',marginBottom:8,marginTop:6 }}>DISTRICTS SERVED</label>
         <div style={{ display:'flex',flexWrap:'wrap' as const,gap:6,marginBottom:16 }}>
           {districts.map(d => (
-            <button key={d.id} onClick={() => toggleDistrict(d.id)} style={{ ...sans,fontSize:11,padding:'6px 12px',border:`1px solid ${editingDistricts.includes(d.id)?C.terra:C.cream3}`,background:editingDistricts.includes(d.id)?'#fdf0eb':'white',color:editingDistricts.includes(d.id)?C.terra:C.muted,cursor:'pointer' }}>{d.name}</button>
+            <button key={d.id} onClick={() => toggleDistrict(d.id)} style={{ ...sans,fontSize:11,padding:'6px 12px',border:`1px solid ${editingDistricts.includes(d.id)?C.terra:C.cream3}`,background:editingDistricts.includes(d.id)?'#EDFCE6':'white',color:editingDistricts.includes(d.id)?C.terra:C.muted,cursor:'pointer' }}>{d.name}</button>
           ))}
         </div>
 
@@ -345,7 +345,7 @@ export default function CuratorVendorsPage() {
       <div style={{ background:C.cream,borderBottom:`1px solid ${C.cream3}`,padding:'13px 16px',display:'flex',justifyContent:'space-between',alignItems:'center',position:'sticky',top:0,zIndex:40 }}>
         <div style={{ display:'flex',alignItems:'center',gap:10 }}>
           <Link href="/curator" style={{ ...sans,fontSize:12,color:C.muted,textDecoration:'none' }}>← Curator</Link>
-          <span style={{ fontFamily:'Georgia,serif',fontSize:18,color:C.text }}>Makers</span>
+          <span style={{ fontFamily:'var(--font-montserrat), Montserrat, sans-serif',fontSize:18,color:C.text }}>Makers</span>
           {pending.length > 0 && <span style={{ ...sans,fontSize:10,background:C.terra,color:'white',padding:'2px 7px',fontWeight:600 }}>{pending.length} pending</span>}
         </div>
         <div style={{ display:'flex', gap:8 }}>
@@ -380,7 +380,7 @@ export default function CuratorVendorsPage() {
                       <span style={{ ...sans,fontSize:10,color:C.muted }}>{VENDOR_CATEGORY_LABELS[v.category as VendorCategory]}</span>
                       {v.is_featured && <span style={{ ...sans,fontSize:9,background:C.gold,color:C.text,padding:'1px 5px',fontWeight:700 }}>PICK</span>}
                     </div>
-                    <div style={{ fontFamily:'Georgia,serif',fontSize:16,color:C.text }}>{v.name}</div>
+                    <div style={{ fontFamily:'var(--font-montserrat), Montserrat, sans-serif',fontSize:16,color:C.text }}>{v.name}</div>
                     {vDistricts.length > 0 && <div style={{ ...sans,fontSize:10,color:C.muted,marginTop:2 }}>{vDistricts.slice(0,3).join(', ')}{vDistricts.length > 3 ? ` +${vDistricts.length - 3}` : ''}</div>}
                   </div>
                   <span style={{ ...sans,fontSize:10,fontWeight:600,padding:'3px 8px',background:v.is_active?'#f0faf4':'#faf0eb',color:v.is_active?'#2D7A4F':C.muted }}>
@@ -409,7 +409,7 @@ export default function CuratorVendorsPage() {
               <div style={{ display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:8 }}>
                 <div>
                   <div style={{ ...sans,fontSize:10,color:C.muted,marginBottom:2 }}>{VENDOR_CATEGORY_LABELS[s.category as VendorCategory]}</div>
-                  <div style={{ fontFamily:'Georgia,serif',fontSize:16,color:C.text,marginBottom:2 }}>{s.name}</div>
+                  <div style={{ fontFamily:'var(--font-montserrat), Montserrat, sans-serif',fontSize:16,color:C.text,marginBottom:2 }}>{s.name}</div>
                   {s.whatsapp && <div style={{ ...sans,fontSize:11,color:C.muted }}>📞 {s.whatsapp}</div>}
                 </div>
                 <span style={{ ...sans,fontSize:10,fontWeight:600,padding:'3px 8px',

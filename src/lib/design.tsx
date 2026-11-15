@@ -1,41 +1,58 @@
-// Shared design tokens for Theeram
+import React from 'react'
+
+// Shared design tokens for Theeram — aligned with DESIGN_SYSTEM.md
 export const C = {
-  green:   '#1C3A2B',
-  green2:  '#163023',
-  cream:   '#F5F0E8',
-  cream2:  '#EDE8DC',
-  cream3:  '#E5DFD0',
-  gold:    '#C9A84C',
-  terra:   '#9B3D1E',
-  sage:    '#D9E4DB',
-  dark:    '#0F0F0D',
-  text:    '#1C1C1A',
-  muted:   '#6B5E4E',
-  chip:    '#F0EBE0',
-  wa:      '#25D366',
+  // Primary Brand Palette
+  lime:       '#78E040',
+  limeDark:   '#58C922',
+  limePill:   '#C4F596',
+  green:      '#173B13', // Olive Garden
+  green2:     '#0F290C', // Deep Olive
+  cream:      '#F4F5F3', // Gray Storm Light
+  cream2:     '#EAECE8',
+  cream3:     '#DCE0D8',
+  gold:       '#FCE08B', // Orange Juice (Warm Butter)
+  butter:     '#FCE08B',
+  butterSoft: '#FEF3D1',
+  lavender:   '#E5DDF5', // Lavender Tea
+  mintTint:   '#EDFCE6',
+  terra:      '#173B13', // Olive Garden accent for high-contrast links/labels
+  sage:       '#F4F5F3', // Clean Gray Storm canvas for listing grids
+  dark:       '#111211', // Gray Storm Dark (Ink)
+  text:       '#111211',
+  muted:      '#525750',
+  chip:       '#EAECE8',
+  wa:         '#25D366',
 }
 
-export const serif = { fontFamily: 'Georgia, serif' } as React.CSSProperties
-export const sans  = { fontFamily: 'system-ui, sans-serif' } as React.CSSProperties
+export const display: React.CSSProperties = {
+  fontFamily: 'var(--font-montserrat), Montserrat, system-ui, sans-serif',
+  letterSpacing: '-0.025em',
+}
+// Keep `serif` alias so existing components inherit Montserrat display typography seamlessly
+export const serif: React.CSSProperties = display
+export const sans: React.CSSProperties = {
+  fontFamily: 'var(--font-inter), Inter, system-ui, -apple-system, sans-serif',
+}
 
-// Section label with Malayalam — terracotta dashes
+// Section label with >> tone-of-voice chevron
 export function SectionLabel({ ml, style }: { ml: string; style?: React.CSSProperties }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 9, ...style }}>
-      <div style={{ width: 14, height: 1, background: C.terra, flexShrink: 0 }}/>
-      <span style={{ ...sans, fontSize: 10, color: C.terra, letterSpacing: '.08em' }}>{ml}</span>
-      <div style={{ flex: 1, height: 1, background: C.cream3 }}/>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, ...style }}>
+      <span style={{ ...display, fontSize: 11, fontWeight: 900, color: C.limeDark, flexShrink: 0 }}>&gt;&gt;</span>
+      <span style={{ ...sans, fontSize: 10.5, fontWeight: 700, color: C.green, letterSpacing: '.08em', textTransform: 'uppercase' }}>{ml}</span>
+      <div style={{ flex: 1, height: 1, background: C.cream3 }} />
     </div>
   )
 }
 
-// Gold section label (for dark bg sections)
+// Lime/Butter section label (for dark Olive Garden bg sections)
 export function GoldLabel({ ml, style }: { ml: string; style?: React.CSSProperties }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 9, ...style }}>
-      <div style={{ width: 15, height: 1, background: C.gold, flexShrink: 0 }}/>
-      <span style={{ ...sans, fontSize: 10, color: C.gold, letterSpacing: '.08em' }}>{ml}</span>
-      <div style={{ width: 15, height: 1, background: C.gold, flexShrink: 0 }}/>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, ...style }}>
+      <span style={{ ...display, fontSize: 11, fontWeight: 900, color: C.lime, flexShrink: 0 }}>&gt;&gt;</span>
+      <span style={{ ...sans, fontSize: 10.5, fontWeight: 700, color: C.lime, letterSpacing: '.08em', textTransform: 'uppercase' }}>{ml}</span>
+      <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.16)' }} />
     </div>
   )
 }

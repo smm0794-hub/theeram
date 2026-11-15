@@ -24,9 +24,9 @@ export const metadata: Metadata = {
   alternates: { canonical: 'https://www.theeramspaces.in/about' },
 }
 
-const C = { green:'#1C3A2B',green2:'#163023',cream:'#F5F0E8',cream2:'#EDE8DC',cream3:'#E5DFD0',gold:'#C9A84C',terra:'#9B3D1E',text:'#1C1C1A',muted:'#6B5E4E' }
-const serif = { fontFamily:'Georgia,serif' } as const
-const sans = { fontFamily:'system-ui,sans-serif' } as const
+const C = { green:'#173B13',green2:'#0F290C',cream:'#F4F5F3',cream2:'#EAECE8',cream3:'#DCE0D8',gold:'#FCE08B',terra:'#173B13',text:'#111211',muted:'#525750' }
+const serif = { fontFamily:'var(--font-montserrat), Montserrat, sans-serif' } as const
+const sans = { fontFamily:'var(--font-inter), Inter, system-ui, sans-serif' } as const
 
 const faqs = [
   {
