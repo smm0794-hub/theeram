@@ -358,16 +358,61 @@ Strict rules:
 
 // ── Parse JSON array from model text response ─────────────────────────────────
 function parseVenueArray(text: string): any[] | null {
-  const clean = (text ?? '').replace(/```json|```/gi, '').trim()
-  const s = clean.indexOf('[')
-  const e = clean.lastIndexOf(']')
-  if (s === -1 || e === -1 || e <= s) return null
-  try {
-    const parsed = JSON.parse(clean.slice(s, e + 1))
-    return Array.isArray(parsed) ? parsed : null
-  } catch {
-    return null
+  if (!text) return null
+
+  // 1. Prefer content inside a markdown ```json ... ``` fence if present
+  const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/i)
+  const candidates = fenceMatch ? [fenceMatch[1].trim(), text.replace(/```json|```/gi, '').trim()] : [text.trim()]
+
+  for (const clean of candidates) {
+    const e = clean.lastIndexOf(']')
+    if (e === -1) continue
+
+    // Try from first '[' and also from any '[\s*{' (in case grounding citations like [1] appear before the JSON array)
+    const startIndices: number[] = []
+    const firstBracket = clean.indexOf('[')
+    if (firstBracket !== -1 && firstBracket < e) startIndices.push(firstBracket)
+
+    const objArrayRegex = /\[\s*\{/g
+    let match: RegExpExecArray | null
+    while ((match = objArrayRegex.exec(clean)) !== null) {
+      if (match.index < e && !startIndices.includes(match.index)) {
+        startIndices.push(match.index)
+      }
+    }
+
+    for (const s of startIndices) {
+      try {
+        const parsed = JSON.parse(clean.slice(s, e + 1))
+        if (Array.isArray(parsed)) return parsed
+      } catch {
+        // Try finding matching closing bracket for this start index
+        let depth = 0
+        let inString = false
+        let escaped = false
+        for (let i = s; i <= e; i++) {
+          const ch = clean[i]
+          if (escaped) { escaped = false; continue }
+          if (ch === '\\' && inString) { escaped = true; continue }
+          if (ch === '"') { inString = !inString; continue }
+          if (!inString) {
+            if (ch === '[') depth++
+            else if (ch === ']') {
+              depth--
+              if (depth === 0) {
+                try {
+                  const parsed = JSON.parse(clean.slice(s, i + 1))
+                  if (Array.isArray(parsed)) return parsed
+                } catch {}
+                break
+              }
+            }
+          }
+        }
+      }
+    }
   }
+  return null
 }
 
 // ── Pipeline 1: Free Gemini API (with Google Search grounding + Serper Places) ─
@@ -399,18 +444,29 @@ async function runGeminiPipeline(
 
   const prompt = buildGeminiPrompt(query, snippets, town, mode)
 
-  // Try gemini-2.5-flash with Google Search grounding first, fallback to gemini-2.0-flash or ungrounded JSON mode
-  const attempts: { model: string; useSearchGrounding: boolean }[] = [
-    { model: 'gemini-2.5-flash', useSearchGrounding: true },
-    { model: 'gemini-2.5-flash', useSearchGrounding: false },
-    { model: 'gemini-2.0-flash', useSearchGrounding: true },
-    { model: 'gemini-2.0-flash', useSearchGrounding: false },
-  ]
+  // Try gemini-3.8-flash first, with fallbacks to gemini-3.6-flash and gemini-3.5-flash-lite.
+  // When Serper snippets are absent, try Google Search grounding across all models before ungrounded fallback.
+  const hasSnippets = Boolean(snippets.trim())
+  const attempts: { model: string; useSearchGrounding: boolean }[] = hasSnippets
+    ? [
+        { model: 'gemini-3.8-flash', useSearchGrounding: true },
+        { model: 'gemini-3.8-flash', useSearchGrounding: false },
+        { model: 'gemini-3.6-flash', useSearchGrounding: true },
+        { model: 'gemini-3.6-flash', useSearchGrounding: false },
+        { model: 'gemini-3.5-flash-lite', useSearchGrounding: true },
+        { model: 'gemini-3.5-flash-lite', useSearchGrounding: false },
+      ]
+    : [
+        { model: 'gemini-3.8-flash', useSearchGrounding: true },
+        { model: 'gemini-3.6-flash', useSearchGrounding: true },
+        { model: 'gemini-3.5-flash-lite', useSearchGrounding: true },
+        { model: 'gemini-3.8-flash', useSearchGrounding: false },
+        { model: 'gemini-3.5-flash-lite', useSearchGrounding: false },
+      ]
 
+  let primaryError = ''
   let lastError = 'Gemini extraction failed'
   for (const attempt of attempts) {
-    // If we don't have Serper snippets, we must use Google Search grounding
-    if (!attempt.useSearchGrounding && !snippets.trim()) continue
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${attempt.model}:generateContent?key=${geminiKey}`
     const body: any = {
@@ -433,13 +489,17 @@ async function runGeminiPipeline(
 
     if (!res.ok) {
       const errBody = await res.json().catch(() => ({}))
-      lastError = errBody?.error?.message ?? `Gemini HTTP ${res.status}`
+      const msg = errBody?.error?.message ?? `Gemini HTTP ${res.status}`
+      if (!primaryError) primaryError = msg
+      lastError = msg
       continue
     }
 
     const data = await res.json()
     const parts = data?.candidates?.[0]?.content?.parts ?? []
-    const text = parts.map((p: any) => p.text ?? '').join('\n')
+    const nonThoughtParts = parts.filter((p: any) => !p?.thought)
+    const activeParts = nonThoughtParts.length > 0 ? nonThoughtParts : parts
+    const text = activeParts.map((p: any) => p.text ?? '').join('\n')
     const parsed = parseVenueArray(text)
     if (parsed && parsed.length > 0) {
       const sanitised = parsed
@@ -449,7 +509,7 @@ async function runGeminiPipeline(
     }
   }
 
-  throw new Error(lastError)
+  throw new Error(primaryError || lastError)
 }
 
 // ── Pipeline 2: Existing Serper + Claude Haiku pipeline ──────────────────────
